@@ -31,7 +31,9 @@ The supervisor's constraint that shaped everything: **focus on GNN/NN learning a
 |---|---|
 | `GRAFT_RESEARCH_PLAN_v1.md` (v1.2) | **Live — the science.** Wins any conflict with other docs. |
 | `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (v1.1) | **Live — the build plan.** 12 phases, in build order. |
-| `GRAFT_PHASE0_BUILD.md` | **Live — the current component.** Detailed enough to code from. |
+| `GRAFT_PHASE0_BUILD.md` | **Live.** Phase 0's spec. Built and green as of 8 Aug 2026 — all 13 exit criteria. |
+| `PHASE0_DECISIONS.md` | **Live.** What Phase 0 actually decided, including the eleven questions the build plan left to the implementation, and the multi-machine workflow rules. Read before changing a config default. |
+| `README.md` | **Live.** Setup on a new machine, Kaggle, and what must match across machines. |
 | `Research papers/` (103 PDFs, `INDEX.md`, `papers.csv`) | **Live.** Titles verified against publisher records. |
 | `GRAFT2_9_EPISETFLOW_PIPELINE.md` | Superseded — the original design. Useful only as history; §4.1 lists what was cut from it. |
 | `GRAFT2_9_EVIDENCE_REVIEW.md` | Historical — the literature audit that killed most of §4.1. |
