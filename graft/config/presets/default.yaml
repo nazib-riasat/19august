@@ -1,0 +1,39 @@
+# Real-data profile.  Frozen at Gate 0; changing any value here after Phase 3
+# means re-running experiments (see PHASE0_DECISIONS.md for the price of each).
+#
+# Only overrides belong in this file.  Defaults live in graft/config/schema.py
+# so that a missing key raises instead of quietly changing an experiment.
+
+profile: real
+
+# Reward temperature.  Placeholder until the Phase-3 sweep on the synthetic
+# lattice; frozen immediately after, before any comparison run.
+beta: 4.0
+
+u_weights:
+  suff: 1.0
+  cov: 0.5
+  src: 0.25
+  temp: 0.5
+  red: 0.25
+  size: 0.1
+
+r_fail: 1.0e-6
+
+# Portfolio size and the primary budget axis.  The same K is the "returned
+# sets" count in the search comparison.
+K: 8
+checker_budget: 32
+
+# Environment shape.  max_atoms is both the H size limit and the denominator of
+# the size term, so the two cannot drift apart.
+pool_cap: 64
+max_atoms: 16
+
+tau_nli: 0.8
+support_policy: strict
+
+seeds: [13, 42, 7]
+
+fsync: true
+frozen_at_gate0: false

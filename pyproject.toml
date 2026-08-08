@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graft"
+version = "0.1.0"
+description = "GRAFT — provenance-preserving temporal graph memory with a checker-conditioned evidence-set learner"
+readme = "README.md"
+
+# 3.11 is the pinned target (architecture v1.1 §0.4) and is what Kaggle runs.
+# The upper bound is deliberate: PyTorch and PyTorch Geometric have no 3.13+
+# wheels, so a venv built on a newer interpreter would install cleanly now and
+# fail at Phase 3.  Failing at `pip install` is the cheaper failure.
+requires-python = ">=3.11,<3.13"
+
+dependencies = [
+    "PyYAML",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["graft*"]
+
+[tool.setuptools.package-data]
+graft = ["config/presets/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["graft/tests"]

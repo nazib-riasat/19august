@@ -1,0 +1,27 @@
+# Line endings are normalised to LF in the repository and on checkout.
+#
+# This is not cosmetic here.  The work moves between Windows laptops and Kaggle
+# (Linux), and a file that gains CRLF on one machine and LF on another produces
+# different bytes for the same logical content.  The config hash is computed
+# over the *resolved* config rather than the YAML text specifically so that this
+# cannot change an experiment's identity — but the event log, the run manifests
+# and the log digest are all byte-level artefacts, and those must match.
+* text=auto eol=lf
+
+*.py       text eol=lf
+*.yaml     text eol=lf
+*.yml      text eol=lf
+*.md       text eol=lf
+*.jsonl    text eol=lf
+*.json     text eol=lf
+*.toml     text eol=lf
+*.txt      text eol=lf
+*.sh       text eol=lf
+
+# PowerShell is happier with CRLF and never feeds a hash.
+*.ps1      text eol=crlf
+
+*.pdf      binary
+*.zip      binary
+*.npy      binary
+*.pt       binary

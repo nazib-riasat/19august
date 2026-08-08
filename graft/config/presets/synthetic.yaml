@@ -1,0 +1,47 @@
+# Synthetic-lattice profile (Phases 2-4).
+#
+# Differs from the real profile only in environment shape.  The lattice caps
+# valid terminals at |X| <= 8 over a universe of 20-30 atoms, so max_atoms and
+# pool_cap follow the environment rather than staying at the real-data values.
+#
+# Why this matters: `size = |X| / max_atoms`.  Under a global max_atoms = 16 the
+# lattice's size term could only ever span [0, 0.5], so U would have a different
+# range here than on real data, and a beta swept under a half-strength size
+# gradient would mean something different when frozen and carried forward.
+# Making max_atoms follow the environment keeps every U term in [0, 1] and U's
+# range identical across both profiles, which is exactly what Phase-0 gap G4
+# exists to guarantee.
+#
+# What this does *not* remove: beta is swept here and applied to real data, so
+# its transfer across profiles is a declared assumption, in the same class as
+# the Wikipedia -> conversation transfer for Stage D.
+
+profile: synthetic
+
+beta: 4.0
+
+u_weights:
+  suff: 1.0
+  cov: 0.5
+  src: 0.25
+  temp: 0.5
+  red: 0.25
+  size: 0.1
+
+r_fail: 1.0e-6
+
+K: 8
+checker_budget: 32
+
+pool_cap: 32
+max_atoms: 8
+
+tau_nli: 0.8
+support_policy: strict
+
+seeds: [13, 42, 7]
+
+# No real data is at risk during Phases 1-4, and the property tests write
+# thousands of events; fsync would dominate their runtime.
+fsync: false
+frozen_at_gate0: false

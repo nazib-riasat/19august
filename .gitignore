@@ -1,0 +1,32 @@
+# Environments are created per machine, never copied.  A venv hard-codes the
+# absolute path of the interpreter that built it, so shipping one between
+# laptops (or into Kaggle) produces an environment that silently half-works.
+.venv/
+venv/
+env/
+
+# Run artefacts.  These are reproducible from (config_hash, seed) and get large
+# fast; handing a folder to a teammate should not mean handing over gigabytes.
+# Export deliberately when a specific run needs to travel.
+runs/
+
+# The paper library and its backup zip are large binaries that are already
+# reproducible via Research papers/download_papers.ps1.  The index (INDEX.md,
+# papers.csv, README.md) and the download script stay tracked; the ~192 MB of
+# PDFs do not, so cloning or handing over the repo stays fast.  Run the script
+# once per machine to refill the folder.
+*.zip
+Research papers/**/*.pdf
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.ipynb_checkpoints/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

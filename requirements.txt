@@ -1,0 +1,17 @@
+# Phase 0 dependency set — exact pins.
+#
+# Resolved and verified on Python 3.11.9.  Recreate the environment with
+# `scripts/bootstrap.ps1` (Windows) or `scripts/bootstrap.sh` (Linux/macOS);
+# never copy a .venv between machines — it hard-codes the absolute path of the
+# interpreter that built it.
+#
+# Phase 0 has no ML dependency at all, and a structural test enforces that.
+# torch, torch-geometric, sentence-transformers, bm25s and pcst_fast arrive in
+# `requirements-ml.txt` at Phase 3, so that Phases 0-4 stay installable in
+# seconds on any machine and inside a bare Kaggle notebook.
+
+PyYAML==6.0.3
+numpy==2.4.6
+
+# dev
+pytest==9.1.1
