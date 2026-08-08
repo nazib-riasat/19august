@@ -18,6 +18,12 @@ runs/
 *.zip
 Research papers/**/*.pdf
 
+# Scratch from PDF-text extraction runs (vendored wheels, extracted paper text).
+# Not project source; regenerable; ~112 MB.
+.tmp_pdf_deps/
+.tmp_pdf_text/
+tmp/
+
 __pycache__/
 *.py[cod]
 .pytest_cache/
