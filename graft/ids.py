@@ -13,7 +13,9 @@ here rather than in the phase that first needs it:
 * **beam-search dedup** (Phase 4, S2);
 * **the equivalent-action collision audit** (Phase 2).  That audit exists
   because uncorrected equivalent actions bias sampling — Symmetry-Aware
-  GFlowNets (ICML 2025) measured L1 ~= 0.12 uncorrected vs ~= 0.01 corrected.
+  GFlowNets (ICML 2025) measured a systematic bias toward low-symmetry
+  objects: 5,220 cyclohexane fragments per 5,000 sampled molecules uncorrected,
+  against 1,042 corrected.
   The audit is meaningless without a canonical hash, so if each phase invented
   its own the audit would silently measure nothing.
 

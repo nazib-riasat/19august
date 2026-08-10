@@ -214,9 +214,12 @@ discharged, not a test that failed to fire. Amended in place rather than left as
 two live documents disagreeing.
 
 **What this changes in the write-up.** **[EVIDENCE]** Symmetry-Aware GFlowNets
-(ICML 2025) measured L₁ ≈ 0.12 uncorrected versus ≈ 0.01 corrected — on a state
-space quotiented by graph isomorphism. Ours is over *labelled* sets and is not
-quotiented, so the correction does not apply. The honest sentence is "our action
+(ICML 2025) measured a systematic bias toward low-symmetry objects — 5,220
+cyclohexane fragments per 5,000 sampled molecules uncorrected, against 1,042
+corrected — on a state space quotiented by graph **isomorphism**, with its
+Theorem 4.6 stated over a graph-level policy and ratios of automorphism-group
+sizes. Ours is over *labelled* sets and is not quotiented, so the correction does
+not apply. (The paper reports no set-generation task at all.) The honest sentence is "our action
 space admits no equivalent actions by construction; we verify this" — **not** a
 citation implying the correction was applied. Citing a correction one did not
 need, as though one had, is the overreaching pattern `CLAUDE.md` §5 catalogues.
@@ -491,6 +494,21 @@ enumeration and so is unavailable at any scale where the learners matter.
 against Phase 3's tensors, Gate 2 could only evaluate Phase-3 learners — and the
 uniform-policy and oracle criteria, which are what prove the evaluator itself
 correct, would have nothing to run on.
+
+**One thing the interface must not foreclose, and nearly did.** v1.2 §6.4 names
+GNN representational limits as a risk: **[EVIDENCE]** *When Do GFlowNets Learn
+the Right Distribution?* (ICLR 2025) proves that the representation limits of
+GNNs delineate which distributions a GFlowNet can approximate — two states the
+encoder cannot distinguish cannot receive the different flows the target needs.
+Its *remedy* is **Look-Ahead GFlowNets**: feed **children-state embeddings** into
+the forward policy, which provably raises expressiveness.
+
+Passing `graph` alongside `state_ix` is what keeps that available — the children
+of any state are in the edge arrays. A Phase-3 adapter that featurised only the
+current state would silently foreclose the published fix for a risk this project
+has already written down, and would do so in a way no test would catch. The
+adapter contract therefore states that children are reachable and that an LA-style
+featuriser is a supported Tier-2 variant.
 
 ### G7 — Two recomputations that make the β sweep and the enumeration expensive [ANALYSIS]
 
@@ -772,8 +790,26 @@ while generating rather than after 200 of them exist.
 
 **Surface.** `target_distribution(instance, cfg) -> Target` ·
 `policy_distribution(policy, state_graph) -> np.ndarray` ·
-`tv(p, q)` · `js(p, q)` · `kl(p, q)` · `Target` (terminals, `U` cache, `Z`,
-`p*`, `target_p_fail`).
+`tv(p, q)` · `js(p, q)` · `kl(p, q)` · **`fcs(policy, state_graph)`** · `Target`
+(terminals, `U` cache, `Z`, `p*`, `target_p_fail`).
+
+**FCS belongs here, and an earlier draft of this plan omitted it entirely.**
+v1.2 §6.4 requires it ("additionally report the FCS proxy") and Gate 2's own
+definition in v1.2 §7 is "exact TV/KL/JS distribution error **plus FCS**".
+
+The reason is not compliance. **[EVIDENCE]** *When Do GFlowNets Learn the Right
+Distribution?* (ICLR 2025, Spotlight) defines Flow Consistency in Subgraphs as a
+tractable goodness-of-fit metric, relates it to TV (Thm. 5, Cor. 1), and — in a
+section titled *Inadequacy of commonly used evaluation protocols* — compares it
+against number-of-modes, average reward of top-scoring samples and Shen's
+accuracy, finding FCS "often the only metric accurately reflecting" convergence.
+
+FCS exists for the case Phase 2 does **not** have: state spaces too large to
+enumerate. So why compute it here? **Because this is the only place where FCS and
+exact TV can both be computed on the same distribution, which makes it the only
+place FCS can be *calibrated* as a proxy.** Phase 9 has no exact TV; if FCS is
+never measured against ground truth on the lattice, any later FCS number is an
+uncalibrated proxy standing in for a quantity nobody checked it against.
 
 **`p_θ(FAIL)` is accumulated directly, and the complement is a consistency
 check — not the other way round.** Two ways to get it:
@@ -970,6 +1006,7 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻⁹` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. **The tolerance is set by the worst-case bound, not by the observed residual.** Scatter-add over up to 2 × 10⁶ edges has a worst case of `n·eps ≈ 4.4 × 10⁻¹⁰`; a measured one-pass residual is ~2 × 10⁻¹⁶ because the errors random-walk rather than conspire, but a criterion calibrated on the lucky case is a flaky test waiting to happen. An earlier draft said 10⁻¹², which the bound does not support.
 6. `p_θ` agrees to **`≤ 10⁻¹²` absolute per terminal** under permutation of states within each `|S|` layer. Not bit-for-bit: float addition is not associative, so reordering a scatter-add changes the last bits and an exact-equality assertion would fail on a correct implementation. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
+    **FCS is reported alongside exact TV on every instance** (v1.2 §6.4, Gate 2 item 3). This is the only environment where both exist, so it is the only place the proxy can be calibrated against ground truth before Phase 9 has to rely on it.
 8. `Target.at_beta` raises on a β the config loader would refuse, so a sweep cannot bypass the `r_fail_margin` check.
 
 **The environment is enumerable and controlled**
@@ -1032,6 +1069,7 @@ happened once.
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
 | 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); re-validated on the main suite via `at_beta`, which checks `r_fail_margin` **and** the target-mass bands | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
+| 19b | FCS | reported beside exact TV on every instance, to calibrate the proxy Phase 9 must use without ground truth (v1.2 §6.4) | an uncalibrated proxy standing in for a quantity never checked against it |
 | 20 | Lattice fingerprint | digest over spec, pool (with `feat`), obligations, snapshot digest, gold and both templates; sensitivity-tested | a fingerprint that only proves the seed was the same |
 | 21 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals, targets, invalidated edge and quarantined assertion all asserted per instance | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
 

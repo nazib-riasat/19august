@@ -124,7 +124,7 @@ Eight units. Each lists responsibility, public surface (signatures as specificat
 **Surface.** `span_id(turn_id, start, end)` · `atom_id(kind, refs)` · `canon_set_hash(atoms: frozenset[str]) -> str` · `edge_id(...)`.
 
 **Design notes.**
-- `canon_set_hash = sha256(sorted(atom_ids))` is **load-bearing in three places**: policy state identity (two orders reaching the same atoms are the same state — v1.2 §3.4), beam-search dedup (Phase 4 S2), and the equivalent-action collision audit (Phase 2). **[EVIDENCE]** the collision audit exists because uncorrected equivalent actions bias sampling — Symmetry-Aware GFlowNets, ICML 2025, L₁ ≈ 0.12 uncorrected vs ≈ 0.01 corrected. That audit is meaningless without a canonical hash, so it belongs here, not in Phase 2.
+- `canon_set_hash = sha256(sorted(atom_ids))` is **load-bearing in three places**: policy state identity (two orders reaching the same atoms are the same state — v1.2 §3.4), beam-search dedup (Phase 4 S2), and the equivalent-action collision audit (Phase 2). **[EVIDENCE]** the collision audit exists because uncorrected equivalent actions bias sampling — Symmetry-Aware GFlowNets, ICML 2025, which measured a systematic bias toward low-symmetry objects — 5,220 cyclohexane fragments per 5,000 sampled molecules uncorrected against 1,042 corrected. That audit is meaningless without a canonical hash, so it belongs here, not in Phase 2.
 - All IDs are truncated SHA-256 hex (16 chars). No counters, no UUIDs — both break rerun determinism.
 
 **Gotcha.** If `canon_set_hash` lands in Phase 2 or 3 instead, each phase invents its own and the audit silently measures nothing.
