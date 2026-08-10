@@ -80,6 +80,11 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("assertion are present and reachable", "present in the snapshot and asserted UNREACHABLE (masks prune them)", "R8", None),
     ("is reached by budget exhaustion, never by an action", "reached when construction can neither continue nor stop", "R8", None),
     ("Both suites are frozen at Gate 0", "all three suites (main, probe, tuning)", "R8", "GRAFT_PHASE2_BUILD.md"),
+    ("both suites", "all three suites — main, probe and tuning", "R9", "GRAFT_PHASE2_BUILD.md"),
+    ("before Phase 9 has to rely on it", "no document specifies a Phase-9 distribution metric", "R9", None),
+    ("both content-hashed", "all three content-hashed", "R9", "GRAFT_PHASE2_BUILD.md"),
+    ("FCS at `m = #terminals` reproduces exact TV", "verify FCS against exhaustive m-subset enumeration; m=#X tests no sampler", "R9", None),
+    ("`at_beta` recomputes the target-mass bands", "at_beta checks r_fail_margin only; validate_bands('main') checks the bands", "R9", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

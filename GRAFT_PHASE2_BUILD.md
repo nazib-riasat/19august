@@ -5,7 +5,7 @@
 Date: 8 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 2) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2 §6.4) · `GRAFT_PHASE1_BUILD.md` §8 · `PHASE1_DECISIONS.md` §7
 Effort: ~1.5–2 weeks solo
-Status: ready to code once §6 is signed off
+Status: §6 signed off (9 Aug 2026). Ready to code.
 
 Labels inherited: **[EVIDENCE]** (named paper) · **[HYPOTHESIS]** (project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 
@@ -784,8 +784,15 @@ the disagreement the fingerprint exists to detect.
 Excluding β is the other part. `config_hash` moves when the Phase-3 sweep freezes
 β, so a fingerprint containing it would change *after* the suites were frozen,
 and "frozen" would mean nothing. `target_fingerprint(β)` covers the β-dependent
-layer separately — `(environment_fingerprint, β, u_weights, r_fail)` — so a
-result can be tied to both the environment and the reward it was scored under.
+layer separately — `(environment_fingerprint, β, u_weights, r_fail)` **and the
+computed target itself**: terminal ids in sorted order with their `p*` values
+rounded to 10 decimal places, plus `p*(FAIL)` and `Z`.
+
+Hashing only the inputs would repeat, one layer up, the mistake the environment
+fingerprint just fixed: two implementations could compute *different* targets
+from identical inputs and still agree. The rounding is what makes it stable
+across machines — float differences live around 10⁻¹⁶, far below a 10⁻¹⁰
+quantisation.
 
 A sensitivity test mutates one feature value, one source tier, one interval
 bound, and one edge of the enumerated graph, and asserts the digest moves each
@@ -859,7 +866,7 @@ accuracy, finding FCS "often the only metric accurately reflecting" convergence.
 |---|---|---|
 | subset size `m` | **8** | the paper calls this `β` and ties it to the training batch size. Renamed to `m` because `β` is already the reward temperature in this project, and fixed rather than tied to batch size so the metric stays comparable across learners that batch differently — a declared deviation from the paper's usage |
 | subset distribution `P_S` | Corollary 1's `P_S(S; m) ∝ Σ_{x∈S} p_T(x)` over `m`-sized subsets | it is the one for which the paper proves a TV bound |
-| `n_subsets` | 2,000 | reported with its standard error, so the estimator's own noise is visible |
+| `n_subsets` | 2,000, drawn **i.i.d.** from `P_S` | the paper's guarantee is over an expectation, and the standard error this is reported with is only meaningful for independent draws |
 | RNG seed | `20260812` | frozen, like every other seed here |
 | `p_T` | **exact**, from the DP | the paper notes that for small state graphs `p_T` can be enumerated rather than estimated; we can, so we do |
 | `FAIL` | **participates** | it is a terminal of this MDP and a member of `p*`'s support, so excluding it would measure a different distribution than TV does |
@@ -907,13 +914,29 @@ what makes the Phase-3 sweep affordable. One forward DP for `p_θ` (G2);
 `p_θ(FAIL)` by the **direct dead-end sum**, with the complement as a partition
 check.
 
-**`at_beta` re-runs *both* β-dependent checks, and the second one was missing.**
+**Target construction and suite validation are separate calls, because their
+scopes differ.**
+
 `p*` depends on β through `R = exp(β·U)`, so **the hard `neither`-mass band of
 G10 is a function of β** — it was accepted at β = 4 and nothing recomputed it
-afterwards. A suite frozen at β = 4 could therefore violate its own acceptance
-band the moment Phase 3's sweep lands on a different value, with no check
-failing anywhere. `at_beta` recomputes the target-mass bands as well as
-`r_fail_margin`, and raises on either.
+afterwards. A suite frozen at β = 4 could violate its own acceptance band the
+moment Phase 3's sweep lands on a different value, with nothing failing.
+
+But the band is a **main-suite** condition: the probe suite is distractor-heavy
+by design and the tuning suite is not scored on it. So a single `at_beta` that
+always raised on the band would abort the β sweep itself, which runs on the
+tuning suite. Two calls:
+
+* **`Target.at_beta(β)`** returns the target at a new β and re-validates
+  `r_fail_margin` — a property of the *reward*, suite-independent, and the check
+  that stops a sweep quietly promoting `FAIL` into a competitive terminal. It
+  never touches the mass bands.
+* **`Target.validate_bands(scope)`** checks the target-mass bands, and is called
+  for the **main suite at the frozen β** only. The tuning and probe suites report
+  their mass profile and are not gated on it.
+
+Conflating the two would have made the sweep raise on a condition its own suite
+is exempt from.
 
 **`at_beta` re-runs the `r_fail_margin` check.** Phase 0 added a load-time
 assertion that `r_fail < r_fail_margin · exp(β·U_min)`, precisely so a β sweep
@@ -1060,7 +1083,7 @@ See §5.
 | 1 | P2.0 similarity-matrix cache | second call on one pool is a cache hit |
 | 2 | `enumerate.py` + the state counter | counts closed states and valid terminals on a hand-built pool |
 | 3 | `tiny_instance()` with a written-out enumeration table | 6 atoms, `p*` computed by hand and asserted as literals |
-| 4 | `exact.py`: `Target`, `p*`, divergences **and `fcs`** | `Σ p* = 1` including `p*(FAIL)` on the tiny instance; FCS at `m = #terminals` reproduces exact TV, which is the estimator's own correctness check (Cor. 1) |
+| 4 | `exact.py`: `Target`, `p*`, divergences **and `fcs`** | `Σ p* = 1` including `p*(FAIL)` on the tiny instance; **FCS matches an exhaustive enumeration of all `m`-subsets** on a hand-built 6-terminal case at `m = 3` (20 subsets), which is what exercises `P_S` and the renormalisation |
 | 5 | `policies.py` + the forward DP for `p_θ` | uniform policy: `Σ p_θ = 1`; DP matches MC on the tiny instance |
 | 6 | `lattice.py` generator with band rejection | 20 instances inside all three bands of G1, within the 30-minute suite budget |
 | 7 | `audits.py` | every audit runs; `d`-informativeness and dead-end absorption inside their bands |
@@ -1082,8 +1105,9 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻⁹` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. **The tolerance is set by the worst-case bound, not by the observed residual.** Scatter-add over up to 2 × 10⁶ edges has a worst case of `n·eps ≈ 4.4 × 10⁻¹⁰`; a measured one-pass residual is ~2 × 10⁻¹⁶ because the errors random-walk rather than conspire, but a criterion calibrated on the lucky case is a flaky test waiting to happen. An earlier draft said 10⁻¹², which the bound does not support.
 6. `p_θ` agrees to **`≤ 10⁻¹²` absolute per terminal** under permutation of states within each `|S|` layer. Not bit-for-bit: float addition is not associative, so reordering a scatter-add changes the last bits and an exact-equality assertion would fail on a correct implementation. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
-    **FCS is reported alongside exact TV on every instance** (v1.2 §6.4, Gate 2 item 3). This is the only environment where both exist, so it is the only place the proxy can be calibrated against ground truth before Phase 9 has to rely on it.
-8. `Target.at_beta` raises on a β the config loader would refuse **and on a β at which the main suite would fail its target-mass bands**. `p*` depends on β, so the `neither`-mass band is β-dependent; checking only `r_fail_margin` would let the Phase-3 sweep leave the frozen suite in violation of its own acceptance condition with nothing failing.
+    **FCS is verified against exhaustive enumeration**, not against TV. On a hand-built 6-terminal target at `m = 3` all C(6,3) = 20 subsets are enumerable, so the exact FCS is computable and the sampler's estimate must converge to it. Testing at `m = #terminals` — as an earlier draft proposed — verifies nothing about the sampler: there is exactly one subset of that size, `P_S` is degenerate, and FCS reduces to TV for *any* sampler, including one that ignores `P_S` or inverts the renormalisation.
+    **FCS is reported alongside exact TV on every instance** (v1.2 §6.4, Gate 2 item 3), with its standard error. At `m = 8` it is a different statistic from TV (Cor. 1), and this is the only environment where the gap between them can be measured rather than assumed. No claim is made about Phase 9 needing it — no document specifies a Phase-9 distribution metric.
+8. `Target.at_beta` raises on a β the config loader would refuse (`r_fail_margin`), and **`Target.validate_bands("main")` raises at a β where the main suite would fail its target-mass bands**. Two calls, because the band is main-suite-only while `at_beta` is what the β sweep runs on the *tuning* suite — a single call that always checked the band would abort the sweep on a condition the tuning suite is exempt from. `p*` depends on β, so skipping the band check entirely would let the sweep leave the frozen main suite violating its own acceptance condition.
 
 **The environment is enumerable and controlled**
 9. Every benchmark instance has 200 ≤ valid terminals ≤ 5,000, ≤ 1 × 10⁵ reachable closed states and ≤ 2 × 10⁶ edges (G1).
@@ -1139,9 +1163,9 @@ happened once.
 | 7 | `d` informativeness | **main suite only**: not `\|s\|`-determined at ≥ 3 sizes; ≥ 10 distinct `d` values; **both** structural and visitation-weighted zero-`Δd` ≤ 0.6. The probe suite is generated *without* this band, by design (G5, G9) | **Gate 2 becomes unable to resolve Contribution 3** |
 | 8 | Policy interface | **batch-first** `action_log_probs(state_ix: np.ndarray, graph)` — indices, not materialised sets; never called at dead ends; an adapter implements it, never a learner (G6) | 10⁵ Python round-trips per checkpoint; Phase 3 re-wires |
 | 9 | Oracle policy | flow decomposition against uniform `P_B`; `r_fail` split uniformly across dead ends (G6) | an oracle that cannot reach TV = 0, so the evaluator is unverifiable |
-| 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates `r_fail_margin` and the target-mass bands** — the latter are β-dependent (G7, G10) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
+| 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` re-validates `r_fail_margin` (suite-independent); **`validate_bands("main")`** checks the β-dependent target-mass bands, main suite only (G7, G10) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
 | 11 | MC agreement | `k ≤ 100` instance at `N = 200,000`, `TV < 0.02`; top-20 only at full scale (G8) | a test that measures its own sampling floor |
-| 12 | Suites | main 20 @ seed `20260808`; probe 5 @ seed `20260809`, distractor-heavy; both content-hashed (G9) | learners compared on different environments |
+| 12 | Suites | main 20 @ seed `20260808`; probe 5 @ seed `20260809`, distractor-heavy; tuning 5 @ seed `20260811`; **all three** content-hashed (G9) | learners compared on different environments |
 | 13 | Mode definition | bucket by **completion** of the generator's complete minimal proof templates `P_A` / `P_B` (which include shared atoms), not by unique-atom membership and not by clustering (G10) | partial chains counted as proof modes; or a clustering definition that groups *dissimilar* proofs and subtracts an empty core |
 | 14 | Target-mass status | `neither`-bucket mass ≤ 0.5 is a **gate**; alt.-mode ≥ 1% is a **diagnostic**; one gold retained (G10) | either a build that cannot pass, or a Gate-2 table that reads as multimodal when it is not |
 | 15 | `p_θ(FAIL)` | **direct** sum over dead ends is the reported value; complement is a partition check at ≤ 10⁻⁹ absolute, set by the worst-case `n·eps` bound over 2 × 10⁶ edges (G6) | a criterion float64 cannot satisfy, or an oracle bug that passes on aggregate TV |
@@ -1151,15 +1175,12 @@ happened once.
 | 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); re-validated on the main suite via `at_beta`, which checks `r_fail_margin` **and** the target-mass bands | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
 | 20 | FCS | `fcs(p_theta, target, m=8, n_subsets=2000, seed=20260812)`, `P_S` per Cor. 1, exact `p_θ`, `FAIL` included; reported beside exact TV (v1.2 §6.4, Gate 2 item 3) | a metric named but not executable — and a signature without the reward cannot compute it |
 | 21 | Fingerprints | `environment_fingerprint` over spec, pool (with `feat`), obligations, snapshot digest, gold, both templates **and the enumerated graph**, excluding β; `target_fingerprint(β)` separate; both sensitivity-tested | a fingerprint that proves only the seed matched, or one that moves when β is frozen after the suites were |
-| 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, L5 at fixed trajectory budget, 3 seeds, ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
+| 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, L5 at **the same fixed trajectory budget the Gate-2 primary comparison uses** (fix F12) — one number, preregistered once in Phase 3, used in both places; 3 seeds; ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
 | 23 | Mode separation | `\|P_A ∩ P_B\| / \|P_A ∪ P_B\| ≤ 0.5` | `P_A ≠ P_B` permits a one-atom difference, which is not "materially different" |
-| 24 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals, targets, invalidated edge and quarantined assertion all asserted per instance | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
+| 24 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals and targets asserted per instance; the invalidated edge and quarantined assertion **present in the snapshot and asserted *unreachable*** — the masks prune them, so they are negative cases, not selectable evidence | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
 
-**PROPOSED — requires your sign-off; not locked until then.** Everything else in
-§6 is a decision I have taken; this one is a recommendation awaiting a yes,
-and the document's status line ("ready to code once §6 is signed off") means
-exactly this item. Calling it "resolved pending sign-off" in an earlier draft was
-having it both ways.
+**SIGNED OFF (9 Aug 2026).** The band is accepted on the three conditions below,
+which are now binding on the write-up rather than advisory.
 
 The `d`-informativeness band of
 ≤ 0.6 zero-`Δd` transitions is a **guess calibrated on Phase-1 fixtures, not on
@@ -1223,7 +1244,7 @@ Any relaxation requires, in order:
 
 1. a **new plan version** recording which band moved, to what, and why;
 2. a **new config/spec version** — the band is part of the frozen set;
-3. **regeneration of both suites** from their seeds;
+3. **regeneration of all three suites** from their seeds;
 4. a **new environment fingerprint**, so no result computed against the old
    environment can be silently compared to one against the new;
 5. **Gate-0 re-sign-off**;
@@ -1273,7 +1294,10 @@ from graft.synth.audits    import run_audits
    inconsistency rather than a live one.
 4. **The β sweep uses `Target.at_beta`**, not regeneration — and inherits its
    `r_fail_margin` re-validation, so a sweep cannot silently make `FAIL`
-   competitive.
+   competitive. It runs on the **tuning suite**; the main suite's target-mass
+   bands are checked separately by `validate_bands("main")` once β is frozen.
+   The sweep's trajectory budget is **the same one the Gate-2 primary comparison
+   uses** (fix F12) — preregistered once in Phase 3, used in both places.
 5. **Exact TV converges to 0.** `p*(FAIL)` is reported beside it as a diagnostic
    and is **not** a floor: `FAIL` is in both distributions, so a policy matching
    it exactly scores TV = 0.
