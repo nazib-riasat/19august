@@ -62,19 +62,36 @@ Both failure directions are real:
 * **too many** — the enumeration and the DP stop being affordable, and the β
   sweep (which re-derives `p*` at each β) becomes the bottleneck of Phase 3.
 
-**Decision.** The generator targets a **declared band on two quantities**, and
+**Decision.** The generator targets a **declared band on three quantities**, and
 verifies them by construction rather than hoping:
 
 | Quantity | Band | Why this one |
 |---|---|---|
 | valid terminals `k` | 200 ≤ k ≤ 5,000 | below 200 the TV estimate is dominated by a handful of modes; above 5,000 the DP and the MC cross-check get expensive |
 | reachable closed states | ≤ 1 × 10⁵ | this, not the terminal count, is what the DP actually costs (G2) |
-| state-graph edges | ≤ 2 × 10⁶ | the evaluation pass is linear in edges, and the graph is held in memory (~25 MB/instance at this bound, ~500 MB for the suite) |
+| state-graph edges | ≤ 2 × 10⁶ | the evaluation pass is linear in edges, and the graph is held in memory (~24 MB/instance at this bound under the `uint32` state representation of G3, ~500 MB for the suite) |
 
 Instances are generated, enumerated, and **rejected if out of band**, with the
-seed and the rejection count recorded. Enumeration is needed anyway, so the
-rejection loop is nearly free. **At most 200 attempts per instance**; exceeding
-that is a generator defect and raises rather than silently widening the band.
+seed and the rejection count recorded.
+
+**Rejection is not free, and an earlier draft claiming it was had no budget
+behind it.** At 200 attempts per instance and 60 s of enumeration each, twenty
+instances is a 66-hour worst case. Three things bound it:
+
+* **Early abort on the upper bounds.** Enumeration stops the moment the state or
+  edge count passes its cap — an oversized instance is rejected in the time it
+  takes to exceed the bound, not after a full sweep. Only *undersized-terminal*
+  rejections pay full enumeration, and those are cheap precisely because the
+  graph is small.
+* **A total suite-generation budget of ≤ 30 minutes**, reported. Exceeding it is
+  a generator that is not controlling its counts, which is a defect to fix rather
+  than a wait to endure.
+* **At most 200 attempts per instance**, after which it raises rather than
+  silently widening the band.
+
+If acceptance turns out to need many attempts, the fix is to make the generator
+target the counts directly — chain length and distractor count are the levers —
+not to raise the attempt limit.
 
 ### G2 — The per-terminal DP is the wrong algorithm [ANALYSIS]
 
@@ -90,9 +107,16 @@ sub-lattice yields **every** terminal's probability at once.
 f(∅) = 1
 for S in states, in increasing |S|:
     for a in legal_adds(S):        f(S ∪ {a}) += f(S) · P_F(a | S)
-p_θ(X) = f(X) · P_F(STOP | X)      for every valid terminal X
-p_θ(FAIL) = 1 − Σ_valid p_θ(X)
+p_θ(X)    = f(X) · P_F(STOP | X)          for every valid terminal X
+p_θ(FAIL) = Σ_{dead-end states d} f(d)    # direct; see P2.3 for why not the complement
 ```
+
+The architecture (§Phase 2.2) writes the last line as
+`p_θ(FAIL) = 1 − Σ_valid p_θ(X)`. That is right in general and is the only option
+outside an enumerable environment, but here the state graph labels dead ends and
+the direct sum is both available and far better conditioned. **This is a declared
+numerical refinement of the architecture, not a disagreement with it** — the
+complement is retained as the partition check (P2.3, exit criterion 5).
 
 Cost is `|reachable closed states| × branching`, once — not
 `|terminals| × 2^{|X|} × |X|`. That is why G1 bands the **state** count rather
@@ -153,13 +177,22 @@ pools built by hand or supplied externally.
 
 **Decision — two parts.**
 
-*State identity uses the exact `frozenset`, not the hash.* The `StateGraph` keys
-on the atom set itself (`frozenset` is hashable, and Python's dict resolves
-collisions exactly), and `canon_set_hash` is retained as a **fingerprint** for
-logging and cross-machine comparison. An exact evaluator must not be able to
-merge two distinct states because two hashes happened to agree, however unlikely
-— exactness is the entire point of this phase. A test asserts no two enumerated
-states share a fingerprint.
+*State identity is exact, and cheap: a **bitmask over the pool**.* With
+`pool_cap = 32`, a selected set is exactly a `uint32` whose bit *i* marks
+`pool.ids()[i]`. That is an exact identity — no hashing, no collisions to reason
+about — and it is 4 bytes per state against roughly 700 for a `frozenset` of
+short strings, which is the difference between ~0.4 MB and ~70 MB per instance
+and therefore between comfortably inside the 2 GB suite ceiling and over it.
+
+`canon_set_hash` is retained as a **fingerprint** for logging and cross-machine
+comparison, never as identity. An exact evaluator must not be able to merge two
+distinct states because two 64-bit truncations happened to agree, however
+unlikely — exactness is the entire point of this phase. A test asserts no two
+enumerated states share a fingerprint.
+
+**The bitmask is valid while `pool_cap ≤ 64`.** Beyond that it needs a wider
+representation, and the assumption is asserted at `StateGraph` construction so
+that a future `pool_cap` change fails loudly rather than silently truncating.
 
 *The collision audit runs as a regression test with a known answer of 0*, in the
 same class as the unconstructible-valid-terminal rate under fix F10, and defined
@@ -184,7 +217,25 @@ need, as though one had, is the overreaching pattern `CLAUDE.md` §5 catalogues.
 
 This also **removes** the SA-GFN correction from the Tier-1 workload.
 
-### G4 — `FAIL` is unreachable unless the generator plants the two things that can fail [ANALYSIS]
+### G4 — `FAIL` needs a definition, and it is not "budget exhausted" [ANALYSIS]
+
+The architecture describes `FAIL` as reached "on budget exhaustion with `H = 0`"
+(fix F3). Phase 1 found that to be too narrow: a dead end is *any* state with no
+legal `ADD` and a masked `STOP`, and its causes include an empty pool at
+`|X| = 0`, a pool exhausted below the cap, and every remaining atom failing a
+per-atom check — not only reaching `max_atoms`.
+
+**Definition, used from here on:** `FAIL` is reached exactly when **construction
+can neither legally continue nor legally stop**. Budget exhaustion is the common
+case, not the meaning.
+
+This is not wording. `FAIL` maps to the inference-time abstain fallback, so what
+it means determines what an abstention in a Phase-9 `OutputRecord` is asserting:
+"no proof found within budget" is a narrower and more flattering claim than "no
+proof was constructible at all", and only the second is always true.
+
+Everything below concerns the sub-case Phase 2 must *engineer*: making `FAIL`
+reachable at all on a well-formed lattice.
 
 Under mask-respecting construction, per-atom violations never enter a state — the
 `ADD` mask excludes them (Phase-1 §2.5). So a *reachable* state can only be
@@ -265,15 +316,34 @@ lattice**, not observations after the fact:
 | Property | Requirement |
 |---|---|
 | `d(s)` determined by `\|s\|` | must be **false**, at ≥ 3 distinct set sizes |
-| zero-`Δd` fraction, **structural** (uniform over graph edges) | ≤ 0.6, reported per instance |
+| zero-`Δd` fraction, **structural** | ≤ 0.6, reported per instance |
 | zero-`Δd` fraction, **visitation-weighted** under `UniformPolicy` | ≤ 0.6, reported per instance |
 | distinct `d` values reachable | ≥ 10 per instance |
 
 **Both densities, because they answer different questions.** The structural one
 describes the environment; the visitation-weighted one describes the transitions
 a learner actually samples, which is what Gate 2's comparison is made of. They
-can differ substantially when the mass concentrates on a region of the lattice,
-and reporting only the flattering one would be a choice made after seeing them.
+can differ substantially when mass concentrates on a region of the lattice, and
+reporting only the flattering one would be a choice made after seeing them.
+
+**Both need a formula, because "fraction of transitions" has several readings and
+they do not agree.** Let `E` be the set of `ADD` edges `(s, a, s')`:
+
+```
+structural           = |{e ∈ E : Δd(e) = 0}| / |E|
+visitation-weighted  = Σ_{e ∈ E, Δd(e)=0} f(s)·P_F(a|s)  /  Σ_{e ∈ E} f(s)·P_F(a|s)
+```
+
+Three exclusions, each of which would otherwise move the number:
+
+* **`STOP` transitions are excluded.** `STOP` does not change the selected set, so
+  `Δd = 0` for every one of them by construction. Counting them would inflate the
+  zero fraction mechanically, and they are not where the policy's structural
+  decisions are made.
+* **Dead-end absorption is excluded** — it is not a transition.
+* **Weights are unconditional visitation mass** `f(s)·P_F(a|s)`, normalised over
+  `ADD` edges. Conditioning on "an `ADD` was taken" would reweight toward states
+  where stopping is impossible, which is a different question.
 
 If the generator cannot meet these, that is a finding about the environment to
 report **before** three weeks go into seven learners — which is exactly what
@@ -302,8 +372,32 @@ class ActionPolicy(Protocol):
 
 Batch-first because of G2: at 10⁵ states per instance, a per-state call would put
 10⁵ Python round-trips into a network on the critical path of every Gate-2
-checkpoint. A single batched call per instance is what keeps evaluation at
-seconds rather than hours.
+checkpoint. Batched calls are what keep evaluation at seconds rather than hours.
+The implementation **may chunk internally** — 10⁵ states of network activations
+is a memory constraint Phase 3 should not be forced into by an interface — so
+"batched" means "not one call per state", not "exactly one call per instance".
+
+**The learners do not implement this protocol. An adapter does.** Architecture
+fix F6 freezes the learner-facing interface as
+`policy(state_repr, action_reprs) → logits`, precisely so that a learner never
+sees where its features came from: an MLP featurizer on synthetic data, the
+Stage-B graph encoder on real data, and the learner cannot tell. If a Phase-3
+learner implemented `ActionPolicy` directly it would take `frozenset`s of
+**synthetic atom ids** and a `StateGraph`, coupling it to this environment — the
+exact failure F6 exists to prevent, arriving through the back door of an
+evaluation interface.
+
+So the layering is explicit:
+
+```
+StateGraph ──► SyntheticFeaturizer ──► policy(state_repr, action_reprs) → logits
+                    (adapter)                    (the learner, F6 interface)
+           └────────── implements ActionPolicy ──────────┘
+```
+
+The adapter batches states, featurizes them, calls the network once per chunk,
+and scatters the logits back into the `[n_states, n_atoms]` layout the DP wants.
+Phase 3 writes it once and every learner reuses it.
 
 **Dead-end states are never queried.** A dead end has no legal `ADD` and a masked
 `STOP`, so *no probability distribution over its actions exists* — asking for one
@@ -457,7 +551,7 @@ on junk. Nothing is *wrong* with that — `p*` is by definition proportional to
 match a near-uniform tail, which is not what anyone reading a Gate-2 table will
 assume.
 
-**Decision — measure where the mass actually is, and band it.** Four audits, all
+**Decision — measure where the mass actually is, and band it.** Five audits, all
 cheap because `p*` is already in hand:
 
 | Audit | Band |
@@ -580,10 +674,10 @@ space the policy will and cannot drift from it. `H` is called with `ledger=None`
 enumerating a lattice would exhaust any per-query budget, and it is an offline
 audit rather than a query (Phase-1 gap G9).
 
-**States are keyed by the exact `frozenset`, not by `canon_set_hash`** (G3). The
-hash is a 64-bit truncation and is kept as a fingerprint for logging and
-cross-machine comparison; an exact evaluator must not be able to merge two
-distinct states because two hashes agreed.
+**States are `uint32` bitmasks over `pool.ids()`, not hashes and not
+`frozenset`s** (G3): exact identity at 4 bytes, valid while `pool_cap ≤ 64` and
+asserted as such. `canon_set_hash` is kept as a fingerprint for logging and
+cross-machine comparison only.
 
 **The graph is policy-independent** (G2), so it is built once per instance and
 reused across every policy and every checkpoint. That is the difference between a
@@ -627,7 +721,8 @@ that cannot pass, dressed as rigour.
 **Design notes.** `Target` caches `U` per terminal, not `R` (G7), and exposes
 `at_beta(beta)` returning `p*` for a new β without re-deriving `U` — which is
 what makes the Phase-3 sweep affordable. One forward DP for `p_θ` (G2);
-`p_θ(FAIL)` by complement.
+`p_θ(FAIL)` by the **direct dead-end sum**, with the complement as a partition
+check.
 
 **`at_beta` re-runs the `r_fail_margin` check.** Phase 0 added a load-time
 assertion that `r_fail < r_fail_margin · exp(β·U_min)`, precisely so a β sweep
@@ -684,6 +779,21 @@ ends to be *exposed*, so the audit bands the **cumulative** early mass. And
 because the state graph is enumerated, absorption mass is computed exactly by the
 same forward DP rather than estimated from rollouts.
 
+**The band is a conditional share, and the formula is written out because the two
+readings disagree.** Let `D` be the dead-end states and `f` the forward mass
+under `ForcedContinuationPolicy`:
+
+```
+early_share = Σ_{d ∈ D, |d| < max_atoms − 1} f(d)  /  Σ_{d ∈ D} f(d)   ≤ 0.05
+```
+
+Not the absolute `Σ_early f(d) ≤ 0.05`. The two can give opposite verdicts: an
+instance whose *every* dead end is early but whose total dead-end mass is 10⁻³
+passes the absolute form and fails the conditional one — and it is the conditional
+one that answers the question the audit exists for, which is *where* failures
+happen, not how many. The denominator is non-zero because criterion 14 requires at
+least one reachable dead end.
+
 **The measuring policy is named, because it is not `UniformPolicy`.**
 `ForcedContinuationPolicy` is uniform over legal `ADD`s and takes `STOP` **only
 when no `ADD` is legal** — the `p_stop = 0` regime Phase 1 used to find that its
@@ -691,17 +801,29 @@ own dead ends all sat at `max_atoms`. `UniformPolicy` includes `STOP` in its
 support whenever it is allowed, so it stops early and barely reaches dead ends at
 all; using it here would report a clean profile by construction.
 
-**Modes are audited on the generator's own chains, not recovered by clustering.**
-The generator *builds* two substitutable chains, so it knows exactly which atoms
-are unique to each. Let `A*` and `B*` be those atom sets. Every valid terminal
-falls in one bucket:
+**Modes are audited on the generator's own proof templates, not recovered by
+clustering.** The generator *builds* two substitutable proofs, so it records each
+one as a **complete minimal proof template** — `P_A` and `P_B`, each the full
+atom set that proof needs, **including atoms shared with the other**: the entity
+anchor, the answer binding, and any common structure. Completion is then a
+predicate with no ambiguity:
 
-| Bucket | Contains |
+```
+completes_A(X) ≡ P_A ⊆ X          completes_B(X) ≡ P_B ⊆ X
+```
+
+| Bucket | Condition |
 |---|---|
-| mode A | `A* ⊆ X` and not `B* ⊆ X` — the A-chain is **complete** |
-| mode B | `B* ⊆ X` and not `A* ⊆ X` |
-| mixed | both chains complete |
-| neither | neither chain completes |
+| mode A | `completes_A(X)` and not `completes_B(X)` |
+| mode B | `completes_B(X)` and not `completes_A(X)` |
+| mixed | both |
+| neither | neither |
+
+**Templates, not "the atoms unique to each chain".** An earlier draft used the
+unique-atom sets, which is a different and wrong thing: a terminal can hold every
+atom unique to chain A while lacking the shared anchor, and `H` would not object
+— formal validity requires neither the anchor nor a binding. It would have been
+bucketed as a completed mode A while proving nothing.
 
 **Completion, not membership.** An earlier draft bucketed on "contains ≥ 1 atom
 of `A*`", which would count a single chain-head node plus seven distractors as
@@ -741,7 +863,7 @@ See §5.
 | 3 | `tiny_instance()` with a written-out enumeration table | 6 atoms, `p*` computed by hand and asserted as literals |
 | 4 | `exact.py`: `Target`, `p*`, divergences | `Σ p* = 1` including `p*(FAIL)` on the tiny instance |
 | 5 | `policies.py` + the forward DP for `p_θ` | uniform policy: `Σ p_θ = 1`; DP matches MC on the tiny instance |
-| 6 | `lattice.py` generator with band rejection | 20 instances inside both bands of G1 |
+| 6 | `lattice.py` generator with band rejection | 20 instances inside all three bands of G1, within the 30-minute suite budget |
 | 7 | `audits.py` | every audit runs; `d`-informativeness and dead-end absorption inside their bands |
 | 8 | frozen benchmark suite + lattice digest in `verify_handoff` | two runs produce the same digest |
 
@@ -758,21 +880,22 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 2. On `tiny_instance()` with `UniformPolicy`: `TV(p_DP, p_MC) < 0.02` at `N = 200,000`, and every terminal within 5σ (G8).
 3. On `tiny_instance()` with `FlowOraclePolicy`: **`TV < 10⁻⁹`** — literally zero to floating point, not `p*(FAIL)`. **And separately**, on the *directly accumulated* `p_θ(FAIL)`: `|p_θ(FAIL) − r_fail/Z| / (r_fail/Z) < 10⁻⁹`. `p*(FAIL) ≈ 2.5 × 10⁻¹²` cannot move an aggregate TV, so an oracle that never routes mass to `FAIL` would pass the TV check while being wrong (G6). The assertion is on the direct sum because the complement cannot resolve that value — its relative error is ~2 × 10⁻⁴ at float64, even with `fsum`. `tiny_instance()` must contain a reachable dead end, or neither assertion executes the path.
 4. On a benchmark instance with `UniformPolicy` at **`N = 200,000` rollouts, MC seed `20260810`**: the **top-20 highest-mass terminals** agree within 5σ (G8). A full-support TV assertion is not made — at 5,000 terminals the sampling floor is 0.063, so such a test would measure its own noise.
-5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻¹²` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. The tolerance is set by float64 accumulation over ~10⁵ states, not chosen to look impressive.
-6. `p_θ` is invariant to **permutation of states within each `|S|` layer**. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
+5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻⁹` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. **The tolerance is set by the worst-case bound, not by the observed residual.** Scatter-add over up to 2 × 10⁶ edges has a worst case of `n·eps ≈ 4.4 × 10⁻¹⁰`; a measured one-pass residual is ~2 × 10⁻¹⁶ because the errors random-walk rather than conspire, but a criterion calibrated on the lucky case is a flaky test waiting to happen. An earlier draft said 10⁻¹², which the bound does not support.
+6. `p_θ` agrees to **`≤ 10⁻¹²` absolute per terminal** under permutation of states within each `|S|` layer. Not bit-for-bit: float addition is not associative, so reordering a scatter-add changes the last bits and an exact-equality assertion would fail on a correct implementation. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
 8. `Target.at_beta` raises on a β the config loader would refuse, so a sweep cannot bypass the `r_fail_margin` check.
 
 **The environment is enumerable and controlled**
 9. Every benchmark instance has 200 ≤ valid terminals ≤ 5,000, ≤ 1 × 10⁵ reachable closed states and ≤ 2 × 10⁶ edges (G1).
 10. **The pool is built to spec, asserted directly:** `instance.pool.cap == cfg.pool_cap == 32` and `20 ≤ len(instance.pool) ≤ 30` (the architecture's universe size). The state-count band of criterion 9 does **not** subsume this — a generator that passed the wrong cap could still happen to produce a small graph, and the failure would only surface in Phase 7 when the same mistake is made against real pools.
-11. **Budgets, derived from the total rather than guessed per unit.** Gate 2 is 7 learners × 3 seeds × 50 checkpoints × 20 instances = **21,000 evaluations**. Total exact-TV evaluation across Gate 2 is budgeted at **≤ 1 h**, which fixes the per-evaluation ceiling at **≤ 0.15 s**; the estimate from G2's edge count is 0.05 s, so there is 3× headroom. Enumeration + `Target` construction ≤ 60 s per instance; suite resident memory ≤ 2 GB.
+11. **Budgets, derived from the total rather than guessed per unit.** Gate 2 is 7 learners × 3 seeds × **C = 50 checkpoints** × 20 instances = **21,000 evaluations**. Total exact-TV evaluation is budgeted at **≤ 1 h**, fixing the per-evaluation ceiling at **≤ 0.15 s**; the estimate from G2's edge count is 0.05 s, so there is 3× headroom. `C = 50` is **frozen in the Phase-3 handoff** — the budget is meaningless without it, and a Phase 3 that quietly checkpointed 200 times would quadruple the number this criterion exists to bound. If `C` must change, the budget is `21,000 · (C/50) · 0.15 s` and the ceiling moves with it.
+    Enumeration + `Target` construction ≤ 60 s per instance; **total suite generation including rejections ≤ 30 min** (G1); suite resident memory ≤ 2 GB — comfortable under the `uint32` state representation of G3, and not under a `frozenset` one.
     **The 0.15 s covers the numpy DP given precomputed log-probabilities, and nothing else.** The policy's batched forward pass is a property of the learner, not of the evaluator, and is measured and reported separately — folding it in would make Phase 2's budget depend on Phase 3's architecture.
 
 **The audits**
 12. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
 13. Equivalent-action collision rate, by exact child-set equality, is **0** on every instance — with G3's proof in the module docstring and the SA-GFN correction *not* applied. Zero state-fingerprint collisions.
-14. `FAIL` is reachable on every instance. Dead-end **absorption mass by `|X|`** is computed exactly under `ForcedContinuationPolicy` and reported in full, with **cumulative mass at `|X| < max_atoms − 1` ≤ 0.05** — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight", and which a modal-bin statistic would not answer. `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
+14. `FAIL` is reachable on every instance. Dead-end **absorption mass by `|X|`** is computed exactly under `ForcedContinuationPolicy` and reported in full, with the **conditional early share** `Σ_{d: |d| < max_atoms − 1} f(d) / Σ_{d ∈ D} f(d) ≤ 0.05` — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight", and which neither a modal-bin statistic nor an absolute-mass band would answer. `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
 15. **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6, on every main-suite instance (G5).
 16. Target mass is reported per mode bucket (A / B / mixed / neither) on **completed** chains, with `sufficiency = 0` mass, effective support size, top-10 mass and Jaccard spread. Mass on the **`neither`** bucket is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
 
@@ -805,10 +928,24 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
 
-**Open question for you.** The `d`-informativeness band of ≤ 0.6 zero-`Δd`
-transitions is a **guess calibrated on Phase-1 fixtures, not on the lattice** —
-they measured 0.67, just outside it. Two readings, and they lead to different
-places:
+**Resolved, pending your sign-off at Gate 0.** The `d`-informativeness band of
+≤ 0.6 zero-`Δd` transitions is a **guess calibrated on Phase-1 fixtures, not on
+the lattice** — they measured 0.67, just outside it. It is a hard main-suite
+criterion (exit criterion 15), and the three things that makes it commit to are
+stated here so the Gate-2 write-up cannot quietly overclaim:
+
+1. **`≤ 0.6` is deliberately a best-case design condition**, chosen so Gate 2 has
+   the resolving power to separate L7 from L6 at all. It is not an estimate of
+   anything.
+2. **It is not claimed to represent natural or real-data density.** Real pools are
+   distractor-heavy; Phase-1 fixtures already measured 0.67, and Phase 9's pools
+   will plausibly be worse.
+3. **The probe suite controls the robustness claim.** A Gate-2 result on the main
+   suite is a result *under a declared signal density*; whether it survives a
+   sparse one is what the 5-instance distractor-heavy probe answers, and the
+   write-up states both or neither.
+
+The reasoning that led there, kept because the alternative is a live option:
 
 *The band is a design target.* The generator is shaped until the lattice hits it
 — fewer distractors, obligations that more adds can discharge. Gate 2 then tests
@@ -826,6 +963,21 @@ first-class property of the environment, so that a Gate-2 win is stated as "unde
 a `Δd` density of X" rather than unconditionally. That costs one number in a
 table and forecloses the reviewer question "would this hold where the signal is
 sparser?", which has no good answer if it was never measured.
+
+---
+
+## 6b. Declared risks — not defects, but not settled either
+
+Four things in this plan are estimates that the build will confirm or refute.
+Recorded so that a later overrun is a known risk materialising rather than a
+surprise, per `CLAUDE.md`'s rule that "no evidence found" entries are findings.
+
+| Risk | If it bites |
+|---|---|
+| The 0.05 s DP estimate and 0.15 s ceiling over 2 × 10⁶ edges may be optimistic in numpy | tighten the state/edge bands (G1), or drop `C` below 50 and re-derive the budget |
+| The generator may not satisfy the terminal, state, edge, `Δd`, dead-end and `neither`-mass bands **simultaneously** within 200 attempts | relax the band that is least load-bearing — `neither`-mass before `Δd`, since G5 is what Gate 2's resolving power rests on — and record which was relaxed and why |
+| The `≤ 24 MB`/instance graph estimate counts edge arrays; index and object overhead could push the suite past 2 GB | the `uint32` state representation of G3 already removes the dominant term (~70 MB → ~0.4 MB per instance); if it still bites, hold one instance resident at a time |
+| The alternative proof mode may hold < 1% of target mass | **already handled as a diagnostic** (G10): the write-up narrows to "effectively unimodal" rather than the environment being reshaped. A research limitation, not a plan defect |
 
 ---
 
@@ -849,21 +1001,31 @@ from graft.synth.audits    import run_audits
 
 ### Requirements this phase places on Phase 3
 
-1. **Every learner implements `ActionPolicy`, batched.** The evaluator never
-   learns what is behind it, which is what lets one TV machinery score L1–L7 —
-   and a per-state interface would put 10⁵ round-trips on the critical path of
-   every checkpoint.
-2. **The β sweep uses `Target.at_beta`**, not regeneration — and inherits its
+1. **An adapter implements `ActionPolicy`; the learners keep the F6 tensor
+   interface.** Phase 3 writes one `SyntheticFeaturizer` that batches states,
+   featurizes them, calls `policy(state_repr, action_reprs)` in chunks, and
+   scatters the logits back. **No learner may take a `frozenset` of atom ids or a
+   `StateGraph`** — that would couple it to the synthetic environment, which is
+   the failure F6 exists to prevent. Chunking is the adapter's business; the
+   interface does not mandate one call per instance.
+2. **`C = 50` exact-evaluation checkpoints per run.** Frozen, because exit
+   criterion 11's 1-hour budget is derived from it.
+3. **The backward policy is uniform over *removable* atoms, not selected ones.**
+   Under the closure rule an atom referenced by another selected atom cannot be
+   removed, so "uniform over selected" — which architecture §Phase 3.1 still says
+   — puts mass on parents that do not exist. Fix F10 already says removable; the
+   two lines disagreed and §3.1 is the stale one.
+4. **The β sweep uses `Target.at_beta`**, not regeneration — and inherits its
    `r_fail_margin` re-validation, so a sweep cannot silently make `FAIL`
    competitive.
-3. **Exact TV converges to 0.** `p*(FAIL)` is reported beside it as a diagnostic
+5. **Exact TV converges to 0.** `p*(FAIL)` is reported beside it as a diagnostic
    and is **not** a floor: `FAIL` is in both distributions, so a policy matching
    it exactly scores TV = 0.
-4. **The Gate-2 decision rule is predeclared and unchanged**: exact TV at a fixed
+6. **The Gate-2 decision rule is predeclared and unchanged**: exact TV at a fixed
    number of sampled training trajectories, three seeds, paired bootstrap
    (fix F12). Phase 2 supplies the metric; it does not get to redefine the rule
    after seeing it work.
-5. **Every Gate-2 table carries the environment's `d`-density** — structural and
+7. **Every Gate-2 table carries the environment's `d`-density** — structural and
    visitation-weighted — and the **target-mass profile** (§6 open question, G10).
    A result on the main suite is a result *under a declared signal density*, and
    the probe suite is where its robustness to a sparse one gets checked.
