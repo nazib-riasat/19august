@@ -120,7 +120,10 @@ at multiple training checkpoints:
 
 Thirty-five hours of evaluation would have been discovered in Phase 3, as an
 unexplained schedule overrun. The precomputed graph plus the tightened state band
-of G1 puts it under half an hour.
+of G1 puts the *estimate* at 0.29 h; the *budget* is set at ≤ 1 h in exit
+criterion 11, from which the per-evaluation ceiling of 0.15 s is derived. Both
+numbers are stated because quoting only the estimate is how a per-unit limit ends
+up permitting several times the total anyone intended.
 
 **Consequence for the policy interface.** With 10⁵ states per instance, querying
 a policy state-by-state is the new bottleneck — 10⁵ Python calls into a network
@@ -309,9 +312,11 @@ The correct construction is the standard flow decomposition against a **fixed
 backward policy**, computed on the enumerated graph in decreasing `|S|`:
 
 ```
-P_B(s | s')   = uniform over the removable atoms of s'      # architecture §3.1
-F(s)          = R(s)·1[s is a valid stop]                   # terminating flow
-              + Σ_{s' ∈ Ch(s)} F(s') · P_B(s | s')          # child flow
+P_B(s | s')   = uniform over the removable atoms of s'          # architecture §3.1
+r_dead        = r_fail / |dead-end states|                      # FAIL's allocation
+F(s)          = R(s)·1[s is a valid stop]                       # terminating flow
+              + r_dead·1[s is a dead end]                       # flow into FAIL
+              + Σ_{s' ∈ Ch(s)} F(s') · P_B(s | s')              # child flow
 P_F(s → s')   = F(s') · P_B(s | s') / F(s)
 P_F(STOP | s) = R(s)·1[valid] / F(s)
 ```
@@ -319,14 +324,27 @@ P_F(STOP | s) = R(s)·1[valid] / F(s)
 Under this construction `P_F` samples terminals exactly in proportion to `R`,
 which is what makes it a usable oracle.
 
-**`FAIL` needs its own allocation, and this is the part that is easy to get
-wrong.** `FAIL` is a *single absorbing terminal* reached from *many* dead-end
-states, so the construction has to say how `r_fail` is divided among them.
-Decision: **`r_fail` is split uniformly across dead-end states**, each receiving
-terminating flow `r_fail / |dead ends|`. Total flow into `FAIL` is then exactly
-`r_fail`, `Z = Σ_valid R(X) + r_fail` as fix F3 requires, and the oracle achieves
-`p_θ(FAIL) = p*(FAIL)` — which is what lets it reach TV = 0 rather than the
-`p*(FAIL)` residual an earlier draft would have accepted (G4).
+**`FAIL` needs its own term in the recurrence, and this is the part that is easy
+to get wrong.** `FAIL` is a *single absorbing terminal* reached from *many*
+dead-end states, so the construction has to say how `r_fail` is divided among
+them. Decision: **`r_fail` is split uniformly across dead-end states**, each
+receiving terminating flow `r_dead = r_fail / |dead ends|`. Total flow into
+`FAIL` is then exactly `r_fail`, `Z = Σ_valid R(X) + r_fail` as fix F3 requires,
+and the oracle achieves `p_θ(FAIL) = p*(FAIL)` — which is what lets it reach
+TV = 0 rather than the `p*(FAIL)` residual an earlier draft would have accepted
+(G4).
+
+**Why the middle term cannot be left to prose.** A dead end is not a valid stop
+and has no children, so without `r_dead·1[dead end]` the recurrence gives it
+`F(s) = 0` — and then `P_F(s' → s) = 0`, so the oracle never routes any mass to
+`FAIL` at all. Worse, it would still *pass* a `TV < 10⁻⁹` check, because the
+resulting error is only `p*(FAIL) ≈ 2.5 × 10⁻¹²`. A silently broken construction
+that goes green is the failure mode this whole phase exists to prevent, so:
+
+* `tiny_instance()` **must contain at least one reachable dead end**, or the
+  `FAIL` path of the oracle is never executed by any test;
+* the oracle criterion asserts `p_θ(FAIL)` against `p*(FAIL)` in **relative**
+  terms, not only through an aggregate TV that a 10⁻¹² discrepancy cannot move.
 
 Phase 2 therefore ships `UniformPolicy` (uniform over legal actions, `STOP`
 included when allowed) and `FlowOraclePolicy` (the construction above). The
@@ -435,10 +453,23 @@ cheap because `p*` is already in hand:
 
 | Audit | Band |
 |---|---|
-| `p*` mass on each **designed** proof mode | alternative mode ≥ 1% of total valid mass |
-| `p*` mass on terminals with `sufficiency = 0` | ≤ 0.5 |
+| `p*` mass on each **designed** proof mode | **diagnostic**: below 1% for the alternative mode changes the claim, does not fail the build |
+| `p*` mass on terminals with `sufficiency = 0` | ≤ 0.5 — a hard band |
 | effective support size, `exp(H(p*))` | reported, no band |
 | `p*` mass on the top-10 terminals | reported, no band |
+
+**Why the mode mass is a diagnostic and the distractor mass is a gate.** The two
+look alike and are not. The distractor share is something the generator
+*controls* — fewer distractors, fewer junk terminals — so banding it is a
+legitimate acceptance test. The alternative mode's share is a **consequence of
+the frozen reward**: with one gold, mode B forfeits `w_suff·β = 4` in log-reward
+whatever the generator does, and forcing it over 1% would mean reshaping the
+environment until the reward reads the way we want. That is the same objection
+that rejected multi-gold two paragraphs down, and it applies here too.
+
+So: report it, and if the alternative mode cannot reach 1%, **the write-up says
+the Gate-2 environment is effectively unimodal** — a narrower claim, honestly
+stated. Phase 2 does not block on it.
 
 **Rejected: multiple acceptable gold proofs.** Redefining `sufficiency` as a max
 over several golds would make the target genuinely bimodal — and would change a
@@ -461,7 +492,7 @@ portfolio claim is Gate 3's, on best-of-K.
 **In.** The ProofLattice generator with banded, audited structural properties;
 exhaustive closed-subset enumeration; the exact evaluator (`p*`, `p_θ` by one
 forward DP, TV/JS/KL); the `ActionPolicy` protocol with two reference policies;
-five audits; a fixed hand-checkable instance; the frozen benchmark suite; and the
+the audit suite; a fixed hand-checkable instance; the frozen benchmark suite; and the
 one-line Phase-1 caching amendment of G7.
 
 **Out.** Any learner or policy network (Phase 3), any search algorithm (Phase 4),
@@ -587,24 +618,51 @@ not appear in a results table as though it were a method.
 
 ### P2.5 `graft/synth/audits.py`
 
-**Responsibility.** The five numbers Gate 2 reports, one function each.
+**Responsibility.** The numbers Gate 2 reports, one function each.
 
 | Audit | Expected | Meaning if violated |
 |---|---|---|
 | unconstructible valid terminals | **0**, by fix F10 | the closure rule or the masks are wrong |
 | equivalent-action collisions (exact child-set equality) | **0**, by G3 | the pool is malformed |
 | state-fingerprint collisions | **0** | `canon_set_hash` collided; state identity is still exact, but the fingerprint is unusable for comparison |
-| `FAIL` reachability and rate | reachable, low | `STOP`-masking is doing nothing (G4) |
+| `FAIL` reachability | ≥ 1 reachable dead end | `STOP`-masking is doing nothing (G4) |
+| **dead-end `\|X\|` distribution** | modal size ≥ `max_atoms − 1`; full histogram reported | dead ends at small `\|X\|` mean the **`ADD` masks are too tight**, not that the budget is small — the distinction Phase 1 asked Phase 2 to make |
 | `d` informativeness, structural **and** visitation-weighted | not `\|s\|`-determined; both ≤ 0.6 zero-`Δd` | **Gate 2 cannot resolve L7 from L6** (G5) |
-| mode structure | ≥ 2 distinct modes | v1.2 §9's "multiple materially different proofs" is false here |
-| **target mass distribution** | alt. mode ≥ 1%; `sufficiency = 0` mass ≤ 0.5; effective support and top-10 mass reported | the target is effectively unimodal, or dominated by a distractor tail (G10) |
+| **target mass by mode bucket** | reported; alt. mode ≥ 1% is a *diagnostic*, not an acceptance test | the target is effectively unimodal (G10) |
+| target mass on `sufficiency = 0` terminals | ≤ 0.5 | the distractor tail dominates what TV measures (G10) |
+| effective support `exp(H(p*))`, top-10 mass, Jaccard spread | reported, no band | descriptive |
 
-**"Distinct modes" needs a definition, because valid proofs share structure.**
-Every valid terminal is likely to contain the anchor entity and the answer
-binding, so raw disjointness is unachievable. Definition: let the **mandatory
-core** be the intersection of all valid terminals; two terminals are in distinct
-modes when their Jaccard similarity **after removing the core** is ≤ 0.5. Modes
-are the connected components of that relation.
+**Dead-end measurement is policy-conditioned, so the policy is declared.** The
+histogram is taken under `UniformPolicy` with `STOP` suppressed — forced
+continuation, which maximises dead-end exposure and is the same regime Phase 1
+used to find that its own dead ends all sat at `max_atoms`.
+
+**Modes are audited on the generator's own chains, not recovered by clustering.**
+The generator *builds* two substitutable chains, so it knows exactly which atoms
+are unique to each. Let `A*` and `B*` be those atom sets. Every valid terminal
+falls in one bucket:
+
+| Bucket | Contains |
+|---|---|
+| mode A | ≥ 1 atom of `A*`, none of `B*` |
+| mode B | ≥ 1 atom of `B*`, none of `A*` |
+| mixed | atoms of both |
+| neither | atoms of neither — the distractor tail |
+
+`p*` mass is reported per bucket. Direct, unambiguous, and it needs no threshold.
+
+**Two reasons an earlier clustering definition was dropped, both fatal.** It
+connected terminals whose Jaccard similarity was **≤ 0.5** and called the
+connected components modes — but that is the *dissimilarity* relation, so its
+components group unlike proofs together, which is exactly backwards. And it first
+subtracted a "mandatory core" defined as the intersection of all valid terminals,
+which is very likely **empty**: formal validity does not require covering the
+anchor or carrying a binding at all — a lone node atom is a valid terminal
+(Phase-1 finding). So the subtraction was a no-op and the definition rested on
+nothing.
+
+Pairwise-Jaccard spread over valid terminals is retained as a **descriptive
+secondary** measurement, reported and not banded.
 
 **Gotcha.** These are consumed by a gate, so they are reported *per instance and
 aggregated*, never a single pooled number that one bad instance can hide inside.
@@ -639,8 +697,8 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 **The evaluator is correct**
 1. On `tiny_instance()`: enumerated `p*` matches the hand-computed table literal for literal, and `Σ p* = 1` **including `p*(FAIL)`**.
 2. On `tiny_instance()` with `UniformPolicy`: `TV(p_DP, p_MC) < 0.02` at `N = 200,000`, and every terminal within 5σ (G8).
-3. On `tiny_instance()` with `FlowOraclePolicy`: **`TV < 10⁻⁹`** — literally zero to floating point, not `p*(FAIL)`. This is the criterion that would have caught the false floor of G4.
-4. On a benchmark instance with `UniformPolicy`: the **top-20 highest-mass terminals** agree with a Monte-Carlo estimate within 5σ (G8; a full-support TV assertion is not made, because at 5,000 terminals the sampling floor is 0.063).
+3. On `tiny_instance()` with `FlowOraclePolicy`: **`TV < 10⁻⁹`** — literally zero to floating point, not `p*(FAIL)`. **And separately** `|p_θ(FAIL) − p*(FAIL)| / p*(FAIL) < 10⁻⁶`: `p*(FAIL) ≈ 2.5 × 10⁻¹²` is far too small to move an aggregate TV, so an oracle that never routes mass to `FAIL` would pass the TV check while being wrong (G6). `tiny_instance()` must contain a reachable dead end, or neither assertion executes the path.
+4. On a benchmark instance with `UniformPolicy` at **`N = 200,000` rollouts, MC seed `20260810`**: the **top-20 highest-mass terminals** agree within 5σ (G8). A full-support TV assertion is not made — at 5,000 terminals the sampling floor is 0.063, so such a test would measure its own noise.
 5. On every benchmark instance: `Σ_valid p_θ + p_θ(FAIL) = 1` to 1e-9, and `p_θ ≥ 0` everywhere.
 6. `p_θ` is invariant to **permutation of states within each `|S|` layer**. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
@@ -648,18 +706,20 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 
 **The environment is enumerable and controlled**
 9. Every benchmark instance has 200 ≤ valid terminals ≤ 5,000, ≤ 1 × 10⁵ reachable closed states and ≤ 2 × 10⁶ edges (G1).
-10. **Budgets, declared here rather than after measuring:** enumeration + `Target` construction ≤ 60 s per instance; one `p_θ` evaluation ≤ 0.5 s per instance on the precomputed graph; suite resident memory ≤ 2 GB. These bound the Phase-3 sweep, which is 7 learners × 3 seeds × checkpoints × instances — the quantity that was 35 hours before G2.
+10. **The pool is built to spec, asserted directly:** `instance.pool.cap == cfg.pool_cap == 32` and `20 ≤ len(instance.pool) ≤ 30` (the architecture's universe size). The state-count band of criterion 9 does **not** subsume this — a generator that passed the wrong cap could still happen to produce a small graph, and the failure would only surface in Phase 7 when the same mistake is made against real pools.
+11. **Budgets, derived from the total rather than guessed per unit.** Gate 2 is 7 learners × 3 seeds × 50 checkpoints × 20 instances = **21,000 evaluations**. Total exact-TV evaluation across Gate 2 is budgeted at **≤ 1 h**, which fixes the per-evaluation ceiling at **≤ 0.15 s**; the estimate from G2's edge count is 0.05 s, so there is 3× headroom. Enumeration + `Target` construction ≤ 60 s per instance; suite resident memory ≤ 2 GB.
+    **The 0.15 s covers the numpy DP given precomputed log-probabilities, and nothing else.** The policy's batched forward pass is a property of the learner, not of the evaluator, and is measured and reported separately — folding it in would make Phase 2's budget depend on Phase 3's architecture.
 
 **The audits**
-11. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
-12. Equivalent-action collision rate, by exact child-set equality, is **0** on every instance — with G3's proof in the module docstring and the SA-GFN correction *not* applied. Zero state-fingerprint collisions.
-13. `FAIL` is reachable on every instance, and `p*(FAIL)` is reported alongside every TV — **never subtracted from it**.
-14. **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6, on every main-suite instance (G5).
-15. Every instance has ≥ 2 distinct modes under the core-removed Jaccard definition; the designed alternative mode holds ≥ 1% of valid `p*` mass; mass on `sufficiency = 0` terminals is ≤ 0.5; effective support size and top-10 mass are reported (G10).
+12. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
+13. Equivalent-action collision rate, by exact child-set equality, is **0** on every instance — with G3's proof in the module docstring and the SA-GFN correction *not* applied. Zero state-fingerprint collisions.
+14. `FAIL` is reachable on every instance; the dead-end `|X|` histogram is reported and its **modal size is ≥ `max_atoms − 1`** under `UniformPolicy` with `STOP` suppressed — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight". `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
+15. **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6, on every main-suite instance (G5).
+16. Target mass is reported per mode bucket (A / B / mixed / neither), with effective support size, top-10 mass and Jaccard spread. Mass on `sufficiency = 0` terminals is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
 
 **Reproducibility**
-16. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
-17. `graft.synth` imports no ML library.
+17. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
+18. `graft.synth` imports no ML library.
 
 ---
 
@@ -679,8 +739,10 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 | 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates** `r_fail_margin` (G7) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
 | 11 | MC agreement | `k ≤ 100` instance at `N = 200,000`, `TV < 0.02`; top-20 only at full scale (G8) | a test that measures its own sampling floor |
 | 12 | Suites | main 20 @ seed `20260808`; probe 5 @ seed `20260809`, distractor-heavy; both content-hashed (G9) | learners compared on different environments |
-| 13 | Mode definition | Jaccard ≤ 0.5 after removing the mandatory core (G10) | "disjoint modes" is unachievable and the audit is vacuous |
-| 14 | Target-mass bands | alt. mode ≥ 1%; `sufficiency = 0` mass ≤ 0.5; one gold retained (G10) | a Gate-2 table that reads as multimodal when it is not |
+| 13 | Mode definition | bucket by the generator's own `A*` / `B*` atom sets, not by clustering (G10) | a clustering definition that groups *dissimilar* proofs and subtracts an empty core |
+| 14 | Target-mass status | `sufficiency = 0` mass ≤ 0.5 is a **gate**; alt.-mode ≥ 1% is a **diagnostic**; one gold retained (G10) | either a build that cannot pass, or a Gate-2 table that reads as multimodal when it is not |
+| 15 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
+| 16 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
 
 **Open question for you.** The `d`-informativeness band of ≤ 0.6 zero-`Δd`
 transitions is a **guess calibrated on Phase-1 fixtures, not on the lattice** —
