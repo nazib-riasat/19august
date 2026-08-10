@@ -21,7 +21,7 @@ from graft.core.obligations import (
     deficit,
     delta_deficit,
     parse,
-    slot_level_precision,
+    slot_level_scores,
     slot_status,
 )
 from graft.schemas import Interval, Obligations
@@ -215,15 +215,63 @@ def test_unknown_mode_raises():
         parse("anything", mode="guess")
 
 
-def test_slot_level_precision_scores_only_slots_gold_imposes():
+def test_slot_scores_count_wrong_values_on_both_sides():
     gold = [Obligations(entity_anchor="A", value_type="job"), Obligations(entity_anchor="B")]
     predicted = [Obligations(entity_anchor="A", value_type="job"), Obligations(entity_anchor="X")]
-    scores = slot_level_precision(predicted, gold)
-    assert scores["entity_anchor"] == pytest.approx(0.5)
-    assert scores["value_type"] == pytest.approx(1.0)
-    assert math.isnan(scores["scope"])  # gold imposes none, so there is nothing to score
+    scores = slot_level_scores(predicted, gold)
+    assert scores["entity_anchor.precision"] == pytest.approx(0.5)
+    assert scores["entity_anchor.recall"] == pytest.approx(0.5)
+    assert scores["value_type.precision"] == pytest.approx(1.0)
 
 
-def test_slot_level_precision_rejects_mismatched_lengths():
+def test_hallucinated_slots_are_punished():
+    """The defect this metric replaced: scoring only where gold was active let a
+    parser that invents an anchor on every blank question report 1.0."""
+    gold = [Obligations(), Obligations(), Obligations(entity_anchor="A")]
+    predicted = [
+        Obligations(entity_anchor="GHOST"),
+        Obligations(entity_anchor="GHOST"),
+        Obligations(entity_anchor="A"),
+    ]
+    scores = slot_level_scores(predicted, gold)
+    assert scores["entity_anchor.precision"] == pytest.approx(1 / 3)
+    assert scores["entity_anchor.recall"] == pytest.approx(1.0)
+
+
+def test_missed_slots_are_punished_by_recall_not_precision():
+    gold = [Obligations(entity_anchor="A"), Obligations(entity_anchor="B")]
+    predicted = [Obligations(entity_anchor="A"), Obligations()]
+    scores = slot_level_scores(predicted, gold)
+    assert scores["entity_anchor.precision"] == pytest.approx(1.0)
+    assert scores["entity_anchor.recall"] == pytest.approx(0.5)
+    assert scores["entity_anchor.f1"] == pytest.approx(2 / 3)
+
+
+def test_a_slot_nobody_uses_is_nan_not_a_flattering_one():
+    scores = slot_level_scores([Obligations()], [Obligations()])
+    assert math.isnan(scores["scope.precision"])
+    assert math.isnan(scores["scope.recall"])
+
+
+def test_boolean_slots_are_scored_by_accuracy_including_aggregate():
+    """``False`` is a prediction, not an absence, so precision does not fit —
+    and ``aggregate`` was omitted from the metric entirely."""
+    gold = [Obligations(needs_source=True, aggregate=False), Obligations(aggregate=True)]
+    predicted = [Obligations(needs_source=True, aggregate=False), Obligations(aggregate=False)]
+    scores = slot_level_scores(predicted, gold)
+    assert scores["needs_source.accuracy"] == pytest.approx(1.0)
+    assert scores["aggregate.accuracy"] == pytest.approx(0.5)
+
+
+def test_every_slot_of_obligations_is_scored():
+    """A slot added to ``Obligations`` and not to the metric would go unaudited."""
+    from graft.core.obligations import BOOLEAN_SLOTS, OPTIONAL_SLOTS
+
+    scored = set(OPTIONAL_SLOTS) | set(BOOLEAN_SLOTS)
+    fields = set(Obligations().to_dict())
+    assert fields <= scored, f"unaudited obligation slots: {sorted(fields - scored)}"
+
+
+def test_slot_scores_reject_mismatched_lengths():
     with pytest.raises(ValueError, match="predictions for"):
-        slot_level_precision([Obligations()], [])
+        slot_level_scores([Obligations()], [])

@@ -57,6 +57,13 @@ the write-up rather than treated as free.
 
 **Cost to reverse.** Re-run the β sweep and every Phase 3–4 comparison.
 
+**Correction (Phase 1).** The "frozen dataclasses, `__setattr__` blocked" claim
+in `GRAFT_PHASE0_BUILD.md` §P0.1 was incomplete: `frozen=True` blocks rebinding a
+field but not mutating the mapping behind it, so `Config.source_tiers` could be
+mutated and the config hash moved mid-run. Fixed in Phase 1 — see
+`PHASE1_DECISIONS.md` §5.1, which covers the same defect in `ProofSet.bindings`,
+`Node.payload` and `OutputRecord.ledger_snapshot`.
+
 ### 2.2 `max_atoms` is one field, used twice
 
 It is simultaneously the `H` size limit and the denominator of the size term.

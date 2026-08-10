@@ -95,6 +95,40 @@ def test_config_is_frozen():
         cfg.beta = 9.0  # type: ignore[misc]
 
 
+def test_config_is_frozen_all_the_way_down():
+    """``frozen=True`` blocks rebinding ``source_tiers``; it does nothing about
+    mutating the dict behind it.  That dict feeds ``config_hash``, which is the
+    identity of an experimental condition — a config able to change its own hash
+    mid-run makes two runs reporting the same hash potentially different
+    experiments."""
+    cfg = load_config()
+    before = config_hash(cfg)
+    with pytest.raises(TypeError):
+        cfg.source_tiers["first_party"] = 0.1
+    assert config_hash(cfg) == before
+
+
+def test_the_default_tier_table_cannot_be_mutated_globally():
+    """It is the default every Config starts from, so a mutation here would
+    change the reward of every condition built afterwards."""
+    from graft.config import DEFAULT_SOURCE_TIERS
+
+    with pytest.raises(TypeError):
+        DEFAULT_SOURCE_TIERS["first_party"] = 0.1
+
+
+def test_source_tiers_defaults_and_validation():
+    cfg = load_config()
+    assert dict(cfg.source_tiers) == {
+        "first_party": 1.0, "corroborated": 0.75, "reported": 0.5, "unknown": 0.25
+    }
+    assert cfg.default_tier == "unknown"
+    with pytest.raises(ConfigError, match="outside \\[0, 1\\]"):
+        load_config(overrides={"source_tiers": {"first_party": 2.0}})
+    with pytest.raises(ConfigError, match="not in source_tiers"):
+        load_config(overrides={"default_tier": "made_up"})
+
+
 def test_unknown_keys_raise(tmp_path):
     """A typo must not silently leave the default in place."""
     path = _write(tmp_path, "typo.yaml", "betta: 4.0\n")

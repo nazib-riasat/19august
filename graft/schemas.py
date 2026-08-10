@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, Sequence
+from types import MappingProxyType
+from typing import Any, Iterable, Mapping
 
 import numpy as np
 
@@ -58,7 +59,13 @@ __all__ = [
     "PAYLOAD_TIER",
 ]
 
-SCHEMA_VERSION = "0.2.0"
+# 0.3.0: `Assertion.eligibility` now defaults to `quarantined` and `Edge`
+# requires `t_invalid` alongside `superseded_by`.  Both change how an existing
+# record would be *read*, so the on-disk format's interpretation moved even
+# though its shape did not.  Distinct from `graft.config.SCHEMA_VERSION`, which
+# versions the config tree and stayed at 0.2.0 — the two version different
+# things and are expected to diverge.
+SCHEMA_VERSION = "0.3.0"
 
 NODE_TYPES = (
     "Entity",
@@ -143,6 +150,31 @@ def _check_finite(value: float, name: str) -> float:
     if not math.isfinite(value):
         raise ValueError(f"{name} must be finite, got {value!r}")
     return value
+
+
+def _freeze_mapping(data: Mapping[str, Any]) -> Mapping[str, Any]:
+    """A read-only copy, so ``frozen=True`` means what it says.
+
+    ``@dataclass(frozen=True)`` blocks *rebinding* a field; it does nothing about
+    mutating the object a field points at.  A plain dict inside a frozen
+    dataclass is therefore a frozen promise the class does not keep, and every
+    place it happened here is a place something downstream depends on the
+    object not changing:
+
+    * ``Config.source_tiers`` feeds ``config_hash``, which is the identity of an
+      experimental condition;
+    * ``ProofSet.bindings`` sits on a type used as a dict key by Phase 2's DP and
+      Phase 4's dedup;
+    * ``Node.payload`` and ``OutputRecord.ledger_snapshot`` are records that are
+      written once and read thereafter.
+
+    ``MappingProxyType`` rather than a bespoke frozen-dict class: it is stdlib,
+    it costs one import, and it compares equal to a plain dict.  Its one
+    limitation is that it cannot be pickled — if a later phase needs to pickle a
+    ``Config`` or a ``ProofSet`` (a dataloader with worker processes, say), the
+    transport is ``to_dict()`` / ``from_dict()``, which already exist.
+    """
+    return MappingProxyType(dict(data))
 
 
 # --------------------------------------------------------------------------
@@ -399,8 +431,19 @@ class ProofSet:
     reintroduce the action-order dependence that the canonical state exists to
     remove.
 
-    ``bindings`` maps an answer slot to the atom that fills it.  It is copied on
-    construction and must not be mutated afterwards.
+    **Identity is the atom set, and nothing else.**  ``bindings`` is a *derived*
+    cache — a pure function of ``atoms`` and the pool (Phase-1 gap G3), produced
+    by :meth:`AtomPool.derive_bindings`.  Including it in equality and hashing
+    was a defect: two proof sets over identical atoms whose ``bindings`` differed
+    would compare unequal, which contradicts "two orders reaching the same atoms
+    are the same state" — the canonicalisation the whole set formulation rests
+    on.  Since bindings are a function of the atoms, a difference can only mean
+    one of them was built wrongly, and treating them as equal is both correct and
+    robust to a caller who forgot to derive.
+
+    ``bindings`` is read-only.  A ``ProofSet`` is a dict key in Phase 2's DP and
+    Phase 4's beam dedup, and a mutable field on a hashable type makes an entry
+    silently unreachable.
     """
 
     atoms: frozenset[str] = frozenset()
@@ -408,7 +451,7 @@ class ProofSet:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "atoms", frozenset(self.atoms))
-        object.__setattr__(self, "bindings", dict(self.bindings))
+        object.__setattr__(self, "bindings", _freeze_mapping(self.bindings))
 
     def __len__(self) -> int:
         return len(self.atoms)
@@ -416,16 +459,13 @@ class ProofSet:
     def __contains__(self, atom_id: object) -> bool:
         return atom_id in self.atoms
 
-    def _key(self) -> tuple[tuple[str, ...], tuple[tuple[str, str], ...]]:
-        return (tuple(sorted(self.atoms)), tuple(sorted(self.bindings.items())))
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ProofSet):
             return NotImplemented
-        return self._key() == other._key()
+        return self.atoms == other.atoms
 
     def __hash__(self) -> int:
-        return hash(self._key())
+        return hash(self.atoms)
 
     def to_dict(self) -> dict[str, Any]:
         # Sorted, always.  Python randomises string hashing per interpreter run,
@@ -789,6 +829,16 @@ class Assertion:
     quality measurable at all — and never reach graph construction, so an
     invented claim cannot become retrievable evidence.
 
+    **It defaults to ``quarantined``, and the default is the point.**  Every
+    other decision on this path fails closed: `H`'s support sub-check rejects a
+    claim with no traceable assertion, the scope check rejects an unresolvable
+    provenance chain, and ``is_eligible`` returns ``False`` for an id the
+    snapshot has never seen.  A default of ``eligible`` was the one fail-open
+    step, and it sat exactly where an omitted support-gate result would land —
+    an assertion whose ``entailed_by_span`` is still ``False`` would have been
+    admissible evidence.  Phase 5 must set this explicitly; forgetting now costs
+    recall, not correctness.
+
     Provenance may be multi-span and cross-turn: a claim assembled across turns
     records every supporting span, not one.
     """
@@ -799,7 +849,7 @@ class Assertion:
     spans: tuple[str, ...]
     flags: AssertionFlags
     t_created: str
-    eligibility: str = "eligible"
+    eligibility: str = "quarantined"
 
     def __post_init__(self) -> None:
         if self.kind not in ASSERTION_KINDS:
@@ -833,7 +883,8 @@ class Assertion:
             spans=tuple(data["spans"]),
             flags=AssertionFlags.from_dict(data["flags"]),
             t_created=data["t_created"],
-            eligibility=data.get("eligibility", "eligible"),
+            # Fail closed on a record written before the field existed, too.
+            eligibility=data.get("eligibility", "quarantined"),
         )
 
 
@@ -848,7 +899,7 @@ class Node:
     def __post_init__(self) -> None:
         if self.ntype not in NODE_TYPES:
             raise ValueError(f"ntype must be one of {NODE_TYPES}, got {self.ntype!r}")
-        object.__setattr__(self, "payload", dict(self.payload))
+        object.__setattr__(self, "payload", _freeze_mapping(self.payload))
 
     def to_dict(self) -> dict[str, Any]:
         return {"node_id": self.node_id, "ntype": self.ntype, "payload": dict(self.payload)}
@@ -870,6 +921,16 @@ class Edge:
     unsourced edge permits an unsourced proof.  If Phase 6 finds a purely
     structural edge type that genuinely has no span, that is the moment to
     amend this rule deliberately — not to pass an empty list today.
+
+    **``superseded_by`` implies ``t_invalid``.**  ``GraphSnapshot.is_live`` is
+    documented as the one place invalidation semantics live, so that nothing
+    downstream reimplements them.  If a supersession could imply invalidation
+    while ``is_live`` read only ``t_invalid``, that claim would already be false
+    and a superseded fact would keep answering questions.  Enforcing the
+    implication here keeps one field authoritative, which is cheaper and less
+    error-prone than teaching every reader about two.  The converse is *not*
+    required: an edge may be invalidated by plain retirement, with nothing
+    superseding it.
     """
 
     edge_id: str
@@ -887,6 +948,12 @@ class Edge:
         object.__setattr__(self, "provenance", tuple(self.provenance))
         if not self.provenance:
             raise ValueError(f"edge {self.edge_id} has no provenance spans")
+        if self.superseded_by is not None and self.t_invalid is None:
+            raise ValueError(
+                f"edge {self.edge_id} is superseded by {self.superseded_by} but has "
+                "no t_invalid; a superseded edge that still reads as live would keep "
+                "answering questions after the fact it carries was replaced"
+            )
 
     @property
     def is_live(self) -> bool:
@@ -938,7 +1005,7 @@ class OutputRecord:
         if self.outcome not in OUTCOMES:
             raise ValueError(f"outcome must be one of {OUTCOMES}, got {self.outcome!r}")
         object.__setattr__(self, "citations", tuple(self.citations))
-        object.__setattr__(self, "ledger_snapshot", dict(self.ledger_snapshot))
+        object.__setattr__(self, "ledger_snapshot", _freeze_mapping(self.ledger_snapshot))
 
     def to_dict(self) -> dict[str, Any]:
         return {

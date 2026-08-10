@@ -40,7 +40,9 @@ __all__ = [
     "coverage",
     "covered_fraction",
     "parse",
-    "slot_level_precision",
+    "slot_level_scores",
+    "OPTIONAL_SLOTS",
+    "BOOLEAN_SLOTS",
 ]
 
 #: The six components of ``d(s)``, in order.  Exported so that no downstream
@@ -271,7 +273,9 @@ def parse(question: Any, mode: str = "exact") -> Obligations:
         component when there is text to parse.
     ``mode="learned"``
         Phase 5's extractor fills the slots.  Raises until then, so a caller
-        cannot silently get exact-mode behaviour on real questions.
+        cannot silently get exact-mode behaviour on real questions.  Its
+        slot-level quality must be audited with :func:`slot_level_scores` before
+        any downstream use.
     """
     if mode == "exact":
         if isinstance(question, Obligations):
@@ -293,26 +297,85 @@ def parse(question: Any, mode: str = "exact") -> Obligations:
     raise ValueError(f"mode must be 'exact' or 'learned', got {mode!r}")
 
 
-def slot_level_precision(
+#: Slots that may be absent.  Precision and recall are meaningful here: a
+#: prediction is either made or not.
+OPTIONAL_SLOTS: tuple[str, ...] = ("entity_anchor", "value_type", "time_constraint", "scope")
+
+#: Slots that are always present as ``True``/``False``.  Precision and recall do
+#: not fit — ``False`` is a prediction, not an absence — so these get accuracy.
+BOOLEAN_SLOTS: tuple[str, ...] = ("needs_source", "aggregate")
+
+
+def _is_absent(value: Any) -> bool:
+    return value is None or value == ()
+
+
+def slot_level_scores(
     predicted: Iterable[Obligations], gold: Iterable[Obligations]
 ) -> dict[str, float]:
-    """Per-slot exact-match precision of a parser against gold obligations.
+    """Per-slot parser quality against gold obligations, as a flat dict.
+
+    Keys are ``"{slot}.{metric}"`` — ``entity_anchor.precision``,
+    ``needs_source.accuracy``, and so on — so the result drops straight into a
+    metrics table without nested shapes.
 
     Defined here so the Phase-5 audit number exists the moment the extractor
-    does, rather than being invented alongside the thing it audits.
+    does, rather than being invented alongside the thing it audits (architecture
+    fix F2 requires it to be reported wherever coverage is reported).
+
+    **Why this replaced a function called ``slot_level_precision``.** That one
+    scored only the items where *gold* had the slot active, so a parser
+    hallucinating an anchor on every question gold left blank scored 1.0. It was
+    a recall-shaped number wearing the name precision, and it would have gone
+    into a paper — exactly the overreaching pattern ``CLAUDE.md`` §5 catalogues.
+    It also silently omitted ``aggregate``.
+
+    Two slot families, because one metric does not fit both:
+
+    *Optional slots* get precision (of the predictions made, how many were
+    right), recall (of the slots gold imposed, how many were recovered) and F1.
+    A slot the parser never predicts and gold never imposes yields ``nan``
+    rather than a flattering 1.0 — there is nothing to score, and saying so is
+    better than inventing a number.
+
+    *Boolean slots* get accuracy over every item, since there is no such thing as
+    declining to predict them.
     """
     predicted, gold = list(predicted), list(gold)
     if len(predicted) != len(gold):
         raise ValueError(f"got {len(predicted)} predictions for {len(gold)} gold items")
-    fields = ("entity_anchor", "value_type", "time_constraint", "needs_source", "scope")
+
     out: dict[str, float] = {}
-    for name in fields:
-        considered = [
-            (p, g) for p, g in zip(predicted, gold) if getattr(g, name) not in (None, False, ())
-        ]
-        if not considered:
-            out[name] = math.nan
+
+    for name in OPTIONAL_SLOTS:
+        tp = fp = fn = 0
+        for p, g in zip(predicted, gold):
+            pv, gv = getattr(p, name), getattr(g, name)
+            p_active, g_active = not _is_absent(pv), not _is_absent(gv)
+            if p_active and g_active and pv == gv:
+                tp += 1
+            else:
+                # A wrong value counts once on each side: a prediction that was
+                # not right, and a gold slot that was not recovered.
+                if p_active:
+                    fp += 1
+                if g_active:
+                    fn += 1
+        precision = tp / (tp + fp) if (tp + fp) else math.nan
+        recall = tp / (tp + fn) if (tp + fn) else math.nan
+        if precision + recall > 0 and not math.isnan(precision + recall):
+            f1 = 2 * precision * recall / (precision + recall)
+        else:
+            f1 = math.nan
+        out[f"{name}.precision"] = precision
+        out[f"{name}.recall"] = recall
+        out[f"{name}.f1"] = f1
+
+    for name in BOOLEAN_SLOTS:
+        if not gold:
+            out[f"{name}.accuracy"] = math.nan
             continue
-        hits = sum(1 for p, g in considered if getattr(p, name) == getattr(g, name))
-        out[name] = hits / len(considered)
+        hits = sum(1 for p, g in zip(predicted, gold) if getattr(p, name) == getattr(g, name))
+        out[f"{name}.accuracy"] = hits / len(gold)
+
     return out

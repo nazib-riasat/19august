@@ -4,12 +4,13 @@ Date: 8 August 2026
 Parent: `GRAFT_PHASE1_BUILD.md` · `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (v1.1) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2)
 Predecessor: `PHASE0_DECISIONS.md`
 
-Phase 1 is complete. **All 16 exit criteria pass; 347 tests, ~7 s.** `graft/core/`
-is ~1,760 lines across seven modules.
+Phase 1 is complete. **All 16 exit criteria pass; 366 tests, ~7 s.** `graft/core/`
+is ~1,800 lines across seven modules.
 
 This file records what the build decided that the plan did not, and where the
 implementation departed from the plan. Every departure is listed — including the
-three that were found by writing tests rather than by reading the spec.
+three that were found by writing tests rather than by reading the spec (§4), and
+the five invariants a post-build review found were not being enforced (§5).
 
 ---
 
@@ -223,7 +224,156 @@ distribution for the lattice rather than a single dead-end rate.
 
 ---
 
-## 5. Handoff fingerprints moved once, as predicted
+## 5. Post-build review — five fixes and one rejection
+
+A review after Phase 1 closed raised six findings. All six reproduced. Five were
+fixed; one was rejected, and the reason matters more than the fix would have.
+
+Every fix is an invariant enforced in a `__post_init__` that already existed.
+None touches `U`, the reward, `d(s)`, or any frozen Gate-0 value, so no
+experiment is invalidated.
+
+### 5.1 `frozen=True` did not mean frozen
+
+`@dataclass(frozen=True)` blocks *rebinding* a field. It does nothing about
+mutating the object a field points at — so four mappings inside frozen
+dataclasses were writable, and each sat somewhere that depended on it not
+changing:
+
+| Field | What depended on it |
+|---|---|
+| `Config.source_tiers` | `config_hash`, the identity of an experimental condition |
+| `ProofSet.bindings` | a dict key in Phase 2's DP and Phase 4's beam dedup |
+| `Node.payload` | a record read after the snapshot is built |
+| `OutputRecord.ledger_snapshot` | a write-once record |
+
+Reproduced on the first two: mutating `source_tiers` moved the config hash
+`177b7c96…` → `2ef237c8…` mid-run; mutating `bindings` changed a `ProofSet`'s
+hash and made its own dict entry unreachable.
+
+All four now go through `_freeze_mapping` (`MappingProxyType`). One limitation
+recorded rather than engineered around: a mappingproxy cannot be pickled. If a
+later phase needs to pickle a `Config` or a `ProofSet`, the transport is
+`to_dict()`/`from_dict()`, which already exist. A bespoke picklable frozen-dict
+class would be more code for a speculative need.
+
+`dataclasses` refuses an unhashable *default*, so `source_tiers` uses a factory
+returning the module constant — safe precisely because that constant is itself
+read-only now.
+
+### 5.2 `ProofSet` identity was not the atom set
+
+The review framed this as mutability. The deeper defect was that equality and
+hashing included `bindings` at all.
+
+`bindings` is *derived* — a pure function of `atoms` and the pool (gap G3). Two
+proof sets over identical atoms whose bindings differed compared **unequal**,
+which directly contradicts "two orders reaching the same atoms are the same
+state", the canonicalisation the whole set formulation rests on. Since bindings
+are a function of the atoms, any difference means one side was built wrongly, so
+treating them as equal is both correct and robust to a caller who forgot to
+derive.
+
+Identity is now `atoms` alone. That fixes more than validation would have, and
+is less code.
+
+Nothing downstream read `ProofSet.bindings` anyway — `H` uses
+`pool.binding_slots()`, `U` never touches it — so the field was inert *except*
+in the key path, which is the one place it could do damage.
+
+### 5.3 A superseded edge could still read as live
+
+`Edge` permitted `superseded_by` without `t_invalid`, while `is_live` reads only
+`t_invalid`. Confirmed: such an edge reported live.
+
+The argument that settled it is not Zep's model but `is_live`'s own docstring,
+which claims to be "the one place invalidation semantics live, so that no
+downstream component reimplements invalidation semantics". If supersession
+implied invalidation and `is_live` ignored it, that claim was already false and a
+superseded fact would keep answering questions — in the subsystem this project
+claims as a strength.
+
+Now enforced at construction: `superseded_by ⇒ t_invalid is not None`. One field
+stays authoritative, which is cheaper than teaching every reader about two. The
+converse is deliberately not required — an edge may be retired with nothing
+replacing it.
+
+### 5.4 The support gate defaulted open
+
+`AssertionFlags.entailed_by_span` defaults `False`, but `Assertion.eligibility`
+defaulted `"eligible"` — so an assertion with no support was admissible evidence
+by omission.
+
+Every other decision on that path fails closed: `H`'s support sub-check rejects a
+claim with no traceable assertion, the scope check rejects a broken provenance
+chain, `is_eligible` returns `False` for an unknown id. This was the only
+fail-open step, and it sat exactly where a skipped support-gate result would
+land. Default is now `"quarantined"`, including in `from_dict` for records
+written before the field existed. Forgetting to set it now costs recall, not
+correctness.
+
+### 5.5 The parser metric was recall wearing the name precision
+
+`slot_level_precision` scored only items where *gold* had the slot active, so a
+parser hallucinating an anchor on every blank question scored **1.0**. It also
+omitted `aggregate` entirely.
+
+That number was destined for a paper — architecture F2 requires it "reported
+wherever coverage is reported" — which makes it the overreaching pattern
+`CLAUDE.md` §5 catalogues, in our own code.
+
+Replaced by `slot_level_scores`, returning a flat `{slot}.{metric}` dict. The fix
+is not simply "count false positives": the two slot families need different
+metrics. Optional slots (`entity_anchor`, `value_type`, `time_constraint`,
+`scope`) get precision, recall and F1; boolean slots (`needs_source`,
+`aggregate`) get accuracy, because `False` is a prediction rather than an
+absence. A slot neither predicted nor imposed reports `nan` rather than a
+flattering 1.0. The hallucinating parser above now scores precision 0.333.
+
+A test asserts every field of `Obligations` is scored, so a slot added later
+cannot go unaudited.
+
+### 5.6 Rejected — `AtomPool` keeps accepting `cap=None`
+
+The finding was that the `pool_cap` bound is optional, and the plan calls it
+load-bearing for the generalization argument.
+
+**Rejected, because it is the wrong layer.** Making `cap` required would add
+`cap=64` to ~15 test call sites to buy a guarantee that does not hold: a type
+that refuses to exist without a bound still cannot stop Phase 7 passing the
+*wrong* bound. The guarantee belongs at the two sites where pools are built for
+real, as a test there.
+
+There is a genuine risk underneath, and it is Phase 2's: a lattice that builds
+its pool without `cfg.pool_cap` has an unbounded state space, and the
+enumerability Gate 2 rests on goes with it. That is now requirement 8 in
+`GRAFT_PHASE1_BUILD.md` §8, where it can actually be checked.
+
+### 5.7 Schema version
+
+`graft.schemas.SCHEMA_VERSION` → **0.3.0**: §5.3 and §5.4 change how an existing
+record would be *read*, so the on-disk interpretation moved even though its shape
+did not. `graft.config.SCHEMA_VERSION` stays at 0.2.0 — the config tree did not
+change. The two now diverge, which is the point of having versioned them
+separately.
+
+### 5.8 The environment report was a false alarm
+
+The review reported `.venv` as stale, referencing a missing Python 3.11 against a
+machine exposing only 3.14. Not reproducible here: 3.11.9 is installed, `py -0p`
+lists it, and the venv runs clean. The review ran on a different machine.
+
+That is `PHASE0_DECISIONS.md` §3.1 working as designed rather than a defect. A
+venv records the absolute path of the interpreter that built it and **is not
+portable**; the answer on a machine without 3.11 is `scripts/bootstrap.ps1`,
+which fails with an explicit "install 3.11" message rather than half-working.
+Worth noting too that `pyproject.toml` declares `>=3.11,<3.13`, so verifying
+under a 3.12 runtime is *inside* the supported window — the only thing genuinely
+unreproduced there is the exact pin set, which the review was right to flag.
+
+---
+
+## 6. Handoff fingerprints moved once, as predicted
 
 Adding `source_tiers` changed `config_hash`, and adding turns and spans to
 `DictGraphSnapshot` changed `state_digest`:
@@ -241,7 +391,7 @@ from a broken environment.
 
 ---
 
-## 6. Handoff to Phase 2
+## 7. Handoff to Phase 2
 
 ```python
 from graft.core.checker     import H, CHECKS
@@ -268,7 +418,11 @@ Unchanged from `GRAFT_PHASE1_BUILD.md` §8, with one addition learned here:
    flag (§4);
 6. `target`s resolving into a backing snapshot, with at least one invalidated
    edge and one quarantined assertion;
-7. `max_atoms = 8`, `pool_cap = 32` from the `synthetic` profile.
+7. `max_atoms = 8`, `pool_cap = 32` from the `synthetic` profile;
+8. **the pool constructed as `AtomPool(atoms, cap=cfg.pool_cap)`** — `AtomPool`
+   accepts `cap=None` by design (§5.6), so an uncapped lattice pool is not a
+   type error but it does dissolve the bounded state space Gate 2's
+   enumerability rests on.
 
 `graft/tests/fixtures.py` is a working reference for 1, 4, 5, 6 — but it is
 **not** the lattice: no conflicting pairs, no dependency chains beyond `refs`, no

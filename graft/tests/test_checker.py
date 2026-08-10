@@ -260,6 +260,9 @@ def test_temporal_negative_binding_disjoint_from_constraint(inst):
 
 
 def test_temporal_negative_supersession_runs_backwards():
+    # ``t_invalid`` is mandatory alongside ``superseded_by``; the retired
+    # sub-check therefore fires too, which is correct and does not obscure the
+    # temporal violation this test is about.
     early = Edge(
         edge_id="e_late",
         etype="has_value",
@@ -267,6 +270,7 @@ def test_temporal_negative_supersession_runs_backwards():
         dst="n2",
         t_created="2026-06-01T00:00:00+00:00",
         provenance=("s1",),
+        t_invalid="2026-07-01T00:00:00+00:00",
         superseded_by="e_early",
     )
     earlier = Edge(
@@ -304,6 +308,7 @@ def test_temporal_negative_supersession_target_missing():
         dst="n2",
         t_created=TS,
         provenance=("s1",),
+        t_invalid=TS,
         superseded_by="nowhere",
     )
     graph = DictGraphSnapshot(

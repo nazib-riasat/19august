@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field, replace
+from types import MappingProxyType
 from typing import Any, Mapping
 
 __all__ = [
@@ -33,12 +34,17 @@ SCHEMA_VERSION = "0.2.0"
 #: Gate 0 and identical across all seven learners for the same reason
 #: ``u_weights`` must be (v1.2 §5.1) — otherwise the comparison measures reward
 #: engineering.  Metadata-derived, never learned (v1.2 §4.4 routing table).
-DEFAULT_SOURCE_TIERS: dict[str, float] = {
-    "first_party": 1.0,
-    "corroborated": 0.75,
-    "reported": 0.5,
-    "unknown": 0.25,
-}
+#:
+#: Read-only: this is the default every ``Config`` starts from, so a mutation
+#: here would silently change the reward of every condition built afterwards.
+DEFAULT_SOURCE_TIERS: Mapping[str, float] = MappingProxyType(
+    {
+        "first_party": 1.0,
+        "corroborated": 0.75,
+        "reported": 0.5,
+        "unknown": 0.25,
+    }
+)
 
 
 class ConfigError(ValueError):
@@ -148,9 +154,10 @@ class Config:
     # `U`'s source_quality term reads these.  An atom whose Source node cannot be
     # resolved scores `default_tier` rather than 0, so a missing edge is a weak
     # source rather than a disqualifying one — disqualification is `H`'s job.
-    source_tiers: Mapping[str, float] = field(
-        default_factory=lambda: dict(DEFAULT_SOURCE_TIERS)
-    )
+    # A factory rather than a bare default: ``dataclasses`` refuses any default
+    # whose type is unhashable, and a mappingproxy is.  Handing back the module
+    # constant directly is safe precisely because it is already read-only.
+    source_tiers: Mapping[str, float] = field(default_factory=lambda: DEFAULT_SOURCE_TIERS)
     default_tier: str = "unknown"
 
     # --- protocol ---------------------------------------------------------
@@ -173,8 +180,15 @@ class Config:
         object.__setattr__(self, "pool_cap", int(self.pool_cap))
         object.__setattr__(self, "max_atoms", int(self.max_atoms))
         object.__setattr__(self, "seeds", tuple(int(s) for s in self.seeds))
+        # Read-only, because ``frozen=True`` blocks rebinding the field but not
+        # mutating the dict behind it — and this dict feeds ``config_hash``,
+        # which is the identity of an experimental condition.  A config that can
+        # change its own hash mid-run makes two runs reporting the same hash
+        # potentially different experiments.
         object.__setattr__(
-            self, "source_tiers", {str(k): float(v) for k, v in self.source_tiers.items()}
+            self,
+            "source_tiers",
+            MappingProxyType({str(k): float(v) for k, v in self.source_tiers.items()}),
         )
 
     # -- derived quantities ------------------------------------------------

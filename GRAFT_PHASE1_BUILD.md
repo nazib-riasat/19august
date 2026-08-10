@@ -483,8 +483,11 @@ the budget is unreachable and recall looks better than it is.
   lookup with zero error. Say so plainly — the module is thin in Phase 1 and that
   is correct, not a shortcut.
 - `mode="learned"`: raises `NotImplementedError` until Phase 5, with the audit
-  hook (`slot_level_precision`) already defined so the number is reportable the
-  moment the extractor exists.
+  hook (`slot_level_scores`) already defined so the number is reportable the
+  moment the extractor exists. It reports precision, recall and F1 for the four
+  optional slots and accuracy for the two boolean ones — one metric does not fit
+  both families, and a slot-scoring function that only looks where gold is active
+  measures recall while being called precision.
 - `slot_status` is the single implementation shared by `d(s)` and `coverage`
   (G4).
 
@@ -804,3 +807,10 @@ reports zero having measured nothing.
    edge and one quarantined assertion so checks 4 and 7 have negative cases.
 7. **`max_atoms = 8` and `pool_cap = 32`** come from the `synthetic` config
    profile, not from the real-data defaults (`PHASE0_DECISIONS.md` §2.1).
+8. **The lattice must construct its pool as `AtomPool(atoms, cap=cfg.pool_cap)`.**
+   `AtomPool` accepts `cap=None` and does not enforce a bound of its own — the
+   bound belongs at the construction site, because a required parameter would
+   not stop Phase 2 or Phase 7 passing the *wrong* bound. An uncapped lattice
+   pool is not a type error but it is a real one: the state space stops being
+   bounded and the enumerability that Gate 2 rests on quietly goes with it.
+   Phase 7's pool builder carries the same requirement.

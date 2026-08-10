@@ -8,6 +8,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import random
+from types import MappingProxyType
 
 import numpy as np
 import pytest
@@ -22,6 +23,7 @@ from graft.schemas import (
     Interval,
     Node,
     Obligations,
+    OutputRecord,
     ProofSet,
     SourceSpan,
 )
@@ -107,6 +109,123 @@ def test_proof_set_bindings_are_copied():
     ps = ProofSet(atoms=frozenset(), bindings=bindings)
     bindings["slot"] = "tampered"
     assert ps.bindings["slot"] == "atom"
+
+
+# -- frozen means frozen ----------------------------------------------------
+
+
+def test_proof_set_identity_is_the_atom_set_alone():
+    """Bindings are derived from atoms and the pool, so a difference can only
+    mean one side was built wrongly.  Including them in the key contradicted
+    'two orders reaching the same atoms are the same state'."""
+    derived = ProofSet(atoms=frozenset({"a"}), bindings={"answer": "a"})
+    forgot_to_derive = ProofSet(atoms=frozenset({"a"}))
+    assert derived == forgot_to_derive
+    assert hash(derived) == hash(forgot_to_derive)
+
+
+def test_proof_set_bindings_cannot_be_mutated():
+    """A ``ProofSet`` is a dict key in Phase 2's DP and Phase 4's dedup; a
+    mutable field on a hashable type makes an entry silently unreachable."""
+    ps = ProofSet(atoms=frozenset({"a"}), bindings={"answer": "a"})
+    cache = {ps: "value"}
+    with pytest.raises(TypeError):
+        ps.bindings["answer"] = "tampered"
+    assert cache[ps] == "value"
+
+
+def test_node_payload_cannot_be_mutated():
+    node = Node(node_id="n", ntype="Entity", payload={"name": "Alice"})
+    with pytest.raises(TypeError):
+        node.payload["name"] = "Bob"
+
+
+def test_output_record_ledger_snapshot_cannot_be_mutated():
+    record = OutputRecord(outcome="abstain", ledger_snapshot={"terminal_checks": 3})
+    with pytest.raises(TypeError):
+        record.ledger_snapshot["terminal_checks"] = 99
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda: ProofSet(atoms=frozenset({"a"}), bindings={"answer": "a"}).bindings,
+        lambda: Node(node_id="n", ntype="Entity", payload={"k": 1}).payload,
+        lambda: OutputRecord(outcome="abstain", ledger_snapshot={"k": 1}).ledger_snapshot,
+    ],
+    ids=["ProofSet.bindings", "Node.payload", "OutputRecord.ledger_snapshot"],
+)
+def test_frozen_dataclasses_have_no_mutable_mappings(make):
+    """``frozen=True`` blocks rebinding a field, not mutating what it points at.
+    Every mapping inside a frozen dataclass has to be read-only or the promise
+    is not kept."""
+    mapping = make()
+    assert isinstance(mapping, MappingProxyType)
+
+
+# -- supersession implies invalidation --------------------------------------
+
+
+def test_a_superseded_edge_must_also_be_invalidated():
+    """``is_live`` is the one place invalidation semantics live; if supersession
+    implied invalidation while ``is_live`` read only ``t_invalid``, a superseded
+    fact would keep answering questions."""
+    with pytest.raises(ValueError, match="no t_invalid"):
+        Edge(
+            edge_id="e",
+            etype="has_value",
+            src="a",
+            dst="b",
+            t_created="2026-08-08T00:00:00+00:00",
+            provenance=("s1",),
+            superseded_by="e2",
+        )
+
+
+def test_invalidation_without_supersession_is_still_legal():
+    """The converse is not required: an edge may be retired with nothing
+    replacing it."""
+    edge = Edge(
+        edge_id="e",
+        etype="has_value",
+        src="a",
+        dst="b",
+        t_created="2026-08-08T00:00:00+00:00",
+        provenance=("s1",),
+        t_invalid="2026-09-01T00:00:00+00:00",
+    )
+    assert not edge.is_live and edge.superseded_by is None
+
+
+# -- the support gate fails closed ------------------------------------------
+
+
+def test_an_assertion_is_quarantined_unless_told_otherwise():
+    """Every other decision on this path fails closed; a default of 'eligible'
+    was the one fail-open step, and it sat exactly where an omitted support-gate
+    result would land."""
+    assertion = Assertion(
+        assertion_id="a",
+        kind="claim",
+        text_norm="x",
+        spans=("s1",),
+        flags=AssertionFlags(asserted_by="user"),  # entailed_by_span defaults False
+        t_created="2026-08-08T00:00:00+00:00",
+    )
+    assert assertion.flags.entailed_by_span is False
+    assert assertion.eligibility == "quarantined"
+
+
+def test_a_record_written_before_the_field_existed_also_fails_closed():
+    data = {
+        "assertion_id": "a",
+        "kind": "claim",
+        "text_norm": "x",
+        "spans": ["s1"],
+        "flags": AssertionFlags(asserted_by="user").to_dict(),
+        "t_created": "2026-08-08T00:00:00+00:00",
+    }
+    assert Assertion.from_dict(data).eligibility == "quarantined"
 
 
 # -- Interval: the half-open convention frozen in Phase 0 -------------------
