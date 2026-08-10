@@ -254,6 +254,27 @@ def test_no_schema_field_claims_truth():
                 )
 
 
+def test_the_live_plans_do_not_contradict_themselves():
+    """Run ``scripts/check_plan_consistency.py`` as part of the suite.
+
+    The plan documents restate each decision in four or five places, and five
+    review rounds showed that a fix reliably lands in three of them.  Seven of
+    the eleven defects found in the fifth round were introduced by the fourth
+    round's own corrections.  The code has needed one round for the same volume
+    of work, because tests execute it and nothing executes prose.
+
+    This is the nearest substitute, and it belongs in the suite rather than in a
+    habit: a retired wording that reappears fails the build.
+    """
+    import subprocess
+
+    script = REPO_ROOT / "scripts" / "check_plan_consistency.py"
+    result = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 @pytest.mark.parametrize("path", _source_files(), ids=lambda p: p.name)
 def test_every_module_has_a_docstring(path):
     tree = ast.parse(path.read_text(encoding="utf-8"))
