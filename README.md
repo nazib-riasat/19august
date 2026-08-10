@@ -6,9 +6,11 @@ evidence-set learner.
 - **The science:** [`GRAFT_RESEARCH_PLAN_v1.md`](GRAFT_RESEARCH_PLAN_v1.md) (v1.2). Wins any conflict.
 - **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases.
 - **Why things are the way they are:** [`CLAUDE.md`](CLAUDE.md) — decisions, what was rejected, and the cost of changing your mind.
-- **Phase 0 decisions taken here:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md).
+- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md).
 
-Current state: **Phase 0 complete** (scaffold and data contracts). Phase 1 is next.
+Current state: **Phase 0 and Phase 1 complete** — scaffold, data contracts, and
+the deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`). Phase 2, the
+enumerable synthetic environment, is next.
 
 ---
 
@@ -95,7 +97,14 @@ graft/
   ledger.py      # budget metering and enforcement
   runtime.py     # seeding, run manifest, artefact layout
   canonical.py   # the one way an object becomes bytes
-  core/          # Phase 1  — H, U, R, masks, obligations
+  core/          # Phase 1  — the deterministic core
+    checker.py     #   H: nine sub-checks, per-atom + set-level
+    incremental.py #   validity across ADD/undo, agreeing with H by construction
+    masks.py       #   legal_adds, stop_allowed, dead ends, Terminal
+    obligations.py #   d(s), coverage, interval measure, the parser
+    resolve.py     #   atom -> graph resolution, in one place
+    utility.py     #   U and its six terms
+    reward.py      #   R = 1[H]*exp(beta*U), and FAIL
   synth/         # Phase 2  — ProofLattice + exact evaluator
   setgen/        # Phase 3/4 — learners and search
   ingest/        # Phase 5  — Stage A

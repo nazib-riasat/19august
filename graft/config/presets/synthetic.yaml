@@ -39,6 +39,17 @@ max_atoms: 8
 tau_nli: 0.8
 support_policy: strict
 
+# Identical to the real profile: source_tiers is part of the reward, and the
+# reward must not differ between the environment beta is swept on and the one it
+# is applied to.  The lattice must *use* the spread (Phase-1 exit criterion 9),
+# not redefine it.
+source_tiers:
+  first_party: 1.0
+  corroborated: 0.75
+  reported: 0.5
+  unknown: 0.25
+default_tier: unknown
+
 seeds: [13, 42, 7]
 
 # No real data is at risk during Phases 1-4, and the property tests write

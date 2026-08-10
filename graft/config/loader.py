@@ -14,7 +14,13 @@ from typing import Any
 import yaml
 
 from graft.canonical import canonical_bytes, sha256_hex
-from graft.config.schema import Config, ConfigError, UWeights, validate
+from graft.config.schema import (
+    DEFAULT_SOURCE_TIERS,
+    Config,
+    ConfigError,
+    UWeights,
+    validate,
+)
 
 __all__ = ["load_config", "config_hash", "PRESETS", "preset_path"]
 
@@ -96,6 +102,15 @@ def load_config(
     if "u_weights" in data:
         merged = {**weights.to_dict(), **data.pop("u_weights")}
         weights = UWeights.from_dict(merged)
+
+    # source_tiers merges for the same reason, and for one more: dropping a tier
+    # by partial override could leave `default_tier` dangling, which validation
+    # would then reject for a reason the author never intended.
+    if "source_tiers" in data:
+        tiers = data.pop("source_tiers")
+        if not isinstance(tiers, dict):
+            raise ConfigError("source_tiers must be a mapping")
+        data["source_tiers"] = {**DEFAULT_SOURCE_TIERS, **tiers}
 
     cfg = Config(u_weights=weights, **data)
     validate(cfg)

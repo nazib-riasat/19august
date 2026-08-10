@@ -13,11 +13,32 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, Mapping
 
-__all__ = ["UWeights", "Config", "ConfigError", "SCHEMA_VERSION"]
+__all__ = [
+    "UWeights",
+    "Config",
+    "ConfigError",
+    "SCHEMA_VERSION",
+    "DEFAULT_SOURCE_TIERS",
+]
 
-SCHEMA_VERSION = "0.1.0"
+# Distinct from ``graft.schemas.SCHEMA_VERSION``, which stamps event-log lines.
+# This one is validated for equality at load.  Both moved to 0.2.0 in Phase 1:
+# that one because Tier A gained types, this one because the config tree gained
+# ``source_tiers`` and ``default_tier``.
+SCHEMA_VERSION = "0.2.0"
+
+#: Source-type reliability scores, in [0, 1].  Part of the reward, so frozen at
+#: Gate 0 and identical across all seven learners for the same reason
+#: ``u_weights`` must be (v1.2 §5.1) — otherwise the comparison measures reward
+#: engineering.  Metadata-derived, never learned (v1.2 §4.4 routing table).
+DEFAULT_SOURCE_TIERS: dict[str, float] = {
+    "first_party": 1.0,
+    "corroborated": 0.75,
+    "reported": 0.5,
+    "unknown": 0.25,
+}
 
 
 class ConfigError(ValueError):
@@ -123,6 +144,15 @@ class Config:
     tau_nli: float = 0.8
     support_policy: str = "strict"
 
+    # --- source quality (Phase-1 gap G7) ----------------------------------
+    # `U`'s source_quality term reads these.  An atom whose Source node cannot be
+    # resolved scores `default_tier` rather than 0, so a missing edge is a weak
+    # source rather than a disqualifying one — disqualification is `H`'s job.
+    source_tiers: Mapping[str, float] = field(
+        default_factory=lambda: dict(DEFAULT_SOURCE_TIERS)
+    )
+    default_tier: str = "unknown"
+
     # --- protocol ---------------------------------------------------------
     # Three seeds for every trained method (Dror et al., ACL 2018 — a
     # predeclared protocol).  The config refuses fewer.
@@ -143,6 +173,9 @@ class Config:
         object.__setattr__(self, "pool_cap", int(self.pool_cap))
         object.__setattr__(self, "max_atoms", int(self.max_atoms))
         object.__setattr__(self, "seeds", tuple(int(s) for s in self.seeds))
+        object.__setattr__(
+            self, "source_tiers", {str(k): float(v) for k, v in self.source_tiers.items()}
+        )
 
     # -- derived quantities ------------------------------------------------
 
@@ -175,6 +208,8 @@ class Config:
             "max_atoms": self.max_atoms,
             "tau_nli": self.tau_nli,
             "support_policy": self.support_policy,
+            "source_tiers": dict(sorted(self.source_tiers.items())),
+            "default_tier": self.default_tier,
             "seeds": list(self.seeds),
             "fsync": self.fsync,
             "frozen_at_gate0": self.frozen_at_gate0,
@@ -229,6 +264,20 @@ def validate(cfg: Config) -> None:
 
     if not 0 < cfg.tau_nli <= 1:
         errors.append(f"tau_nli must be in (0, 1], got {cfg.tau_nli}")
+
+    if not cfg.source_tiers:
+        errors.append("source_tiers must not be empty; U's source_quality reads it")
+    for tier, score in sorted(cfg.source_tiers.items()):
+        if not 0.0 <= score <= 1.0:
+            errors.append(
+                f"source_tiers[{tier!r}] = {score} is outside [0, 1]; every U term "
+                "must be normalised or beta scales an unbounded quantity (gap G4)"
+            )
+    if cfg.default_tier not in cfg.source_tiers:
+        errors.append(
+            f"default_tier {cfg.default_tier!r} is not in source_tiers "
+            f"({sorted(cfg.source_tiers)}); an unresolvable source would have no score"
+        )
     if cfg.support_policy not in {"strict"}:
         errors.append(
             f"support_policy must be 'strict', got {cfg.support_policy!r}; "

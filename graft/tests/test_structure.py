@@ -101,6 +101,74 @@ def test_phase1_namespace_depends_only_on_the_protocol():
                 )
 
 
+#: The full import surface ``graft.core`` is allowed.  Phase 1's handoff contract
+#: plus ``AtomPool``, and nothing that could carry a learned score.
+CORE_ALLOWED_GRAFT_MODULES = {
+    "graft",
+    "graft.canonical",
+    "graft.config",
+    "graft.core",
+    "graft.core.checker",
+    "graft.core.incremental",
+    "graft.core.masks",
+    "graft.core.obligations",
+    "graft.core.resolve",
+    "graft.core.reward",
+    "graft.core.utility",
+    "graft.graphstore",
+    "graft.ids",
+    "graft.ledger",
+    "graft.schemas",
+}
+
+
+def test_the_deterministic_core_imports_nothing_it_should_not():
+    """Phase-1 exit criterion 15.
+
+    v1.2 §4.4's prohibition — *nothing learned may enter ``H``* — as a property
+    of the import graph rather than a promise in a docstring.  If a learned
+    scorer could reach ``H``, ``H`` would stop being a predicate, ``1[H]`` would
+    stop being a hard gate, and the multiplicative safety argument of §4.1 would
+    degrade into a soft threshold with a tunable cutoff.
+    """
+    for path in _source_files("core"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                modules = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                modules = [node.module or ""]
+            else:
+                continue
+            for module in modules:
+                root = module.split(".")[0]
+                assert root not in ML_LIBRARIES, (
+                    f"{path.relative_to(REPO_ROOT)} imports {module}; the checker "
+                    "may not reach a model of any kind"
+                )
+                if root == "graft":
+                    assert module in CORE_ALLOWED_GRAFT_MODULES, (
+                        f"{path.relative_to(REPO_ROOT)} imports {module}, which is "
+                        "outside the Phase-1 handoff contract"
+                    )
+
+
+def test_the_core_never_touches_a_concrete_graph_store():
+    """Criterion 11 again, now that ``graft.core`` has contents.
+
+    ``DictGraphSnapshot`` is permitted nowhere in the core: Phase 1 depends on
+    the protocol, and importing the replay-backed store would make it block on
+    Phase 6.
+    """
+    for path in _source_files("core"):
+        source = path.read_text(encoding="utf-8")
+        for forbidden in CONCRETE_STORES:
+            assert forbidden not in source, (
+                f"{path.relative_to(REPO_ROOT)} mentions {forbidden}; the core is "
+                "written against the GraphSnapshot protocol alone"
+            )
+
+
 def test_every_declared_phase_package_exists():
     """The build order depends on these namespaces being reserved up front."""
     expected = {

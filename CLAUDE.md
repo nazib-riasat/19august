@@ -32,7 +32,8 @@ The supervisor's constraint that shaped everything: **focus on GNN/NN learning a
 | `GRAFT_RESEARCH_PLAN_v1.md` (v1.2) | **Live — the science.** Wins any conflict with other docs. |
 | `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (v1.1) | **Live — the build plan.** 12 phases, in build order. |
 | `GRAFT_PHASE0_BUILD.md` | **Live.** Phase 0's spec. Built and green as of 8 Aug 2026 — all 13 exit criteria. |
-| `GRAFT_PHASE1_BUILD.md` | **Live — the current component.** The deterministic core. Closes nine gaps (G1–G9); §6 needs sign-off before coding, and one item there is a genuine question for you. |
+| `GRAFT_PHASE1_BUILD.md` | **Live.** Phase 1's spec. The deterministic core; closes nine gaps (G1–G9). Built and green as of 8 Aug 2026 — all 16 exit criteria. |
+| `PHASE1_DECISIONS.md` | **Live.** What Phase 1 decided, its six departures from the plan, and the three defects the tests found that reading did not. Read before touching `H`, `U` or `d(s)`. |
 | `PHASE0_DECISIONS.md` | **Live.** What Phase 0 actually decided, including the eleven questions the build plan left to the implementation, and the multi-machine workflow rules. Read before changing a config default. |
 | `README.md` | **Live.** Setup on a new machine, Kaggle, and what must match across machines. |
 | `Research papers/` (103 PDFs, `INDEX.md`, `papers.csv`) | **Live.** Titles verified against publisher records. |

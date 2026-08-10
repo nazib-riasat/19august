@@ -25,6 +25,7 @@ from graft.schemas import (
     Assertion,
     AssertionFlags,
     CandidateAtom,
+    CheckResult,
     Edge,
     Interval,
     Node,
@@ -33,6 +34,7 @@ from graft.schemas import (
     ProofSet,
     SourceSpan,
     Turn,
+    Violation,
 )
 
 _ALPHABET = string.ascii_letters + string.digits + " _-.:'"
@@ -65,30 +67,75 @@ def interval(rng: random.Random) -> Interval:
     return Interval(start=start, end=start + rng.randint(0, 5_000))
 
 
+def nonempty_interval(rng: random.Random) -> Interval:
+    """An interval usable as a ``time_constraint``.
+
+    ``interval`` may return the empty interval (``start == end``), which
+    ``Obligations`` refuses because it has measure zero and no instant satisfies
+    it (Phase-1 gap G5).
+    """
+    while True:
+        iv = interval(rng)
+        if not iv.is_empty:
+            return iv
+
+
 def obligations(rng: random.Random) -> Obligations:
     return Obligations(
         entity_anchor=text(rng) if rng.random() < 0.75 else None,
         value_type=text(rng, 3, 12) if rng.random() < 0.6 else None,
-        time_constraint=interval(rng) if rng.random() < 0.5 else None,
+        time_constraint=nonempty_interval(rng) if rng.random() < 0.5 else None,
         needs_source=rng.random() < 0.5,
         aggregate=rng.random() < 0.3,
+        scope=tuple(token(rng, 8) for _ in range(rng.randint(0, 2))),
     )
 
 
 def candidate_atom(rng: random.Random) -> CandidateAtom:
+    """A single well-formed atom.
+
+    Its ``refs`` are random tokens, so a *collection* of these will not form a
+    valid :class:`AtomPool` — see ``graft/tests/fixtures.py`` for coherent pools.
+    This generator exists for schema round-trips, which is what it was written
+    for, and that limitation is deliberate rather than an oversight.
+    """
     kind = rng.choice(ATOM_KINDS)
     refs = () if kind == "node" else tuple(token(rng) for _ in range(rng.randint(1, 3)))
     dim = rng.randint(0, 8)
     feat = np.asarray(
         [rng.uniform(-5.0, 5.0) for _ in range(dim)], dtype=np.float32
     )
-    label = text(rng, 0, 10)
+    # A binding names the slot it fills and denotes no graph object; a node or
+    # edge atom denotes one and carries no slot.
+    if kind == "binding":
+        label, target = rng.choice(["answer", "subject", "object"]), ""
+    else:
+        label, target = text(rng, 0, 10), token(rng)
     return CandidateAtom(
-        atom_id=ids.atom_id(kind, refs, label),
+        atom_id=ids.atom_id(kind, refs, target, label),
         kind=kind,
         refs=refs,
         feat=feat,
         label=label,
+        target=target,
+    )
+
+
+def violation(rng: random.Random) -> Violation:
+    return Violation(
+        check=rng.choice(["size", "closure", "eligibility", "temporal", "scope"]),
+        message=text(rng, 5, 60),
+        atoms=tuple(token(rng) for _ in range(rng.randint(0, 3))),
+    )
+
+
+def check_result(rng: random.Random) -> CheckResult:
+    # A CheckResult is ok iff it has no violations; the class enforces it.
+    if rng.random() < 0.5:
+        return CheckResult(ok=True)
+    return CheckResult(
+        ok=False,
+        violations=tuple(violation(rng) for _ in range(rng.randint(1, 4))),
     )
 
 
@@ -183,6 +230,8 @@ GENERATORS = {
     Obligations: obligations,
     CandidateAtom: candidate_atom,
     ProofSet: proof_set,
+    Violation: violation,
+    CheckResult: check_result,
     Turn: turn,
     SourceSpan: source_span,
     Assertion: assertion,

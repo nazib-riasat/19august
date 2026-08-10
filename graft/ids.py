@@ -81,17 +81,27 @@ def assertion_id(kind: str, text_norm: str, spans: Iterable[str]) -> str:
     return _hash_id("assertion", kind, text_norm, ",".join(sorted(spans)))
 
 
-def atom_id(kind: str, refs: Iterable[str], label: str = "") -> str:
+def atom_id(kind: str, refs: Iterable[str], target: str = "", label: str = "") -> str:
     """Identity of a candidate atom.
 
-    ``label`` is an addition to the signature sketched in the Phase-0 build plan
-    (``atom_id(kind, refs)``).  Without it two atoms of the same kind over the
-    same references collide — two differently-typed edges between one pair of
+    ``label`` and ``target`` are additions to the signature sketched in the
+    Phase-0 build plan (``atom_id(kind, refs)``).
+
+    ``label`` because without it two atoms of the same kind over the same
+    references collide — two differently-typed edges between one pair of
     endpoints being the common case — and Phase 0's own exit criterion requires
-    no collisions across 10^6 generated atoms.  Callers with nothing to
-    disambiguate pass nothing and get the two-argument behaviour.
+    no collisions across 10^6 generated atoms.
+
+    ``target`` because it is part of what makes an atom *this* piece of evidence
+    (Phase-1 gap G2).  It is also in ``CandidateAtom.content_key``, which `H`'s
+    sub-check 2 compares; leaving it out of the id would let two atoms denoting
+    different graph objects hash identically, so the duplicate check would be
+    computed on an incomplete key.
+
+    Callers with nothing to disambiguate pass neither and get the two-argument
+    behaviour.
     """
-    return _hash_id("atom", kind, ",".join(refs), label)
+    return _hash_id("atom", kind, ",".join(refs), target, label)
 
 
 def canon_set_hash(atoms: Iterable[str]) -> str:

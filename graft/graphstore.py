@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Iterator, Mapping, Protocol
 
-from graft.schemas import Assertion, Edge, Node
+from graft.schemas import Assertion, Edge, Node, SourceSpan, Turn
 
 __all__ = [
     "GraphSnapshot",
@@ -41,6 +41,8 @@ GRAPH_OPS = (
     "edge.invalidate",
     "assertion.add",
     "assertion.set_eligibility",
+    "turn.add",
+    "span.add",
 )
 
 _PROTOCOL_MEMBERS = (
@@ -51,6 +53,9 @@ _PROTOCOL_MEMBERS = (
     "is_live",
     "ntype",
     "is_eligible",
+    "assertion",
+    "span",
+    "turn",
 )
 
 
@@ -87,6 +92,22 @@ class GraphSnapshot(Protocol):
         snapshot has never seen.
         """
 
+    def assertion(self, assertion_id: str) -> Assertion | None:
+        """The stored assertion, for its ``spans``.
+
+        Added in Phase 1 beyond the two members the build plan listed.  Scope
+        (sub-check 5) has to walk an atom's provenance to a ``conv_id``, and for
+        a node atom the only route to spans is the backing assertion.  The
+        alternative — duplicating ``Assertion.spans`` into ``Node.payload`` at
+        commit time — would give provenance two sources of truth, which is worse
+        than one more read method.
+        """
+
+    def span(self, span_id: str) -> SourceSpan | None: ...
+
+    def turn(self, turn_id: str) -> Turn | None:
+        """Needed for ``conv_id``: the unit conversational scope is defined over."""
+
 
 def implements_graph_snapshot(obj: object) -> bool:
     """Structural conformance check.
@@ -110,11 +131,15 @@ class DictGraphSnapshot:
         nodes: Iterable[Node] = (),
         edges: Iterable[Edge] = (),
         assertions: Iterable[Assertion] = (),
+        turns: Iterable[Turn] = (),
+        spans: Iterable[SourceSpan] = (),
     ) -> None:
         self._snapshot_id = int(snapshot_id)
         self._nodes: dict[str, Node] = {n.node_id: n for n in nodes}
         self._edges: dict[str, Edge] = {e.edge_id: e for e in edges}
         self._assertions: dict[str, Assertion] = {a.assertion_id: a for a in assertions}
+        self._turns: dict[str, Turn] = {t.turn_id: t for t in turns}
+        self._spans: dict[str, SourceSpan] = {s.span_id: s for s in spans}
         self._incident: dict[str, list[str]] = {}
         for edge in self._edges.values():
             self._index_edge(edge)
@@ -155,6 +180,15 @@ class DictGraphSnapshot:
         assertion = self._assertions.get(assertion_id)
         return assertion is not None and assertion.eligibility == "eligible"
 
+    def assertion(self, assertion_id: str) -> Assertion | None:
+        return self._assertions.get(assertion_id)
+
+    def span(self, span_id: str) -> SourceSpan | None:
+        return self._spans.get(span_id)
+
+    def turn(self, turn_id: str) -> Turn | None:
+        return self._turns.get(turn_id)
+
     # -- construction ------------------------------------------------------
 
     def add_node(self, node: Node) -> None:
@@ -166,6 +200,12 @@ class DictGraphSnapshot:
 
     def add_assertion(self, assertion: Assertion) -> None:
         self._assertions[assertion.assertion_id] = assertion
+
+    def add_turn(self, turn: Turn) -> None:
+        self._turns[turn.turn_id] = turn
+
+    def add_span(self, span: SourceSpan) -> None:
+        self._spans[span.span_id] = span
 
     def invalidate_edge(
         self, edge_id: str, t_invalid: str, superseded_by: str | None = None
@@ -207,6 +247,8 @@ class DictGraphSnapshot:
             "eligible_assertions": sum(
                 1 for a in self._assertions.values() if a.eligibility == "eligible"
             ),
+            "turns": len(self._turns),
+            "spans": len(self._spans),
         }
 
     def state_digest(self) -> str:
@@ -220,6 +262,8 @@ class DictGraphSnapshot:
                 "assertions": [
                     self._assertions[k].to_dict() for k in sorted(self._assertions)
                 ],
+                "turns": [self._turns[k].to_dict() for k in sorted(self._turns)],
+                "spans": [self._spans[k].to_dict() for k in sorted(self._spans)],
             }
         )
 
@@ -263,6 +307,10 @@ class ReplayGraphStore:
             snapshot.add_assertion(Assertion.from_dict(payload))
         elif op == "assertion.set_eligibility":
             snapshot.set_eligibility(payload["assertion_id"], payload["eligibility"])
+        elif op == "turn.add":
+            snapshot.add_turn(Turn.from_dict(payload))
+        elif op == "span.add":
+            snapshot.add_span(SourceSpan.from_dict(payload))
         # Anything else in the log (ledger checkpoints, run markers) is not
         # graph state and is deliberately ignored.
 

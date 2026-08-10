@@ -34,7 +34,10 @@ __all__ = [
     "Interval",
     "Obligations",
     "CandidateAtom",
+    "AtomPool",
     "ProofSet",
+    "Violation",
+    "CheckResult",
     "Turn",
     "SourceSpan",
     "AssertionFlags",
@@ -47,9 +50,15 @@ __all__ = [
     "ATOM_KINDS",
     "ELIGIBILITY",
     "OUTCOMES",
+    "ASSERTION_BACKED_NTYPES",
+    "PAYLOAD_ASSERTION_ID",
+    "PAYLOAD_NAME",
+    "PAYLOAD_ALIASES",
+    "PAYLOAD_VALUE_TYPE",
+    "PAYLOAD_TIER",
 ]
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 
 NODE_TYPES = (
     "Entity",
@@ -82,6 +91,27 @@ ATOM_KINDS = ("node", "edge", "binding")
 ASSERTION_KINDS = ("claim", "value", "event", "time")
 ELIGIBILITY = ("eligible", "quarantined")
 OUTCOMES = ("answer", "abstain", "contested")
+
+# --------------------------------------------------------------------------
+# Payload conventions (Phase 1)
+#
+# ``Node.payload`` is a free-form dict, which means the keys the deterministic
+# core reads have to be written down somewhere or every phase will invent its
+# own.  They are constants rather than string literals so that a rename is one
+# edit and a typo is an import error.
+# --------------------------------------------------------------------------
+
+#: Node types that carry an assertion and are therefore subject to the support
+#: gate.  A node of one of these types **must** carry ``PAYLOAD_ASSERTION_ID``;
+#: one that does not is a checker violation, never a silent pass — the whole
+#: point of `H`'s check 7 is that unsupported claims cannot reach a proof.
+ASSERTION_BACKED_NTYPES = ("Claim", "Value", "Event")
+
+PAYLOAD_ASSERTION_ID = "assertion_id"   # Claim/Value/Event -> the assertion behind it
+PAYLOAD_NAME = "name"                   # Entity -> canonical surface name
+PAYLOAD_ALIASES = "aliases"             # Entity -> other surface forms
+PAYLOAD_VALUE_TYPE = "value_type"       # Value -> the type of value it holds
+PAYLOAD_TIER = "tier"                   # Source -> key into config.source_tiers
 
 # Feature vectors are stored at single precision.  float32 round-trips exactly
 # through JSON (widening to Python float is lossless, and repr round-trips the
@@ -195,6 +225,21 @@ class Obligations:
     time_constraint: Interval | None = None
     needs_source: bool = False
     aggregate: bool = False
+    scope: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "scope", tuple(self.scope))
+        # Phase-1 gap G5.  `|constraint|` is the denominator of
+        # `temporal_correctness`, and an empty interval has measure zero.  It is
+        # also not an answerable question: no instant satisfies it.  Rejecting it
+        # here keeps `Interval`'s own semantics untouched (Phase 0 froze
+        # start == end as the empty interval) while removing the division.
+        if self.time_constraint is not None and self.time_constraint.is_empty:
+            raise ValueError(
+                "time_constraint is the empty interval "
+                f"[{self.time_constraint.start}, {self.time_constraint.end}); "
+                "no instant can satisfy it, so it is not an answerable obligation"
+            )
 
     def active_slots(self) -> tuple[str, ...]:
         """The slots this question actually imposes.
@@ -228,6 +273,7 @@ class Obligations:
             ),
             "needs_source": self.needs_source,
             "aggregate": self.aggregate,
+            "scope": list(self.scope),
         }
 
     @classmethod
@@ -239,6 +285,7 @@ class Obligations:
             time_constraint=None if tc is None else Interval.from_dict(tc),
             needs_source=bool(data.get("needs_source", False)),
             aggregate=bool(data.get("aggregate", False)),
+            scope=tuple(data.get("scope", ())),
         )
 
 
@@ -246,13 +293,22 @@ class Obligations:
 class CandidateAtom:
     """One selectable unit of evidence.
 
-    ``refs`` is the closure mechanism (architecture fix F10): an atom may be
-    added only once every atom it references is already selected.  Edges
-    reference their endpoints, bindings reference their referents, and nodes
-    reference nothing — the last is enforced here rather than left to
-    convention, because it is what makes "nodes first, then edges" a construction
-    order that always works, which in turn is what proves the
-    unconstructible-valid-terminal rate to be 0.
+    **Two different reference systems, deliberately kept apart** (Phase-1 gap G2).
+
+    ``refs`` is *pool-internal* and is the closure mechanism (architecture fix
+    F10): an atom may be added only once every atom it references is already
+    selected.  Edges reference their endpoint atoms, bindings reference their
+    referent atoms, and nodes reference nothing — the last is enforced here
+    rather than left to convention, because it is what makes "nodes first, then
+    edges" a construction order that always works, which in turn is what proves
+    the unconstructible-valid-terminal rate to be 0.
+
+    ``target`` is *graph-external*: the ``node_id`` or ``edge_id`` of the object
+    this atom denotes in the pinned snapshot.  Without it the checker holds an
+    atom and still cannot reach the edge's ``t_invalid``, the claim's backing
+    assertion, or the provenance chain to a ``conv_id`` — so sub-checks 3, 4, 5
+    and 7 and ``U``'s ``source_quality`` are unwritable.  Bindings denote nothing
+    in the graph and must leave it empty.
 
     Identity is ``atom_id`` and nothing else.  Equality and hashing are defined
     explicitly for two reasons: ``atom_id`` is already content-derived, so two
@@ -266,6 +322,7 @@ class CandidateAtom:
     refs: tuple[str, ...] = ()
     feat: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=FEAT_DTYPE))
     label: str = ""
+    target: str = ""
 
     def __post_init__(self) -> None:
         if self.kind not in ATOM_KINDS:
@@ -275,6 +332,16 @@ class CandidateAtom:
             raise ValueError(
                 f"node atom {self.atom_id} has refs {self.refs}; nodes reference "
                 "nothing, which is what makes nodes-first construction always valid"
+            )
+        if self.kind == "binding" and self.target:
+            raise ValueError(
+                f"binding atom {self.atom_id} has target {self.target!r}; a binding "
+                "names a slot and its referents, it does not denote a graph object"
+            )
+        if self.kind == "binding" and not self.label:
+            raise ValueError(
+                f"binding atom {self.atom_id} has no label; the label is the answer "
+                "slot the binding fills and sub-check 9 is defined over it"
             )
         # Copied, not viewed: the array is frozen below, and freezing a caller's
         # array in place would be a surprising side effect of construction.
@@ -299,6 +366,7 @@ class CandidateAtom:
             "refs": list(self.refs),
             "feat": _encode_feat(self.feat),
             "label": self.label,
+            "target": self.target,
         }
 
     @classmethod
@@ -309,7 +377,17 @@ class CandidateAtom:
             refs=tuple(data.get("refs", ())),
             feat=_decode_feat(data["feat"]),
             label=data.get("label", ""),
+            target=data.get("target", ""),
         )
+
+    def content_key(self) -> tuple[str, ...]:
+        """What makes this atom *the same evidence* as another.
+
+        `H`'s sub-check 2 compares these: two selected atoms with different ids
+        but the same content key are the same evidence counted twice, which is a
+        malformed pool rather than a legitimately larger proof.
+        """
+        return (self.kind, self.target, self.label, *self.refs)
 
 
 @dataclass(frozen=True, eq=False)
@@ -364,6 +442,235 @@ class ProofSet:
             atoms=frozenset(data.get("atoms", ())),
             bindings=dict(data.get("bindings", {})),
         )
+
+
+class AtomPool:
+    """The candidate atoms one query may select from, with its invariants.
+
+    Deliberately **not** a dataclass and not a bare dict.  Three jobs:
+
+    *Resolution.*  ``ProofSet.atoms`` is a set of bare ids, so nothing downstream
+    can reach an atom's ``kind``, ``refs`` or ``target`` without this.
+
+    *Invariants.*  Two malformed-pool conditions are silent bugs everywhere else
+    and are refused here:
+
+    * **an unresolvable ``ref``** — such an atom can never satisfy the closure
+      rule, so it can never be legally added.  It is unreachable dead weight, and
+      the honest place to notice is Stage C's pool builder, not Phase 9 when
+      recall looks better than it is;
+    * **a reference cycle** — two atoms referencing each other can never both be
+      added, for the same reason and just as invisibly.
+
+    *Indexing.*  ``referencing`` answers "which atoms just became legal" in O(1)
+    instead of by rescanning, which the `ADD` mask does at every construction
+    step of every rollout.
+
+    ``cap`` bounds the state space.  **[EVIDENCE]** Generalization and
+    Distributed Learning of GFlowNets (ICLR 2025) gives data-dependent bounds
+    that degrade with state-space size, so ``pool_cap`` is principled rather than
+    merely cheap.
+    """
+
+    __slots__ = ("_atoms", "_cap", "_referencing")
+
+    def __init__(self, atoms: Iterable[CandidateAtom], cap: int | None = None) -> None:
+        self._atoms: dict[str, CandidateAtom] = {}
+        for atom in atoms:
+            if atom.atom_id in self._atoms:
+                raise ValueError(f"duplicate atom id in pool: {atom.atom_id}")
+            self._atoms[atom.atom_id] = atom
+        self._cap = cap
+        self._referencing: dict[str, tuple[str, ...]] = {}
+        self.validate()
+        self._build_index()
+
+    # -- construction ------------------------------------------------------
+
+    def _build_index(self) -> None:
+        index: dict[str, list[str]] = {}
+        for atom in self._atoms.values():
+            for ref in atom.refs:
+                index.setdefault(ref, []).append(atom.atom_id)
+        self._referencing = {k: tuple(sorted(v)) for k, v in index.items()}
+
+    def validate(self) -> None:
+        if self._cap is not None and len(self._atoms) > self._cap:
+            raise ValueError(
+                f"pool holds {len(self._atoms)} atoms, over pool_cap {self._cap}; "
+                "the state-space bound is what the generalization argument rests on"
+            )
+        for atom in self._atoms.values():
+            missing = [r for r in atom.refs if r not in self._atoms]
+            if missing:
+                raise ValueError(
+                    f"atom {atom.atom_id} references {missing}, which are not in the "
+                    "pool; closure can never be satisfied so the atom is permanently "
+                    "unaddable"
+                )
+        cycle = self._find_cycle()
+        if cycle is not None:
+            raise ValueError(
+                f"reference cycle in pool: {' -> '.join(cycle)}; no atom in a cycle "
+                "can ever be added, because each waits on the others"
+            )
+
+    def _find_cycle(self) -> list[str] | None:
+        """Iterative DFS over the reference DAG.  Iterative rather than recursive
+        so a large pool cannot blow the stack."""
+        WHITE, GREY, BLACK = 0, 1, 2
+        colour = {aid: WHITE for aid in self._atoms}
+        for root in sorted(self._atoms):
+            if colour[root] != WHITE:
+                continue
+            stack: list[tuple[str, int]] = [(root, 0)]
+            path: list[str] = []
+            colour[root] = GREY
+            path.append(root)
+            while stack:
+                node, i = stack[-1]
+                refs = self._atoms[node].refs
+                if i < len(refs):
+                    stack[-1] = (node, i + 1)
+                    nxt = refs[i]
+                    if colour[nxt] == GREY:
+                        return path[path.index(nxt):] + [nxt]
+                    if colour[nxt] == WHITE:
+                        colour[nxt] = GREY
+                        path.append(nxt)
+                        stack.append((nxt, 0))
+                else:
+                    colour[node] = BLACK
+                    stack.pop()
+                    path.pop()
+        return None
+
+    # -- resolution --------------------------------------------------------
+
+    def __getitem__(self, atom_id: str) -> CandidateAtom:
+        return self._atoms[atom_id]
+
+    def get(self, atom_id: str) -> CandidateAtom | None:
+        return self._atoms.get(atom_id)
+
+    def __contains__(self, atom_id: object) -> bool:
+        return atom_id in self._atoms
+
+    def __len__(self) -> int:
+        return len(self._atoms)
+
+    def __iter__(self):
+        """Iterate atoms in sorted-id order, so any derived sequence is stable."""
+        return (self._atoms[aid] for aid in sorted(self._atoms))
+
+    def ids(self) -> tuple[str, ...]:
+        """Sorted atom ids.  This is the canonical index order for mask vectors:
+        set iteration order is randomised per process, so anything that becomes a
+        tensor position has to be sorted."""
+        return tuple(sorted(self._atoms))
+
+    def referencing(self, atom_id: str) -> tuple[str, ...]:
+        """Atoms whose ``refs`` include ``atom_id``."""
+        return self._referencing.get(atom_id, ())
+
+    @property
+    def cap(self) -> int | None:
+        return self._cap
+
+    # -- bindings ----------------------------------------------------------
+
+    def binding_slots(self, atom_ids: Iterable[str]) -> dict[str, tuple[str, ...]]:
+        """slot -> every selected binding atom claiming it.
+
+        More than one is `H`'s sub-check 9 violation, so this returns all of them
+        rather than silently picking.
+        """
+        slots: dict[str, list[str]] = {}
+        for aid in sorted(atom_ids):
+            atom = self._atoms.get(aid)
+            if atom is not None and atom.kind == "binding":
+                slots.setdefault(atom.label, []).append(aid)
+        return {k: tuple(v) for k, v in slots.items()}
+
+    def derive_bindings(self, atom_ids: Iterable[str]) -> dict[str, str]:
+        """slot -> atom_id, derived from the selected ``binding``-kind atoms.
+
+        Bindings are *derived*, never chosen (Phase-1 gap G3): the action space is
+        `ADD` and `STOP` only, so nothing else could populate ``ProofSet.bindings``.
+
+        When a slot is claimed more than once the lexicographically smallest atom
+        wins, so the result is deterministic even on a set `H` will reject for
+        exactly that reason.
+        """
+        return {slot: ids[0] for slot, ids in self.binding_slots(atom_ids).items()}
+
+
+@dataclass(frozen=True)
+class Violation:
+    """One failed sub-check, with enough detail to count and to debug.
+
+    Lives here rather than in ``core/checker.py`` because it genuinely crosses
+    module boundaries: Phase 4's `H`-filter reports why candidates were dropped
+    and Phase 2's audits are defined over failure categories.  ``check`` is a
+    named constant from ``core.checker.CHECKS`` so categories can be tallied
+    without string matching.
+    """
+
+    check: str
+    message: str
+    atoms: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "atoms", tuple(self.atoms))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"check": self.check, "message": self.message, "atoms": list(self.atoms)}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "Violation":
+        return cls(
+            check=data["check"],
+            message=data["message"],
+            atoms=tuple(data.get("atoms", ())),
+        )
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    """The result of `H`.  Truthy iff formally valid."""
+
+    ok: bool
+    violations: tuple[Violation, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "violations", tuple(self.violations))
+        if self.ok and self.violations:
+            raise ValueError("a passing CheckResult cannot carry violations")
+        if not self.ok and not self.violations:
+            raise ValueError(
+                "a failing CheckResult must say why; an unexplained rejection "
+                "cannot be counted by category or debugged"
+            )
+
+    def __bool__(self) -> bool:
+        return self.ok
+
+    def categories(self) -> tuple[str, ...]:
+        """Distinct sub-check names that failed, sorted."""
+        return tuple(sorted({v.check for v in self.violations}))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"ok": self.ok, "violations": [v.to_dict() for v in self.violations]}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "CheckResult":
+        return cls(
+            ok=bool(data["ok"]),
+            violations=tuple(Violation.from_dict(v) for v in data.get("violations", ())),
+        )
+
+
+PASS = CheckResult(ok=True)
 
 
 # --------------------------------------------------------------------------
