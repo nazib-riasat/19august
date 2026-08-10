@@ -23,6 +23,7 @@ retired it. Run it from the repo root:
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -73,6 +74,12 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("with two reference policies", "three reference policies", "R7", "GRAFT_PHASE2_BUILD.md"),
     ("(G6) and two reference", "(G6) and three reference", "R7", "GRAFT_PHASE2_BUILD.md"),
     ("passes or fails on noise", "exact TV has no estimation noise; the risk is triviality and variance", "R7", "GRAFT_PHASE2_BUILD.md"),
+    ("`fcs(policy, state_graph)`** ·", "fcs(p_theta, target, m, n_subsets, rng) — FCS needs the reward", "R8", None),
+    ("Phase 9 has no exact TV; if FCS is", "no document specifies a Phase-9 distribution metric; do not invent the requirement", "R8", None),
+    ("loses `w_suff · β = 4` in log-reward", "loses beta*w_suff*(1 - template overlap)", "R8", None),
+    ("assertion are present and reachable", "present in the snapshot and asserted UNREACHABLE (masks prune them)", "R8", None),
+    ("is reached by budget exhaustion, never by an action", "reached when construction can neither continue nor stop", "R8", None),
+    ("Both suites are frozen at Gate 0", "all three suites (main, probe, tuning)", "R8", "GRAFT_PHASE2_BUILD.md"),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
@@ -88,7 +95,37 @@ INCOMPATIBLE: tuple[tuple[str, str, str], ...] = (
         "direct dead-end sum",
         "p_θ(FAIL) must have one authoritative definition",
     ),
+    (
+        "at_beta` **re-validates** `r_fail_margin` (G7)",
+        "and on a β at which the main suite would fail its target-mass bands",
+        "at_beta's contract must be stated identically in the table and the criteria",
+    ),
 )
+
+
+def _check_numbering(name: str, text: str) -> list[str]:
+    """Numbered lists must run 1..n with no gaps or repeats.
+
+    Renumbering by hand after an insertion produced a duplicate or a hole in
+    three separate rounds. This is cheaper than remembering.
+    """
+    out: list[str] = []
+    for label, pattern in (
+        ("decisions table", r"^\| (\d+) \|"),
+        ("numbered list", r"^(\d+)\. "),
+    ):
+        nums = [int(m) for m in re.findall(pattern, text, re.M)]
+        seen: list[int] = []
+        for value in nums:
+            if value == 1:
+                if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
+                    out.append(f"{name}: {label} runs {seen} — expected 1..{len(seen)}")
+                seen = [1]
+            else:
+                seen.append(value)
+        if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
+            out.append(f"{name}: {label} runs {seen[:6]}… — expected 1..{len(seen)}")
+    return out
 
 
 def main() -> int:
@@ -112,6 +149,8 @@ def main() -> int:
                     f"{name}:{line}: retired in {round_} — {retired!r}\n"
                     f"    superseded by: {replacement}"
                 )
+
+        failures.extend(_check_numbering(name, text))
 
         for left, right, why in INCOMPATIBLE:
             if left in text and right in text:

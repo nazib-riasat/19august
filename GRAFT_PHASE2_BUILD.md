@@ -605,6 +605,15 @@ missing:
 
 All three suites are frozen at Gate 0 alongside the β candidate set.
 
+**β's winner-selection rule, which the candidate grid alone does not supply.**
+Declared before any sweep runs: the winner is the candidate minimising **mean
+exact TV across the tuning suite**, for **L5 (SubTB) at a fixed budget of
+sampled training trajectories**, averaged over the three training seeds; ties
+broken toward the **smaller** β. L5 rather than L7 on purpose — selecting β with
+the proposed method would tune the environment's reward temperature in favour of
+Contribution 3 before Gate 2 tests it. A grid plus a tuning suite without a rule
+is still a decision made after seeing results.
+
 ### G10 — Two valid modes existing does not make the target multimodal [ANALYSIS]
 
 The generator plants two substitutable claim chains, and Phase-1 §8 requirement 2
@@ -612,8 +621,9 @@ calls that "multiple disjoint valid modes". But `sufficiency` is exact atom
 overlap with **one** gold proof (`utility.sufficiency`), so:
 
 * the designated gold chain scores `sufficiency = 1`;
-* the substitutable chain scores near 0, and loses `w_suff · β = 4` in log-reward
-  — a factor of `e⁻⁴ ≈ 1/55` in mass against an otherwise comparable terminal;
+* the substitutable chain scores `sufficiency = |P_A ∩ P_B| / |P_A|`, so it
+  loses `β · w_suff · (1 − |P_A ∩ P_B| / |P_A|)` in log-reward — at most 4, and
+  only when the templates are disjoint (the exact figure is worked below);
 * meanwhile *thousands* of formally valid distractor sets each carry small mass,
   and combinatorial multiplicity can make their **total** share large.
 
@@ -631,7 +641,7 @@ cheap because `p*` is already in hand:
 | Audit | Band |
 |---|---|
 | `p*` mass on each **designed** proof mode (completed) | **diagnostic**: below 1% for the alternative mode changes the claim, does not fail the build |
-| `p*` mass on the **`neither` bucket** — completes no designed proof | ≤ 0.5 — a hard band |
+| `p*` mass on the **`neither` bucket** — completes no designed proof | ≤ 0.5 — a hard band, **on the main suite at the frozen β**. The probe suite is distractor-heavy by design and is reported only; the tuning suite is not scored on it |
 | `p*` mass on terminals with `sufficiency = 0` | reported, no band |
 | effective support size, `exp(H(p*))` | reported, no band |
 | `p*` mass on the top-10 terminals | reported, no band |
@@ -691,7 +701,7 @@ portfolio claim is Gate 3's, on best-of-K.
 
 **In.** The ProofLattice generator with banded, audited structural properties;
 exhaustive closed-subset enumeration; the exact evaluator (`p*`, `p_θ` by one
-forward DP, TV/JS/KL); the `ActionPolicy` protocol with three reference policies;
+forward DP, TV/JS/KL **and FCS**); the `ActionPolicy` protocol with three reference policies;
 the audit suite; a fixed hand-checkable instance; the frozen benchmark suite; and the
 one-line Phase-1 caching amendment of G7.
 
@@ -719,7 +729,8 @@ declared rather than emergent.
 **Surface.** `LatticeInstance` (pool, obligations, graph, gold, meta) ·
 `LatticeSpec` (the banded knobs **and the `Config`**) ·
 `generate(rng, spec) -> LatticeInstance` · `tiny_instance() -> LatticeInstance` ·
-`benchmark_suite(spec) -> tuple[LatticeInstance, ...]` · `probe_suite(spec)`.
+`benchmark_suite(spec) -> tuple[LatticeInstance, ...]` · `probe_suite(spec)` ·
+`tuning_suite(spec)`.
 
 **`LatticeSpec` carries the `Config`.** Pool construction must use
 `cfg.pool_cap` and enumeration must use `cfg.max_atoms`; a generator that took
@@ -757,13 +768,28 @@ lattice pool except this instruction and the test that checks it.
 `StateGraph` (integer-indexed states by size, `(parent, action, child)` edge
 arrays, stop-allowed and dead-end flags, `fingerprint()`).
 
-**`fingerprint()` binds the environment, not the seed.** "Same seed → same
-fingerprint" would be satisfied by hashing the seed, which proves nothing about
-what was built. The digest covers the canonical serialisation of: the
-`LatticeSpec` (bands, seeds and `config_hash`), every pool atom **including
-`feat`**, the obligations, the backing snapshot's `state_digest()`, the gold set,
-and both proof templates. A sensitivity test mutates one feature value, one
-source tier and one interval bound, and asserts the digest moves each time.
+**Two fingerprints, because one cannot do both jobs.**
+
+`environment_fingerprint()` covers what was *built and enumerated*, and is
+**independent of β**: the `LatticeSpec` bands and seeds, every pool atom
+including `feat`, the obligations, the backing snapshot's `state_digest()`, the
+gold set, both proof templates, **and the enumerated graph itself** — state
+masks, edge arrays, stop-allowed and dead-end flags.
+
+Including the enumerated graph is the part an earlier draft missed. Binding only
+the generator's *inputs* means two machines whose masks or checker differ would
+enumerate different graphs and still agree on the fingerprint — which is exactly
+the disagreement the fingerprint exists to detect.
+
+Excluding β is the other part. `config_hash` moves when the Phase-3 sweep freezes
+β, so a fingerprint containing it would change *after* the suites were frozen,
+and "frozen" would mean nothing. `target_fingerprint(β)` covers the β-dependent
+layer separately — `(environment_fingerprint, β, u_weights, r_fail)` — so a
+result can be tied to both the environment and the reward it was scored under.
+
+A sensitivity test mutates one feature value, one source tier, one interval
+bound, and one edge of the enumerated graph, and asserts the digest moves each
+time.
 
 **Design notes.** Breadth-first over set sizes, using `IncrementalChecker` for
 validity and `legal_adds` for successors — so the enumeration walks exactly the
@@ -790,12 +816,35 @@ while generating rather than after 200 of them exist.
 
 **Surface.** `target_distribution(instance, cfg) -> Target` ·
 `policy_distribution(policy, state_graph) -> np.ndarray` ·
-`tv(p, q)` · `js(p, q)` · `kl(p, q)` · **`fcs(policy, state_graph)`** · `Target`
-(terminals, `U` cache, `Z`, `p*`, `target_p_fail`).
+`tv(p, q)` · `js(p, q)` · `kl(p, q)` ·
+**`fcs(p_theta, target, *, m, n_subsets, rng)`** · `Target` (terminals, `U`
+cache, `Z`, `p*`, `target_p_fail`, **`templates`**, **`mode_labels`**).
+
+`Target` carries the templates and per-terminal mode labels because `at_beta`
+has to recheck the mode-mass bands, and cannot do that from terminals and `U`
+alone.
+
+#### FCS, specified rather than named
 
 **FCS belongs here, and an earlier draft of this plan omitted it entirely.**
 v1.2 §6.4 requires it ("additionally report the FCS proxy") and Gate 2's own
 definition in v1.2 §7 is "exact TV/KL/JS distribution error **plus FCS**".
+
+**[EVIDENCE]** Definition 1 of *When Do GFlowNets Learn the Right Distribution?*
+(ICLR 2025): for a positive distribution `P_S` over `m`-sized subsets of the
+terminal set,
+
+```
+FCS(p_T, R) := E_{S ~ P_S} [ TV( p_T restricted to S , R restricted to S ) ]
+```
+
+Two things follow immediately, and an earlier draft of this section got both
+wrong by writing `fcs(policy, state_graph)`:
+
+* **it needs the reward, not just the policy.** `R` is an argument. A signature
+  without `Target` or `p*` cannot compute the metric it names.
+* **it is an expectation over sampled subsets**, so every estimator parameter
+  changes the number. "Report FCS" is not executable until they are fixed.
 
 The reason is not compliance. **[EVIDENCE]** *When Do GFlowNets Learn the Right
 Distribution?* (ICLR 2025, Spotlight) defines Flow Consistency in Subgraphs as a
@@ -804,12 +853,31 @@ section titled *Inadequacy of commonly used evaluation protocols* — compares i
 against number-of-modes, average reward of top-scoring samples and Shen's
 accuracy, finding FCS "often the only metric accurately reflecting" convergence.
 
-FCS exists for the case Phase 2 does **not** have: state spaces too large to
-enumerate. So why compute it here? **Because this is the only place where FCS and
-exact TV can both be computed on the same distribution, which makes it the only
-place FCS can be *calibrated* as a proxy.** Phase 9 has no exact TV; if FCS is
-never measured against ground truth on the lattice, any later FCS number is an
-uncalibrated proxy standing in for a quantity nobody checked it against.
+**Estimator, frozen here:**
+
+| Parameter | Value | Why |
+|---|---|---|
+| subset size `m` | **8** | the paper calls this `β` and ties it to the training batch size. Renamed to `m` because `β` is already the reward temperature in this project, and fixed rather than tied to batch size so the metric stays comparable across learners that batch differently — a declared deviation from the paper's usage |
+| subset distribution `P_S` | Corollary 1's `P_S(S; m) ∝ Σ_{x∈S} p_T(x)` over `m`-sized subsets | it is the one for which the paper proves a TV bound |
+| `n_subsets` | 2,000 | reported with its standard error, so the estimator's own noise is visible |
+| RNG seed | `20260812` | frozen, like every other seed here |
+| `p_T` | **exact**, from the DP | the paper notes that for small state graphs `p_T` can be enumerated rather than estimated; we can, so we do |
+| `FAIL` | **participates** | it is a terminal of this MDP and a member of `p*`'s support, so excluding it would measure a different distribution than TV does |
+
+**Why compute it at all, given exact TV is available.** Corollary 1 makes `m` an
+interpolation: at `m = 2` FCS is a ratio-matching-style metric, at
+`m = #terminals` it *is* TV. So at `m = 8` on a 200–5,000-terminal lattice it is a
+genuinely different statistic, and this is the one environment where its gap to
+the true TV can be measured rather than assumed.
+
+**What this does not justify.** An earlier draft argued FCS was needed because
+"Phase 9 has to rely on it". No document specifies a Phase-9 distribution-
+correctness metric — v1.2 §6.4's FCS requirement sits under *the enumerable
+environment*, and Phase 9's exit criteria name none. The honest statement is
+conditional: **if** a distribution number is ever wanted where TV is unavailable,
+this is where its proxy would have been calibrated. Asserting Phase 9 depends on
+it was inventing a requirement to justify a decision, which is the failure mode
+this project's evidence discipline exists to catch.
 
 **`p_θ(FAIL)` is accumulated directly, and the complement is a consistency
 check — not the other way round.** Two ways to get it:
@@ -942,6 +1010,14 @@ completes_A(X) ≡ P_A ⊆ X          completes_B(X) ≡ P_B ⊆ X
 | mixed | both |
 | neither | neither |
 
+**`P_A ≠ P_B` is not enough to make the modes *materially* different**, which is
+the property v1.2 §9 wants demonstrated — it permits templates differing by a
+single atom. The generator therefore also enforces
+`|P_A ∩ P_B| / |P_A ∪ P_B| ≤ 0.5`: at most half the union is shared, so the two
+proofs use substantially different evidence. That bound is in tension with the
+mode-mass diagnostic below — less overlap means less mode-B mass — and the
+tension is the finding, not a knob to turn.
+
 **Templates, not "the atoms unique to each chain".** An earlier draft used the
 unique-atom sets, which is a different and wrong thing: a terminal can hold every
 atom unique to chain A while lacking the shared anchor, and `H` would not object
@@ -984,11 +1060,11 @@ See §5.
 | 1 | P2.0 similarity-matrix cache | second call on one pool is a cache hit |
 | 2 | `enumerate.py` + the state counter | counts closed states and valid terminals on a hand-built pool |
 | 3 | `tiny_instance()` with a written-out enumeration table | 6 atoms, `p*` computed by hand and asserted as literals |
-| 4 | `exact.py`: `Target`, `p*`, divergences | `Σ p* = 1` including `p*(FAIL)` on the tiny instance |
+| 4 | `exact.py`: `Target`, `p*`, divergences **and `fcs`** | `Σ p* = 1` including `p*(FAIL)` on the tiny instance; FCS at `m = #terminals` reproduces exact TV, which is the estimator's own correctness check (Cor. 1) |
 | 5 | `policies.py` + the forward DP for `p_θ` | uniform policy: `Σ p_θ = 1`; DP matches MC on the tiny instance |
 | 6 | `lattice.py` generator with band rejection | 20 instances inside all three bands of G1, within the 30-minute suite budget |
 | 7 | `audits.py` | every audit runs; `d`-informativeness and dead-end absorption inside their bands |
-| 8 | frozen benchmark suite + lattice digest in `verify_handoff` | two runs produce the same digest |
+| 8 | all three suites + `environment_fingerprint` / `target_fingerprint` in `verify_handoff` | two runs produce the same digests; a mutated feature, tier, interval or graph edge moves the environment digest |
 
 Steps 3–5 are the correctness spine and should be finished before the generator
 gets interesting — an evaluator verified on a hand-checked instance is what makes
@@ -1007,14 +1083,16 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 6. `p_θ` agrees to **`≤ 10⁻¹²` absolute per terminal** under permutation of states within each `|S|` layer. Not bit-for-bit: float addition is not associative, so reordering a scatter-add changes the last bits and an exact-equality assertion would fail on a correct implementation. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
     **FCS is reported alongside exact TV on every instance** (v1.2 §6.4, Gate 2 item 3). This is the only environment where both exist, so it is the only place the proxy can be calibrated against ground truth before Phase 9 has to rely on it.
-8. `Target.at_beta` raises on a β the config loader would refuse, so a sweep cannot bypass the `r_fail_margin` check.
+8. `Target.at_beta` raises on a β the config loader would refuse **and on a β at which the main suite would fail its target-mass bands**. `p*` depends on β, so the `neither`-mass band is β-dependent; checking only `r_fail_margin` would let the Phase-3 sweep leave the frozen suite in violation of its own acceptance condition with nothing failing.
 
 **The environment is enumerable and controlled**
 9. Every benchmark instance has 200 ≤ valid terminals ≤ 5,000, ≤ 1 × 10⁵ reachable closed states and ≤ 2 × 10⁶ edges (G1).
 10. **The pool is built to spec, asserted directly:** `instance.pool.cap == cfg.pool_cap == 32` and `20 ≤ len(instance.pool) ≤ 30` (the architecture's universe size). The state-count band of criterion 9 does **not** subsume this — a generator that passed the wrong cap could still happen to produce a small graph, and the failure would only surface in Phase 7 when the same mistake is made against real pools.
 11. **Budgets, derived from the total rather than guessed per unit.** Gate 2 is 7 learners × 3 seeds × **C = 50 checkpoints** × 20 instances = **21,000 evaluations**. Total exact-TV evaluation is budgeted at **≤ 1 h**, fixing the per-evaluation ceiling at **≤ 0.15 s**; the estimate from G2's edge count is 0.05 s, so there is 3× headroom. `C = 50` is **frozen in the Phase-3 handoff** — the budget is meaningless without it, and a Phase 3 that quietly checkpointed 200 times would quadruple the number this criterion exists to bound. If `C` must change, the budget is `21,000 · (C/50) · 0.15 s` and the ceiling moves with it.
     Enumeration + `Target` construction ≤ 60 s per instance; **total suite generation including rejections ≤ 30 min** (G1); suite resident memory ≤ 2 GB — comfortable under the `uint64` state representation of G3, and not under a `frozenset` one.
-    **The 0.15 s covers the numpy DP given precomputed log-probabilities, and nothing else.** The policy's batched forward pass is a property of the learner, not of the evaluator, and is measured and reported separately — folding it in would make Phase 2's budget depend on Phase 3's architecture.
+    **FCS is budgeted separately at ≤ 0.05 s per instance** (2,000 subsets of size 8 over an exact `p_θ` already in hand), bringing the per-evaluation total to ≤ 0.20 s and the Gate-2 total to ≤ 1.2 h. An earlier draft added FCS to the reporting requirement without adding it to the budget it inflates.
+
+**The 0.15 s covers the numpy DP given precomputed log-probabilities, and nothing else.** The policy's batched forward pass is a property of the learner, not of the evaluator, and is measured and reported separately — folding it in would make Phase 2's budget depend on Phase 3's architecture.
 
 **The audits**
 12. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
@@ -1023,17 +1101,19 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 15. On every **main-suite** instance: **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, **≥ 10 distinct `d` values are reachable**, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6 (G5). The **probe suite is exempt by design** — it is generated without this band precisely to test robustness where the signal is sparse (G9), so applying the band there would require it to satisfy the condition it exists to violate.
 16. Target mass is reported per mode bucket (A / B / mixed / neither) on **completed** chains, with `sufficiency = 0` mass, effective support size, top-10 mass and Jaccard spread. Mass on the **`neither`** bucket is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
 
-**Reproducibility**
 17. **The planted structure is asserted to exist, per instance.** Nothing else in this list does — and the current criteria can all pass on an instance whose deliberate mechanisms are broken. Criterion 14 needs only *one* reachable dead end, which a cap-induced one supplies even if both planted failure routes are dead. Worst of all, a malformed `P_B` produces zero alternative-mode mass, which G10 treats as a **diagnostic** — so a broken instance would be written up as "effectively unimodal" instead of rejected. Therefore, on every instance:
     - `P_A` and `P_B` are each formally valid, closed and reachable terminals, and `P_A ≠ P_B`;
     - the duplicate-slot mechanism and the temporal-disjoint mechanism **each independently** produce a reachable invalid state (checked separately, not "at least one dead end exists");
     - ≥ 2 distinct source tiers occur among atoms whose `Source` resolves, and every `feat` is non-zero with ≥ 2 distinct vectors;
     - the time constraint is bounded on both sides, and ≥ 1 claim interval **partially** overlaps it (neither disjoint nor containing);
     - every atom's `target` resolves in the backing snapshot;
-    - ≥ 1 invalidated edge and ≥ 1 quarantined assertion are present and reachable.
-18. **The lattice fingerprint binds the environment, not just the seed.** "Same seed → same fingerprint" is satisfied by hashing the seed alone, which would prove nothing. The digest covers the canonical serialisation of: the `LatticeSpec` (bands, seeds, and `config_hash`), every pool atom including `feat`, the obligations, the backing snapshot's `state_digest()`, the gold set, and both templates. **Sensitivity is tested**: mutating any one of those — a single feature value, one tier, one interval bound — must change the digest.
-19. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
-20. `graft.synth` imports no ML library.
+    - ≥ 1 invalidated edge and ≥ 1 quarantined assertion are **present in the snapshot and asserted *unreachable*** — the atoms referencing them must be excluded by the `ADD` mask. An earlier draft asked for them to be "reachable", which Phase 1's masks make impossible by design: a per-atom violation is permanent, so such atoms are pruned. They are negative cases for sub-checks 4 and 7, not selectable evidence.
+18. **Children are reachable from the policy interface**: for a sampled state, every legal `ADD` maps to the index of the child state it produces, so an LA-style featuriser — the published remedy for the GNN-expressivity limit v1.2 §6.4 names as a risk — remains implementable behind the frozen protocol. Asserting that a capability is not foreclosed requires a test, not a sentence saying no test would catch its loss.
+
+**Reproducibility**
+19. **The two fingerprints bind what they claim.** `environment_fingerprint` covers the spec, the pool including `feat`, the obligations, the snapshot digest, the gold set, both templates **and the enumerated graph** (state masks, edge arrays, stop/dead-end flags) — binding only generator *inputs* would let two machines with differing masks enumerate different graphs and still agree. It excludes β, so freezing β after the sweep does not move it. `target_fingerprint(β)` binds the β-dependent layer separately. Sensitivity is tested: mutating one feature value, one source tier, one interval bound and one graph edge each moves the digest.
+20. All three suites are deterministic: same seed → identical `environment_fingerprint`, on a different machine.
+21. `graft.synth` imports no ML library.
 
 ---
 
@@ -1059,7 +1139,7 @@ happened once.
 | 7 | `d` informativeness | **main suite only**: not `\|s\|`-determined at ≥ 3 sizes; ≥ 10 distinct `d` values; **both** structural and visitation-weighted zero-`Δd` ≤ 0.6. The probe suite is generated *without* this band, by design (G5, G9) | **Gate 2 becomes unable to resolve Contribution 3** |
 | 8 | Policy interface | **batch-first** `action_log_probs(state_ix: np.ndarray, graph)` — indices, not materialised sets; never called at dead ends; an adapter implements it, never a learner (G6) | 10⁵ Python round-trips per checkpoint; Phase 3 re-wires |
 | 9 | Oracle policy | flow decomposition against uniform `P_B`; `r_fail` split uniformly across dead ends (G6) | an oracle that cannot reach TV = 0, so the evaluator is unverifiable |
-| 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates** `r_fail_margin` (G7) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
+| 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates `r_fail_margin` and the target-mass bands** — the latter are β-dependent (G7, G10) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
 | 11 | MC agreement | `k ≤ 100` instance at `N = 200,000`, `TV < 0.02`; top-20 only at full scale (G8) | a test that measures its own sampling floor |
 | 12 | Suites | main 20 @ seed `20260808`; probe 5 @ seed `20260809`, distractor-heavy; both content-hashed (G9) | learners compared on different environments |
 | 13 | Mode definition | bucket by **completion** of the generator's complete minimal proof templates `P_A` / `P_B` (which include shared atoms), not by unique-atom membership and not by clustering (G10) | partial chains counted as proof modes; or a clustering definition that groups *dissimilar* proofs and subtracts an empty core |
@@ -1069,9 +1149,11 @@ happened once.
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
 | 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); re-validated on the main suite via `at_beta`, which checks `r_fail_margin` **and** the target-mass bands | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
-| 19b | FCS | reported beside exact TV on every instance, to calibrate the proxy Phase 9 must use without ground truth (v1.2 §6.4) | an uncalibrated proxy standing in for a quantity never checked against it |
-| 20 | Lattice fingerprint | digest over spec, pool (with `feat`), obligations, snapshot digest, gold and both templates; sensitivity-tested | a fingerprint that only proves the seed was the same |
-| 21 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals, targets, invalidated edge and quarantined assertion all asserted per instance | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
+| 20 | FCS | `fcs(p_theta, target, m=8, n_subsets=2000, seed=20260812)`, `P_S` per Cor. 1, exact `p_θ`, `FAIL` included; reported beside exact TV (v1.2 §6.4, Gate 2 item 3) | a metric named but not executable — and a signature without the reward cannot compute it |
+| 21 | Fingerprints | `environment_fingerprint` over spec, pool (with `feat`), obligations, snapshot digest, gold, both templates **and the enumerated graph**, excluding β; `target_fingerprint(β)` separate; both sensitivity-tested | a fingerprint that proves only the seed matched, or one that moves when β is frozen after the suites were |
+| 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, L5 at fixed trajectory budget, 3 seeds, ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
+| 23 | Mode separation | `\|P_A ∩ P_B\| / \|P_A ∪ P_B\| ≤ 0.5` | `P_A ≠ P_B` permits a one-atom difference, which is not "materially different" |
+| 24 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals, targets, invalidated edge and quarantined assertion all asserted per instance | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
 
 **PROPOSED — requires your sign-off; not locked until then.** Everything else in
 §6 is a decision I have taken; this one is a recommendation awaiting a yes,
@@ -1142,7 +1224,7 @@ Any relaxation requires, in order:
 1. a **new plan version** recording which band moved, to what, and why;
 2. a **new config/spec version** — the band is part of the frozen set;
 3. **regeneration of both suites** from their seeds;
-4. a **new lattice fingerprint**, so no result computed against the old
+4. a **new environment fingerprint**, so no result computed against the old
    environment can be silently compared to one against the new;
 5. **Gate-0 re-sign-off**;
 6. **no learner results inspected beforehand.** If any have been, the relaxation
@@ -1165,9 +1247,9 @@ no PyTorch. If a `graft/synth/` file imports `torch`, something has gone wrong.
 ## 8. What Phase 3 will need from this, verbatim
 
 ```python
-from graft.synth.lattice   import LatticeInstance, LatticeSpec, benchmark_suite, generate, probe_suite, tiny_instance
+from graft.synth.lattice   import LatticeInstance, LatticeSpec, benchmark_suite, generate, probe_suite, tiny_instance, tuning_suite
 from graft.synth.enumerate import StateGraph, reachable_states, valid_terminals
-from graft.synth.exact     import Target, policy_distribution, target_distribution, tv, js, kl
+from graft.synth.exact     import Target, fcs, policy_distribution, target_distribution, tv, js, kl
 from graft.synth.policies  import ActionPolicy, FlowOraclePolicy, UniformPolicy
 from graft.synth.audits    import run_audits
 ```

@@ -245,7 +245,7 @@ R(FAIL)     = r_fail                                 # single absorbing terminal
 
 ### 1.5 `masks.py`
 
-`legal_adds(state) → mask` — excludes repeats, budget violations, formally illegal atoms, and **atoms whose referenced atoms are not yet selected** (closure rule, fix F10). `stop_allowed(state) = H(state)`, evaluated incrementally so that construction costs no `terminal_checks` (Phase-0 plan G1). **No `ABSTAIN` action exists** (v1.2 §3.4/§4.2); the `FAIL` terminal of §1.4 is reached by budget exhaustion, never by an action.
+`legal_adds(state) → mask` — excludes repeats, budget violations, formally illegal atoms, and **atoms whose referenced atoms are not yet selected** (closure rule, fix F10). `stop_allowed(state) = H(state)`, evaluated incrementally so that construction costs no `terminal_checks` (Phase-0 plan G1). **No `ABSTAIN` action exists** (v1.2 §3.4/§4.2); the `FAIL` terminal of §1.4 is reached when construction can neither legally continue nor legally stop — budget exhaustion is the common case, not the definition — never by an action.
 
 **Exit criterion.** Property-based tests: *no formally invalid set is ever a reachable terminal other than `FAIL`*; all eight checker sub-checks have positive and negative unit cases; every `U` term returns a value in [0, 1]; masks never permit an atom whose references are absent; every zero-legal-action state with `STOP` masked transitions to `FAIL` — budget exhaustion is the common cause, not the only one (Phase-1 exit criterion 5).
 
