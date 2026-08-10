@@ -411,7 +411,10 @@ Unchanged from `GRAFT_PHASE1_BUILD.md` §8, with one addition learned here:
 
 1. a gold proof set per instance;
 2. substitutable evidence and multiple disjoint valid modes;
-3. atoms that can collide under canonicalisation, or the collision audit tests nothing;
+3. ~~atoms that can collide under canonicalisation~~ — **withdrawn**; see
+   `GRAFT_PHASE2_BUILD.md` G3. Equivalent actions cannot exist on a labelled
+   set-construction action space, so this asked for the impossible. The audit
+   stays as a regression test expecting 0;
 4. mixed source tiers and non-trivial `feat`;
 5. **bounded** time constraints — and **partially overlapping** ones, not only
    exact-or-disjoint, or `temporal_correctness` silently reverts to a presence

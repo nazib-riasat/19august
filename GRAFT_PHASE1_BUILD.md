@@ -788,12 +788,15 @@ reports zero having measured nothing.
    different valid proof sets" one of three conditions for the GFlowNet argument
    to be convincing. The lattice is the one place that can be guaranteed by
    construction rather than hoped for.
-3. **The generator must be able to emit colliding atoms** — two distinct atoms
-   canonicalising to the same child state. Otherwise Phase 2.2's
-   equivalent-action collision audit reports 0 having tested nothing.
-   **[EVIDENCE]** Symmetry-Aware GFlowNets (ICML 2025): L₁ ≈ 0.12 uncorrected vs
-   ≈ 0.01 corrected — the correction matters only if collisions exist, and
-   whether they do is a measurement.
+3. ~~**The generator must be able to emit colliding atoms**~~ — **withdrawn by
+   `GRAFT_PHASE2_BUILD.md` G3.** This asked Phase 2 for something no generator
+   can produce: for distinct legal actions `a ≠ b`, the child *sets* `S ∪ {a}`
+   and `S ∪ {b}` differ, so equivalent actions do not exist on a labelled
+   set-construction action space. The audit reporting 0 is a proof discharged,
+   not a test that failed to fire, and the Symmetry-Aware GFlowNets correction
+   (ICML 2025) does not apply — it addresses state spaces quotiented by graph
+   isomorphism, and ours is not quotiented. Phase 2 keeps the audit as a
+   regression test with a known answer.
 4. **Atoms must carry mixed source tiers and non-trivial `feat` vectors**, or
    `source_quality` and `redundancy` are constant and exit criterion 9 fails.
 5. **Time constraints must be bounded on both sides.** An unbounded constraint
