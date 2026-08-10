@@ -192,11 +192,20 @@ invalid through a **set-level** check, and of the five, three cannot fire:
 closure is maintained by the mask, identity is impossible with content-derived
 ids, and size only bites at the cap.
 
-**Exactly two ways remain**, and both must be planted deliberately:
+**Two mechanisms remain that the generator must plant deliberately:**
 
 1. **two bindings claiming one slot** (sub-check 9);
 2. **a binding whose bound claim's validity is disjoint from the time
    constraint** (sub-check 3).
+
+These are the two *planted* routes to an invalid reachable state — not an
+exhaustive account of invalidity, and not the only causes of a dead end. The
+empty root is a third invalid reachable state, by design (G1), which is why
+`stop_allowed(root)` is `False`. And dead ends have further causes that Phase 1
+enumerated: an empty pool, a pool exhausted below the cap, and every remaining
+atom failing a per-atom check. What is true is that without these two, no
+*mask-respecting* trajectory past the root could ever become invalid, so `FAIL`
+would be unreachable and `STOP`-masking would be doing nothing.
 
 Phase 1 confirmed the shape empirically: with `p_stop = 0`, 110 of 480
 mask-respecting rollouts reached `FAIL`, **every one at `|X| = max_atoms`**.
@@ -453,10 +462,18 @@ cheap because `p*` is already in hand:
 
 | Audit | Band |
 |---|---|
-| `p*` mass on each **designed** proof mode | **diagnostic**: below 1% for the alternative mode changes the claim, does not fail the build |
-| `p*` mass on terminals with `sufficiency = 0` | ≤ 0.5 — a hard band |
+| `p*` mass on each **designed** proof mode (completed) | **diagnostic**: below 1% for the alternative mode changes the claim, does not fail the build |
+| `p*` mass on the **`neither` bucket** — completes no designed proof | ≤ 0.5 — a hard band |
+| `p*` mass on terminals with `sufficiency = 0` | reported, no band |
 | effective support size, `exp(H(p*))` | reported, no band |
 | `p*` mass on the top-10 terminals | reported, no band |
+
+**Why the gate moved off `sufficiency = 0`.** That threshold is too weak to catch
+what it was aimed at: a terminal holding one gold atom and seven distractors has
+*positive* sufficiency and escapes the band while being junk. The `neither`
+bucket asks the question directly — does this terminal complete either designed
+proof — and reuses a definition already needed above. `sufficiency = 0` mass is
+still reported, as a descriptive cross-check.
 
 **Why the mode mass is a diagnostic and the distractor mass is a gate.** The two
 look alike and are not. The distractor share is something the generator
@@ -583,7 +600,29 @@ while generating rather than after 200 of them exist.
 **Surface.** `target_distribution(instance, cfg) -> Target` ·
 `policy_distribution(policy, state_graph) -> np.ndarray` ·
 `tv(p, q)` · `js(p, q)` · `kl(p, q)` · `Target` (terminals, `U` cache, `Z`,
-`p*`, `p_fail_floor`).
+`p*`, `target_p_fail`).
+
+**`p_θ(FAIL)` is accumulated directly, and the complement is a consistency
+check — not the other way round.** Two ways to get it:
+
+```
+direct      p_θ(FAIL) = Σ_{dead-end states d} f(d)     # sum of small positives
+complement  p_θ(FAIL) = 1 − Σ_{valid X} p_θ(X)         # cancellation near 1
+```
+
+The complement is what architecture fix F3 specifies, and it is the *only* option
+outside an enumerable environment — but here the state graph already labels dead
+ends, so the direct sum is available and is far better conditioned. The
+complement subtracts two quantities that agree to ~12 digits, so its absolute
+error is bounded below by float64 representation near 1 (~2 × 10⁻¹⁶) regardless
+of how carefully the sum is done. Measured: with `p*(FAIL) ≈ 2.5 × 10⁻¹²`, the
+complement's relative error is **~2 × 10⁻⁴** with naive summation and no better
+with `math.fsum`, because the loss is in `1 − x`, not in `Σ`.
+
+So: **direct is the reported value**; the complement is asserted against it to
+`≤ 10⁻¹²` absolute as the check that mass genuinely partitions between valid
+terminals and `FAIL`. Any tolerance tighter than float64 allows would be a test
+that cannot pass, dressed as rigour.
 
 **Design notes.** `Target` caches `U` per terminal, not `R` (G7), and exposes
 `at_beta(beta)` returning `p*` for a new β without re-deriving `U` — which is
@@ -604,7 +643,12 @@ caller.
 implementations.
 
 **Surface.** `ActionPolicy` Protocol · `UniformPolicy` ·
-`FlowOraclePolicy(target, state_graph)` · `uniform_backward(state_graph)`.
+`ForcedContinuationPolicy` · `FlowOraclePolicy(target, state_graph)` ·
+`uniform_backward(state_graph)`.
+
+`ForcedContinuationPolicy` is uniform over legal `ADD`s and takes `STOP` only
+when no `ADD` remains. It exists for the dead-end absorption audit, where
+`UniformPolicy` would stop early and report a clean profile by construction.
 
 **Design note.** `FlowOraclePolicy` exists so the evaluator can be checked
 against a distribution whose answer is known in advance: a policy constructed by
@@ -626,16 +670,26 @@ not appear in a results table as though it were a method.
 | equivalent-action collisions (exact child-set equality) | **0**, by G3 | the pool is malformed |
 | state-fingerprint collisions | **0** | `canon_set_hash` collided; state identity is still exact, but the fingerprint is unusable for comparison |
 | `FAIL` reachability | ≥ 1 reachable dead end | `STOP`-masking is doing nothing (G4) |
-| **dead-end `\|X\|` distribution** | modal size ≥ `max_atoms − 1`; full histogram reported | dead ends at small `\|X\|` mean the **`ADD` masks are too tight**, not that the budget is small — the distinction Phase 1 asked Phase 2 to make |
+| **dead-end absorption mass by `\|X\|`** | cumulative mass at `\|X\| < max_atoms − 1` **≤ 0.05**; full profile reported | dead ends at small `\|X\|` mean the **`ADD` masks are too tight**, not that the budget is small — the distinction Phase 1 asked Phase 2 to make |
 | `d` informativeness, structural **and** visitation-weighted | not `\|s\|`-determined; both ≤ 0.6 zero-`Δd` | **Gate 2 cannot resolve L7 from L6** (G5) |
-| **target mass by mode bucket** | reported; alt. mode ≥ 1% is a *diagnostic*, not an acceptance test | the target is effectively unimodal (G10) |
-| target mass on `sufficiency = 0` terminals | ≤ 0.5 | the distractor tail dominates what TV measures (G10) |
-| effective support `exp(H(p*))`, top-10 mass, Jaccard spread | reported, no band | descriptive |
+| **target mass by mode bucket** (completed chains) | reported; alt. mode ≥ 1% is a *diagnostic*, not an acceptance test | the target is effectively unimodal (G10) |
+| target mass on the `neither` bucket | ≤ 0.5 | the distractor tail dominates what TV measures (G10) |
+| `sufficiency = 0` mass, effective support `exp(H(p*))`, top-10 mass, Jaccard spread | reported, no band | descriptive |
 
-**Dead-end measurement is policy-conditioned, so the policy is declared.** The
-histogram is taken under `UniformPolicy` with `STOP` suppressed — forced
-continuation, which maximises dead-end exposure and is the same regime Phase 1
-used to find that its own dead ends all sat at `max_atoms`.
+**Absorption mass, not a modal bin, and exact rather than sampled.** An earlier
+draft required only that the *modal* dead-end size be ≥ `max_atoms − 1`, which
+passes even when a large share of dead-end mass sits at small `|X|` — the single
+biggest bin can be late while the tail is unhealthy. Phase 1 asked for early dead
+ends to be *exposed*, so the audit bands the **cumulative** early mass. And
+because the state graph is enumerated, absorption mass is computed exactly by the
+same forward DP rather than estimated from rollouts.
+
+**The measuring policy is named, because it is not `UniformPolicy`.**
+`ForcedContinuationPolicy` is uniform over legal `ADD`s and takes `STOP` **only
+when no `ADD` is legal** — the `p_stop = 0` regime Phase 1 used to find that its
+own dead ends all sat at `max_atoms`. `UniformPolicy` includes `STOP` in its
+support whenever it is allowed, so it stops early and barely reaches dead ends at
+all; using it here would report a clean profile by construction.
 
 **Modes are audited on the generator's own chains, not recovered by clustering.**
 The generator *builds* two substitutable chains, so it knows exactly which atoms
@@ -644,10 +698,15 @@ falls in one bucket:
 
 | Bucket | Contains |
 |---|---|
-| mode A | ≥ 1 atom of `A*`, none of `B*` |
-| mode B | ≥ 1 atom of `B*`, none of `A*` |
-| mixed | atoms of both |
-| neither | atoms of neither — the distractor tail |
+| mode A | `A* ⊆ X` and not `B* ⊆ X` — the A-chain is **complete** |
+| mode B | `B* ⊆ X` and not `A* ⊆ X` |
+| mixed | both chains complete |
+| neither | neither chain completes |
+
+**Completion, not membership.** An earlier draft bucketed on "contains ≥ 1 atom
+of `A*`", which would count a single chain-head node plus seven distractors as
+mode-A mass — inflating exactly the number the audit exists to measure, with
+terminals that prove nothing. A mode is a *finished* proof or it is not a mode.
 
 `p*` mass is reported per bucket. Direct, unambiguous, and it needs no threshold.
 
@@ -683,7 +742,7 @@ See §5.
 | 4 | `exact.py`: `Target`, `p*`, divergences | `Σ p* = 1` including `p*(FAIL)` on the tiny instance |
 | 5 | `policies.py` + the forward DP for `p_θ` | uniform policy: `Σ p_θ = 1`; DP matches MC on the tiny instance |
 | 6 | `lattice.py` generator with band rejection | 20 instances inside both bands of G1 |
-| 7 | `audits.py` | all five run; `d`-informativeness inside its band |
+| 7 | `audits.py` | every audit runs; `d`-informativeness and dead-end absorption inside their bands |
 | 8 | frozen benchmark suite + lattice digest in `verify_handoff` | two runs produce the same digest |
 
 Steps 3–5 are the correctness spine and should be finished before the generator
@@ -697,9 +756,9 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 **The evaluator is correct**
 1. On `tiny_instance()`: enumerated `p*` matches the hand-computed table literal for literal, and `Σ p* = 1` **including `p*(FAIL)`**.
 2. On `tiny_instance()` with `UniformPolicy`: `TV(p_DP, p_MC) < 0.02` at `N = 200,000`, and every terminal within 5σ (G8).
-3. On `tiny_instance()` with `FlowOraclePolicy`: **`TV < 10⁻⁹`** — literally zero to floating point, not `p*(FAIL)`. **And separately** `|p_θ(FAIL) − p*(FAIL)| / p*(FAIL) < 10⁻⁶`: `p*(FAIL) ≈ 2.5 × 10⁻¹²` is far too small to move an aggregate TV, so an oracle that never routes mass to `FAIL` would pass the TV check while being wrong (G6). `tiny_instance()` must contain a reachable dead end, or neither assertion executes the path.
+3. On `tiny_instance()` with `FlowOraclePolicy`: **`TV < 10⁻⁹`** — literally zero to floating point, not `p*(FAIL)`. **And separately**, on the *directly accumulated* `p_θ(FAIL)`: `|p_θ(FAIL) − r_fail/Z| / (r_fail/Z) < 10⁻⁹`. `p*(FAIL) ≈ 2.5 × 10⁻¹²` cannot move an aggregate TV, so an oracle that never routes mass to `FAIL` would pass the TV check while being wrong (G6). The assertion is on the direct sum because the complement cannot resolve that value — its relative error is ~2 × 10⁻⁴ at float64, even with `fsum`. `tiny_instance()` must contain a reachable dead end, or neither assertion executes the path.
 4. On a benchmark instance with `UniformPolicy` at **`N = 200,000` rollouts, MC seed `20260810`**: the **top-20 highest-mass terminals** agree within 5σ (G8). A full-support TV assertion is not made — at 5,000 terminals the sampling floor is 0.063, so such a test would measure its own noise.
-5. On every benchmark instance: `Σ_valid p_θ + p_θ(FAIL) = 1` to 1e-9, and `p_θ ≥ 0` everywhere.
+5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻¹²` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. The tolerance is set by float64 accumulation over ~10⁵ states, not chosen to look impressive.
 6. `p_θ` is invariant to **permutation of states within each `|S|` layer**. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
 8. `Target.at_beta` raises on a β the config loader would refuse, so a sweep cannot bypass the `r_fail_margin` check.
@@ -713,9 +772,9 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 **The audits**
 12. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
 13. Equivalent-action collision rate, by exact child-set equality, is **0** on every instance — with G3's proof in the module docstring and the SA-GFN correction *not* applied. Zero state-fingerprint collisions.
-14. `FAIL` is reachable on every instance; the dead-end `|X|` histogram is reported and its **modal size is ≥ `max_atoms − 1`** under `UniformPolicy` with `STOP` suppressed — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight". `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
+14. `FAIL` is reachable on every instance. Dead-end **absorption mass by `|X|`** is computed exactly under `ForcedContinuationPolicy` and reported in full, with **cumulative mass at `|X| < max_atoms − 1` ≤ 0.05** — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight", and which a modal-bin statistic would not answer. `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
 15. **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6, on every main-suite instance (G5).
-16. Target mass is reported per mode bucket (A / B / mixed / neither), with effective support size, top-10 mass and Jaccard spread. Mass on `sufficiency = 0` terminals is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
+16. Target mass is reported per mode bucket (A / B / mixed / neither) on **completed** chains, with `sufficiency = 0` mass, effective support size, top-10 mass and Jaccard spread. Mass on the **`neither`** bucket is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
 
 **Reproducibility**
 17. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
@@ -739,10 +798,12 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 | 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates** `r_fail_margin` (G7) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
 | 11 | MC agreement | `k ≤ 100` instance at `N = 200,000`, `TV < 0.02`; top-20 only at full scale (G8) | a test that measures its own sampling floor |
 | 12 | Suites | main 20 @ seed `20260808`; probe 5 @ seed `20260809`, distractor-heavy; both content-hashed (G9) | learners compared on different environments |
-| 13 | Mode definition | bucket by the generator's own `A*` / `B*` atom sets, not by clustering (G10) | a clustering definition that groups *dissimilar* proofs and subtracts an empty core |
-| 14 | Target-mass status | `sufficiency = 0` mass ≤ 0.5 is a **gate**; alt.-mode ≥ 1% is a **diagnostic**; one gold retained (G10) | either a build that cannot pass, or a Gate-2 table that reads as multimodal when it is not |
-| 15 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
-| 16 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
+| 13 | Mode definition | bucket by **completion** of the generator's own `A*` / `B*` chains, not by membership and not by clustering (G10) | partial chains counted as proof modes; or a clustering definition that groups *dissimilar* proofs and subtracts an empty core |
+| 14 | Target-mass status | `neither`-bucket mass ≤ 0.5 is a **gate**; alt.-mode ≥ 1% is a **diagnostic**; one gold retained (G10) | either a build that cannot pass, or a Gate-2 table that reads as multimodal when it is not |
+| 15 | `p_θ(FAIL)` | **direct** sum over dead ends is the reported value; complement is a partition check at ≤ 10⁻¹² absolute (G6) | a criterion float64 cannot satisfy, or an oracle bug that passes on aggregate TV |
+| 16 | Dead-end audit | exact absorption mass by `\|X\|` under `ForcedContinuationPolicy`; cumulative early mass ≤ 0.05 | a modal-bin statistic that passes with an unhealthy tail |
+| 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
+| 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
 
 **Open question for you.** The `d`-informativeness band of ≤ 0.6 zero-`Δd`
 transitions is a **guess calibrated on Phase-1 fixtures, not on the lattice** —
