@@ -598,10 +598,10 @@ missing:
    forbid.
 2. **Selected on the tuning suite only.** The main and probe suites are not
    enumerated at any candidate β except the winner.
-3. **Re-validated on the main suite before Gate 2 runs.** The chosen β is fed
-   through `Target.at_beta`, which re-checks `r_fail_margin` *and* the
-   target-mass bands (P2.3). If the main suite fails its bands at the frozen β,
-   that is a regeneration under the amendment procedure of §6b — not a shrug.
+3. **Re-validated on the main suite before Gate 2 runs**, per **decision 10**
+   — `at_beta` for `r_fail_margin`, `validate_bands("main")` for the mass bands.
+   If the main suite fails its bands at the frozen β, that is a regeneration
+   under the amendment procedure of §6b — not a shrug.
 
 All three suites are frozen at Gate 0 alongside the β candidate set.
 
@@ -786,17 +786,32 @@ Excluding β is the other part. `config_hash` moves when the Phase-3 sweep freez
 and "frozen" would mean nothing. `target_fingerprint(β)` covers the β-dependent
 layer separately — `(environment_fingerprint, β, u_weights, r_fail)` **and the
 computed target itself**: terminal ids in sorted order with their `p*` values
-rounded to 10 decimal places, plus `p*(FAIL)` and `Z`.
+quantised to **10⁻¹²**, plus `p*(FAIL)` and `Z`.
 
 Hashing only the inputs would repeat, one layer up, the mistake the environment
 fingerprint just fixed: two implementations could compute *different* targets
-from identical inputs and still agree. The rounding is what makes it stable
-across machines — float differences live around 10⁻¹⁶, far below a 10⁻¹⁰
-quantisation.
+from identical inputs and still agree.
 
-A sensitivity test mutates one feature value, one source tier, one interval
-bound, and one edge of the enumerated graph, and asserts the digest moves each
-time.
+**What the quantum can and cannot catch, stated rather than glossed.** There is
+no quantisation that both avoids false alarms and catches everything: the DP's
+cross-machine float noise is ~10⁻¹² absolute, so a finer quantum would flag
+identical implementations, and a coarser one hides real differences. At 10⁻¹²
+over 5,000 terminals the worst hidden discrepancy is ≈ 1.25 × 10⁻⁹ in TV —
+comparable to the evaluator's own partition and oracle tolerances, and therefore
+the resolution limit of the whole numeric layer, not a weakness peculiar to the
+fingerprint. An earlier draft used 10⁻¹⁰, which hides up to 1.25 × 10⁻⁷ — two
+orders above the tolerances it sits beside.
+
+The fingerprint therefore detects **structural and algorithmic divergence**;
+numerical agreement below that floor is what exit criteria 3 and 5 are for.
+
+Sensitivity is tested on both digests, and each on its *own* payload.
+`environment_fingerprint`: mutate one feature value, one source tier, one
+interval bound and one edge of the enumerated graph. `target_fingerprint`:
+perturb a single terminal's `U` by 10⁻⁹ — enough to move `p*` well above the
+10⁻¹² quantum — and assert the digest moves **while the environment digest does
+not**. An earlier draft mutated only environment components, so it never
+demonstrated that the target fingerprint binds the target at all.
 
 **Design notes.** Breadth-first over set sizes, using `IncrementalChecker` for
 validity and `legal_adds` for successors — so the enumeration walks exactly the
@@ -1105,7 +1120,12 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 5. On every benchmark instance: mass partitions — `|1 − Σ_valid p_θ − p_θ(FAIL)| ≤ 10⁻⁹` with `p_θ(FAIL)` taken from the direct sum — and `p_θ ≥ 0` everywhere. **The tolerance is set by the worst-case bound, not by the observed residual.** Scatter-add over up to 2 × 10⁶ edges has a worst case of `n·eps ≈ 4.4 × 10⁻¹⁰`; a measured one-pass residual is ~2 × 10⁻¹⁶ because the errors random-walk rather than conspire, but a criterion calibrated on the lucky case is a flaky test waiting to happen. An earlier draft said 10⁻¹², which the bound does not support.
 6. `p_θ` agrees to **`≤ 10⁻¹²` absolute per terminal** under permutation of states within each `|S|` layer. Not bit-for-bit: float addition is not associative, so reordering a scatter-add changes the last bits and an exact-equality assertion would fail on a correct implementation. The DP requires ascending layer order; only intra-layer order is free, and asserting invariance to arbitrary visitation order would be asserting something false.
 7. KL is reported only when finite, with the zero-support guard exercised by a deterministic policy.
-    **FCS is verified against exhaustive enumeration**, not against TV. On a hand-built 6-terminal target at `m = 3` all C(6,3) = 20 subsets are enumerable, so the exact FCS is computable and the sampler's estimate must converge to it. Testing at `m = #terminals` — as an earlier draft proposed — verifies nothing about the sampler: there is exactly one subset of that size, `P_S` is degenerate, and FCS reduces to TV for *any* sampler, including one that ignores `P_S` or inverts the renormalisation.
+    **FCS is verified against exhaustive enumeration**, on a fixture built so a broken sampler cannot pass:
+    - **fixture**: 6 terminals with `p_θ = (0.40, 0.25, 0.15, 0.10, 0.07, 0.03)` and `R ∝ (0.05, 0.10, 0.15, 0.20, 0.22, 0.28)` — deliberately **non-uniform and anti-correlated**, so `FCS > 0` by a wide margin. A fixture where `p_θ ∝ R` gives `FCS = 0` for every sampler and would pass while broken;
+    - **reference**: exact FCS at `m = 3`, computed by enumerating all C(6,3) = 20 subsets with their `P_S` weights, written into the test as a literal;
+    - **pass condition**: the 2,000-draw estimator at seed `20260812` agrees with that literal **within 4 standard errors of its own sampling distribution**, the SE computed from the same draws. Not "converges to it", which is not a test.
+
+    Testing at `m = #terminals` — as an earlier draft proposed — verifies nothing about the sampler: there is exactly one subset of that size, `P_S` is degenerate, and FCS reduces to TV for *any* sampler, including one that ignores `P_S` or inverts the renormalisation.
     **FCS is reported alongside exact TV on every instance** (v1.2 §6.4, Gate 2 item 3), with its standard error. At `m = 8` it is a different statistic from TV (Cor. 1), and this is the only environment where the gap between them can be measured rather than assumed. No claim is made about Phase 9 needing it — no document specifies a Phase-9 distribution metric.
 8. `Target.at_beta` raises on a β the config loader would refuse (`r_fail_margin`), and **`Target.validate_bands("main")` raises at a β where the main suite would fail its target-mass bands**. Two calls, because the band is main-suite-only while `at_beta` is what the β sweep runs on the *tuning* suite — a single call that always checked the band would abort the sweep on a condition the tuning suite is exempt from. `p*` depends on β, so skipping the band check entirely would let the sweep leave the frozen main suite violating its own acceptance condition.
 
@@ -1172,7 +1192,7 @@ happened once.
 | 16 | Dead-end audit | exact absorption mass by `\|X\|` under `ForcedContinuationPolicy`; **conditional** early share `Σ_{|d|<max_atoms−1} f(d) / Σ_{d∈D} f(d)` ≤ 0.05, not absolute mass | a modal-bin statistic that passes with an unhealthy tail |
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
-| 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); re-validated on the main suite via `at_beta`, which checks `r_fail_margin` **and** the target-mass bands | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
+| 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); the frozen β re-validated on the main suite per **decision 10** | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
 | 20 | FCS | `fcs(p_theta, target, m=8, n_subsets=2000, seed=20260812)`, `P_S` per Cor. 1, exact `p_θ`, `FAIL` included; reported beside exact TV (v1.2 §6.4, Gate 2 item 3) | a metric named but not executable — and a signature without the reward cannot compute it |
 | 21 | Fingerprints | `environment_fingerprint` over spec, pool (with `feat`), obligations, snapshot digest, gold, both templates **and the enumerated graph**, excluding β; `target_fingerprint(β)` separate; both sensitivity-tested | a fingerprint that proves only the seed matched, or one that moves when β is frozen after the suites were |
 | 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, L5 at **the same fixed trajectory budget the Gate-2 primary comparison uses** (fix F12) — one number, preregistered once in Phase 3, used in both places; 3 seeds; ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
@@ -1306,8 +1326,7 @@ from graft.synth.audits    import run_audits
    (fix F12). Phase 2 supplies the metric; it does not get to redefine the rule
    after seeing it work.
 7. **Every Gate-2 table carries the environment's `d`-density** — structural and
-   visitation-weighted — and the **target-mass profile** (G10; note the §6 item
-   still awaiting sign-off is the `Δd ≤ 0.6` band, not this one, which is
-   decided).
+   visitation-weighted — and the **target-mass profile** (G10). Both are decided;
+   §6 carries no open items.
    A result on the main suite is a result *under a declared signal density*, and
    the probe suite is where its robustness to a sparse one gets checked.

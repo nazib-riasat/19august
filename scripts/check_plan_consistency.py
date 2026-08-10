@@ -85,6 +85,11 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("both content-hashed", "all three content-hashed", "R9", "GRAFT_PHASE2_BUILD.md"),
     ("FCS at `m = #terminals` reproduces exact TV", "verify FCS against exhaustive m-subset enumeration; m=#X tests no sampler", "R9", None),
     ("`at_beta` recomputes the target-mass bands", "at_beta checks r_fail_margin only; validate_bands('main') checks the bands", "R9", None),
+    ("which checks `r_fail_margin` **and** the target-mass bands", "at_beta checks r_fail_margin only (decision 10)", "R10", None),
+    ("re-checks `r_fail_margin` *and* the", "at_beta checks r_fail_margin only (decision 10)", "R10", None),
+    ("rounded to 10 decimal places", "quantised to 1e-12; 1e-10 hides 1.25e-7 of TV", "R10", None),
+    ("still awaiting sign-off is the", "delta-d 0.6 was signed off 9 Aug 2026; no open items in section 6", "R10", None),
+    ("must converge to it", "state a tolerance: within 4 SE of the enumerated literal", "R10", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
