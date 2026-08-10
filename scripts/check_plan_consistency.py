@@ -65,6 +65,14 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("inside both bands of G1", "inside all three bands of G1", "R4", "GRAFT_PHASE2_BUILD.md"),
     ("Four audits, all", "Five audits, all", "R5", "GRAFT_PHASE2_BUILD.md"),
     ("declared band on two quantities", "declared band on three quantities", "R5", "GRAFT_PHASE2_BUILD.md"),
+    ("only the second is always true", "a dead end licenses only 'no proof found under this pool/policy/budget'", "R7", None),
+    ("no proof was constructible at all", "the non-existence reading is not licensed by a dead end", "R7", None),
+    ("reached only on budget exhaustion", "reached when construction can neither continue nor stop", "R7", None),
+    ("reached only by budget exhaustion", "reached when construction can neither continue nor stop", "R7", None),
+    ("action_log_probs(states, graph)", "action_log_probs(state_ix: np.ndarray, graph)", "R7", None),
+    ("with two reference policies", "three reference policies", "R7", "GRAFT_PHASE2_BUILD.md"),
+    ("(G6) and two reference", "(G6) and three reference", "R7", "GRAFT_PHASE2_BUILD.md"),
+    ("passes or fails on noise", "exact TV has no estimation noise; the risk is triviality and variance", "R7", "GRAFT_PHASE2_BUILD.md"),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

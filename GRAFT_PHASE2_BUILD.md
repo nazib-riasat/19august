@@ -57,8 +57,12 @@ and nothing in the spec makes it a controlled quantity.
 
 Both failure directions are real:
 
-* **too few valid terminals** — TV is measured over a trivial support and Gate 2
-  passes or fails on noise;
+* **too few valid terminals** — the target becomes small enough to match almost
+  trivially, and TV differences between learners are then dominated by
+  across-seed training variance rather than by anything about the environment.
+  (Not sampling noise: exact TV has none, which is the whole point of
+  enumerating. The risk is triviality and variance, which is a different
+  argument and was stated wrongly in an earlier draft.);
 * **too many** — the enumeration and the DP stop being affordable, and the β
   sweep (which re-derives `p*` at each β) becomes the bottleneck of Phase 3.
 
@@ -232,9 +236,23 @@ can neither legally continue nor legally stop**. Budget exhaustion is the common
 case, not the meaning.
 
 This is not wording. `FAIL` maps to the inference-time abstain fallback, so what
-it means determines what an abstention in a Phase-9 `OutputRecord` is asserting:
-"no proof found within budget" is a narrower and more flattering claim than "no
-proof was constructible at all", and only the second is always true.
+it means determines what an abstention in a Phase-9 `OutputRecord` is asserting.
+
+**A dead end licenses one claim, and it is the modest one:**
+
+> No valid proof was found under this candidate pool, this policy, this attempt
+> count and this construction budget.
+
+It does **not** license "no proof exists". A trajectory can dead-end while a
+different action sequence from the same root reaches a valid terminal, and `K`
+failed attempts are `K` samples, not a proof of non-existence. An earlier draft
+of this section had it exactly backwards — it called the non-existence reading
+"always true" — which would have licensed a Phase-9 abstention to assert
+something the search never established.
+
+The distinction is also where Phase 2 and Phase 9 genuinely differ: **here we
+enumerate, so "no valid terminal exists" is a statement we can actually make**;
+at inference we sample, and we cannot.
 
 Everything below concerns the sub-case Phase 2 must *engineer*: making `FAIL`
 reachable at all on a well-formed lattice.
@@ -343,9 +361,16 @@ Three exclusions, each of which would otherwise move the number:
   zero fraction mechanically, and they are not where the policy's structural
   decisions are made.
 * **Dead-end absorption is excluded** — it is not a transition.
-* **Weights are unconditional visitation mass** `f(s)·P_F(a|s)`, normalised over
-  `ADD` edges. Conditioning on "an `ADD` was taken" would reweight toward states
-  where stopping is impossible, which is a different question.
+* **Weights are visitation mass** `f(s)·P_F(a|s)`, normalised over `ADD` edges —
+  which is global conditioning on "an `ADD` was taken", and is deliberate. The
+  rejected alternative is **per-state renormalisation**: dividing each state's
+  contribution by `P_F(ADD|s)` so every visited state contributes `f(s)`
+  regardless of how likely it was to add. That upweights states where *stopping*
+  is likely, and answers "what does a typical visited state look like" rather
+  than "what does a typical sampled transition look like". L7 conditions on
+  transitions, so the second is the question. (An earlier draft described this
+  bullet's own formula as the rejected alternative, and got the reweighting
+  direction backwards.)
 
 If the generator cannot meet these, that is a finding about the environment to
 report **before** three weeks go into seven learners — which is exactly what
@@ -537,7 +562,30 @@ before comparing any number.
   checkpoint — it is a robustness check on the conclusion, not part of the
   primary comparison.
 
-Both suites are frozen at Gate 0 alongside β.
+* **Tuning suite: 5 instances, seed `20260811`.** Where Phase 3's β sweep runs.
+
+**Why β needs its own suite.** β is still a placeholder, chosen by a Phase-3
+sweep on "the synthetic lattice". If that sweep runs on the Gate-2 benchmark,
+then β — a reward parameter shared by all seven learners — is selected on the
+same instances the learners are scored on, and v1.2 §4.1's explicit requirement
+that β be chosen "without touching test data" is violated by the plan's own
+construction.
+
+So the β lifecycle is declared here, in full, because two of its three parts were
+missing:
+
+1. **Candidate set, predeclared:** `β ∈ {1, 2, 4, 8}`. A sweep over an open range
+   with the winner chosen afterwards is a decision rule selected after seeing
+   results, which Dror et al. (ACL 2018) is cited elsewhere in this project to
+   forbid.
+2. **Selected on the tuning suite only.** The main and probe suites are not
+   enumerated at any candidate β except the winner.
+3. **Re-validated on the main suite before Gate 2 runs.** The chosen β is fed
+   through `Target.at_beta`, which re-checks `r_fail_margin` *and* the
+   target-mass bands (P2.3). If the main suite fails its bands at the frozen β,
+   that is a regeneration under the amendment procedure of §6b — not a shrug.
+
+All three suites are frozen at Gate 0 alongside the β candidate set.
 
 ### G10 — Two valid modes existing does not make the target multimodal [ANALYSIS]
 
@@ -582,8 +630,23 @@ look alike and are not. The distractor share is something the generator
 *controls* — fewer distractors, fewer junk terminals — so banding it is a
 legitimate acceptance test. The alternative mode's share is a **consequence of
 the frozen reward**: with one gold, mode B forfeits `w_suff·β = 4` in log-reward
-whatever the generator does, and forcing it over 1% would mean reshaping the
-environment until the reward reads the way we want. That is the same objection
+— but *how much* it forfeits is not fixed at 4. Since `sufficiency` is the
+fraction of gold atoms covered and the templates share the anchor, the binding
+and possibly more, a terminal completing `P_B` has positive overlap with the gold
+`P_A`, so the forfeit is
+
+```
+β · w_suff · (1 − |P_A ∩ P_B| / |P_A|)
+```
+
+which is 4 only when the templates are disjoint. An earlier draft asserted the
+full `e⁻⁴` "whatever the generator does", which is wrong: overlap **is** a lever.
+
+It is a lever that cuts both ways, and that is why the decision stands. Raising
+`|P_A ∩ P_B|` raises mode-B mass and simultaneously makes the two modes *less
+materially different* — and "materially different valid proofs" is the property
+v1.2 §9 wants demonstrated. Tuning overlap upward to clear a 1% bar would be
+buying the number by destroying the thing it is evidence for. That is the same objection
 that rejected multi-gold two paragraphs down, and it applies here too.
 
 So: report it, and if the alternative mode cannot reach 1%, **the write-up says
@@ -610,7 +673,7 @@ portfolio claim is Gate 3's, on best-of-K.
 
 **In.** The ProofLattice generator with banded, audited structural properties;
 exhaustive closed-subset enumeration; the exact evaluator (`p*`, `p_θ` by one
-forward DP, TV/JS/KL); the `ActionPolicy` protocol with two reference policies;
+forward DP, TV/JS/KL); the `ActionPolicy` protocol with three reference policies;
 the audit suite; a fixed hand-checkable instance; the frozen benchmark suite; and the
 one-line Phase-1 caching amendment of G7.
 
@@ -676,6 +739,14 @@ lattice pool except this instruction and the test that checks it.
 `StateGraph` (integer-indexed states by size, `(parent, action, child)` edge
 arrays, stop-allowed and dead-end flags, `fingerprint()`).
 
+**`fingerprint()` binds the environment, not the seed.** "Same seed → same
+fingerprint" would be satisfied by hashing the seed, which proves nothing about
+what was built. The digest covers the canonical serialisation of: the
+`LatticeSpec` (bands, seeds and `config_hash`), every pool atom **including
+`feat`**, the obligations, the backing snapshot's `state_digest()`, the gold set,
+and both proof templates. A sensitivity test mutates one feature value, one
+source tier and one interval bound, and asserts the digest moves each time.
+
 **Design notes.** Breadth-first over set sizes, using `IncrementalChecker` for
 validity and `legal_adds` for successors — so the enumeration walks exactly the
 space the policy will and cannot drift from it. `H` is called with `ledger=None`:
@@ -732,6 +803,14 @@ what makes the Phase-3 sweep affordable. One forward DP for `p_θ` (G2);
 `p_θ(FAIL)` by the **direct dead-end sum**, with the complement as a partition
 check.
 
+**`at_beta` re-runs *both* β-dependent checks, and the second one was missing.**
+`p*` depends on β through `R = exp(β·U)`, so **the hard `neither`-mass band of
+G10 is a function of β** — it was accepted at β = 4 and nothing recomputed it
+afterwards. A suite frozen at β = 4 could therefore violate its own acceptance
+band the moment Phase 3's sweep lands on a different value, with no check
+failing anywhere. `at_beta` recomputes the target-mass bands as well as
+`r_fail_margin`, and raises on either.
+
 **`at_beta` re-runs the `r_fail_margin` check.** Phase 0 added a load-time
 assertion that `r_fail < r_fail_margin · exp(β·U_min)`, precisely so a β sweep
 cannot quietly promote `FAIL` into a competitive terminal. A sweep that moved β
@@ -742,7 +821,7 @@ caller.
 
 ### P2.4 `graft/synth/policies.py`
 
-**Responsibility.** The `ActionPolicy` protocol (G6) and two reference
+**Responsibility.** The `ActionPolicy` protocol (G6) and three reference
 implementations.
 
 **Surface.** `ActionPolicy` Protocol · `UniformPolicy` ·
@@ -773,7 +852,7 @@ not appear in a results table as though it were a method.
 | equivalent-action collisions (exact child-set equality) | **0**, by G3 | the pool is malformed |
 | state-fingerprint collisions | **0** | `canon_set_hash` collided; state identity is still exact, but the fingerprint is unusable for comparison |
 | `FAIL` reachability | ≥ 1 reachable dead end | `STOP`-masking is doing nothing (G4) |
-| **dead-end absorption mass by `\|X\|`** | cumulative mass at `\|X\| < max_atoms − 1` **≤ 0.05**; full profile reported | dead ends at small `\|X\|` mean the **`ADD` masks are too tight**, not that the budget is small — the distinction Phase 1 asked Phase 2 to make |
+| **dead-end absorption mass by `\|X\|`** | **conditional** early share `Σ_{\|d\|<max_atoms−1} f(d) / Σ_{d∈D} f(d)` **≤ 0.05**, not absolute mass; full profile reported | dead ends at small `\|X\|` mean the **`ADD` masks are too tight**, not that the budget is small — the distinction Phase 1 asked Phase 2 to make |
 | `d` informativeness, structural **and** visitation-weighted | not `\|s\|`-determined; both ≤ 0.6 zero-`Δd` | **Gate 2 cannot resolve L7 from L6** (G5) |
 | **target mass by mode bucket** (completed chains) | reported; alt. mode ≥ 1% is a *diagnostic*, not an acceptance test | the target is effectively unimodal (G10) |
 | target mass on the `neither` bucket | ≤ 0.5 | the distractor tail dominates what TV measures (G10) |
@@ -904,12 +983,20 @@ every later number trustworthy. Step 6 is the one that can overrun (G1).
 12. Unconstructible-valid-terminal rate is **0** on every instance (fix F10 as a regression test).
 13. Equivalent-action collision rate, by exact child-set equality, is **0** on every instance — with G3's proof in the module docstring and the SA-GFN correction *not* applied. Zero state-fingerprint collisions.
 14. `FAIL` is reachable on every instance. Dead-end **absorption mass by `|X|`** is computed exactly under `ForcedContinuationPolicy` and reported in full, with the **conditional early share** `Σ_{d: |d| < max_atoms − 1} f(d) / Σ_{d ∈ D} f(d) ≤ 0.05` — the Phase-1 handoff, which asked Phase 2 to distinguish "budget too small" from "masks too tight", and which neither a modal-bin statistic nor an absolute-mass band would answer. `p*(FAIL)` is reported alongside every TV and **never subtracted from it**.
-15. **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6, on every main-suite instance (G5).
+15. On every **main-suite** instance: **`d(s)` is not determined by `|s|`** at ≥ 3 distinct sizes, **≥ 10 distinct `d` values are reachable**, and both the structural and the visitation-weighted zero-`Δd` fractions are ≤ 0.6 (G5). The **probe suite is exempt by design** — it is generated without this band precisely to test robustness where the signal is sparse (G9), so applying the band there would require it to satisfy the condition it exists to violate.
 16. Target mass is reported per mode bucket (A / B / mixed / neither) on **completed** chains, with `sufficiency = 0` mass, effective support size, top-10 mass and Jaccard spread. Mass on the **`neither`** bucket is ≤ 0.5 — **a hard band**. The alternative mode's ≥ 1% share is a **diagnostic that changes the claim, not an acceptance test that blocks the build** (G10).
 
 **Reproducibility**
-17. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
-18. `graft.synth` imports no ML library.
+17. **The planted structure is asserted to exist, per instance.** Nothing else in this list does — and the current criteria can all pass on an instance whose deliberate mechanisms are broken. Criterion 14 needs only *one* reachable dead end, which a cap-induced one supplies even if both planted failure routes are dead. Worst of all, a malformed `P_B` produces zero alternative-mode mass, which G10 treats as a **diagnostic** — so a broken instance would be written up as "effectively unimodal" instead of rejected. Therefore, on every instance:
+    - `P_A` and `P_B` are each formally valid, closed and reachable terminals, and `P_A ≠ P_B`;
+    - the duplicate-slot mechanism and the temporal-disjoint mechanism **each independently** produce a reachable invalid state (checked separately, not "at least one dead end exists");
+    - ≥ 2 distinct source tiers occur among atoms whose `Source` resolves, and every `feat` is non-zero with ≥ 2 distinct vectors;
+    - the time constraint is bounded on both sides, and ≥ 1 claim interval **partially** overlaps it (neither disjoint nor containing);
+    - every atom's `target` resolves in the backing snapshot;
+    - ≥ 1 invalidated edge and ≥ 1 quarantined assertion are present and reachable.
+18. **The lattice fingerprint binds the environment, not just the seed.** "Same seed → same fingerprint" is satisfied by hashing the seed alone, which would prove nothing. The digest covers the canonical serialisation of: the `LatticeSpec` (bands, seeds, and `config_hash`), every pool atom including `feat`, the obligations, the backing snapshot's `state_digest()`, the gold set, and both templates. **Sensitivity is tested**: mutating any one of those — a single feature value, one tier, one interval bound — must change the digest.
+19. Both suites are deterministic: same seed → identical lattice fingerprint, on a different machine.
+20. `graft.synth` imports no ML library.
 
 ---
 
@@ -932,8 +1019,8 @@ happened once.
 | 4 | State identity | `uint64` bitmask over `pool.ids()`, asserted valid while `pool_cap ≤ 64`; `canon_set_hash` is a fingerprint only (G3) | an "exact" evaluator that can merge two states |
 | 5 | Collision audit | regression test expecting 0 by child-set equality; SA-GFN correction **not** applied, reason recorded; Phase-1 §8 req. 3 withdrawn (G3) | two live documents disagreeing, and a citation that would not survive review |
 | 6 | `FAIL` semantics | reachable via duplicate-slot and disjoint-temporal bindings; `p*(FAIL)` reported **beside** TV, never subtracted; TV target is **0** (G4) | every Gate-2 table carries a fictitious floor |
-| 7 | `d` informativeness | not `\|s\|`-determined; **both** structural and visitation-weighted zero-`Δd` ≤ 0.6 (G5) | **Gate 2 becomes unable to resolve Contribution 3** |
-| 8 | Policy interface | **batch-first** `action_log_probs(states, graph)`; never called at dead ends (G6) | 10⁵ Python round-trips per checkpoint; Phase 3 re-wires |
+| 7 | `d` informativeness | **main suite only**: not `\|s\|`-determined at ≥ 3 sizes; ≥ 10 distinct `d` values; **both** structural and visitation-weighted zero-`Δd` ≤ 0.6. The probe suite is generated *without* this band, by design (G5, G9) | **Gate 2 becomes unable to resolve Contribution 3** |
+| 8 | Policy interface | **batch-first** `action_log_probs(state_ix: np.ndarray, graph)` — indices, not materialised sets; never called at dead ends; an adapter implements it, never a learner (G6) | 10⁵ Python round-trips per checkpoint; Phase 3 re-wires |
 | 9 | Oracle policy | flow decomposition against uniform `P_B`; `r_fail` split uniformly across dead ends (G6) | an oracle that cannot reach TV = 0, so the evaluator is unverifiable |
 | 10 | Caching | `U` per terminal; similarity matrix per pool; `at_beta` **re-validates** `r_fail_margin` (G7) | β sweep cost multiplies, and a sweep can bypass the FAIL-competitiveness check |
 | 11 | MC agreement | `k ≤ 100` instance at `N = 200,000`, `TV < 0.02`; top-20 only at full scale (G8) | a test that measures its own sampling floor |
@@ -944,6 +1031,9 @@ happened once.
 | 16 | Dead-end audit | exact absorption mass by `\|X\|` under `ForcedContinuationPolicy`; **conditional** early share `Σ_{|d|<max_atoms−1} f(d) / Σ_{d∈D} f(d)` ≤ 0.05, not absolute mass | a modal-bin statistic that passes with an unhealthy tail |
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
+| 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); re-validated on the main suite via `at_beta`, which checks `r_fail_margin` **and** the target-mass bands | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
+| 20 | Lattice fingerprint | digest over spec, pool (with `feat`), obligations, snapshot digest, gold and both templates; sensitivity-tested | a fingerprint that only proves the seed was the same |
+| 21 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals, targets, invalidated edge and quarantined assertion all asserted per instance | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
 
 **PROPOSED — requires your sign-off; not locked until then.** Everything else in
 §6 is a decision I have taken; this one is a recommendation awaiting a yes,
@@ -1072,6 +1162,8 @@ from graft.synth.audits    import run_audits
    (fix F12). Phase 2 supplies the metric; it does not get to redefine the rule
    after seeing it work.
 7. **Every Gate-2 table carries the environment's `d`-density** — structural and
-   visitation-weighted — and the **target-mass profile** (§6 open question, G10).
+   visitation-weighted — and the **target-mass profile** (G10; note the §6 item
+   still awaiting sign-off is the `Δd ≤ 0.6` band, not this one, which is
+   decided).
    A result on the main suite is a result *under a declared signal density*, and
    the probe suite is where its robustness to a sparse one gets checked.

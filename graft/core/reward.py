@@ -13,10 +13,13 @@ here as a named regression test (v1.2 §1.1).
 
 **``FAIL`` is a member of the target's support**, so
 ``Z = sum_valid R(X) + r_fail`` and ``p*`` is over ``{valid terminals} u {FAIL}``.
-It is reached only by budget exhaustion with ``H = 0``, never by an action —
-there is no ``ABSTAIN`` action (v1.2 §3.4/§4.2). Read as "no proof found within
-budget", it is exactly the inference-time abstain fallback, so the write path and
-the read path agree on what it means (architecture fix F3).
+It is reached when construction can neither legally continue nor legally stop
+(budget exhaustion is the common case, not the definition), never by an action —
+there is no ``ABSTAIN`` action (v1.2 §3.4/§4.2). It licenses one claim — *no valid proof was found under this pool, policy,
+attempt count and budget* — and not the stronger one that none exists, since
+another action sequence from the same root may reach a valid terminal. That is
+exactly the inference-time abstain fallback, so the write path and the read path
+agree on what it means (architecture fix F3).
 
 The safety property is therefore stated precisely as **no formally invalid proof
 set is ever returned** — guaranteed by ``STOP``-masking — rather than as "invalid

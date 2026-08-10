@@ -608,8 +608,9 @@ loss works in log space and must never compute `log(0)`; the masks guarantee no
 invalid set is a terminal, and `FAIL` carries `log(r_fail)` explicitly.
 
 `FAIL` is a genuine terminal and a **member of the target's support**, so
-`Z = Σ_valid R(X) + r_fail`. It is reached only by budget exhaustion with `H = 0`,
-never by an action — there is no `ABSTAIN` action (v1.2 §3.4/§4.2).
+`Z = Σ_valid R(X) + r_fail`. It is reached when construction can neither legally
+continue nor legally stop — budget exhaustion is the common case, not the
+definition — never by an action — there is no `ABSTAIN` action (v1.2 §3.4/§4.2).
 
 ### P1.6 `graft/core/masks.py`
 
