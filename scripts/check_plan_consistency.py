@@ -40,6 +40,7 @@ LIVE_DOCS = (
     "GRAFT_PHASE2_BUILD.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
+    "PHASE2_DECISIONS.md",
     "CLAUDE.md",
     "README.md",
 )

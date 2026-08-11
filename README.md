@@ -6,11 +6,17 @@ evidence-set learner.
 - **The science:** [`GRAFT_RESEARCH_PLAN_v1.md`](GRAFT_RESEARCH_PLAN_v1.md) (v1.2). Wins any conflict.
 - **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases.
 - **Why things are the way they are:** [`CLAUDE.md`](CLAUDE.md) — decisions, what was rejected, and the cost of changing your mind.
-- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md).
+- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md).
 
-Current state: **Phase 0 and Phase 1 complete** — scaffold, data contracts, and
-the deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`). Phase 2, the
-enumerable synthetic environment, is next.
+Current state: **Phases 0, 1 and 2 complete** — scaffold and data contracts; the
+deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`); and the
+enumerable synthetic environment with its exact evaluator (ProofLattice, the
+forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen suites and the Gate-2
+audits). Phase 3, the seven learners, is next.
+
+`python scripts/verify_handoff.py --preset synthetic` prints the config, log and
+**lattice** fingerprints that must match across machines before any Gate-2 number
+is compared.
 
 ---
 

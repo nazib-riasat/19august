@@ -26,6 +26,7 @@ that has quietly become constant fails the build rather than a Gate-2 table.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Iterable, Mapping
 
 import numpy as np
@@ -150,19 +151,39 @@ def temporal_correctness(
     return obligations.covered_fraction(q.time_constraint, intervals)
 
 
+def _frozen(arr: np.ndarray) -> np.ndarray:
+    arr.flags.writeable = False
+    return arr
+
+
+@lru_cache(maxsize=64)
 def _similarity_matrix(pool: AtomPool) -> tuple[tuple[str, ...], np.ndarray]:
     """Pairwise ``max(0, cosine)`` over the pool's feature vectors.
 
     Clamped because raw cosines over arbitrary features are negative roughly half
     the time, which would make ``F({x})`` negative, break monotonicity from
     ``F(∅) = 0``, and drive the redundancy ratio outside [0, 1].
+
+    **Cached per pool (Phase-2 gap G7).**  ``redundancy`` is called once per
+    candidate set, and Phase 2 enumerates thousands of terminals against a single
+    pool — rebuilding a 32x32 matrix each time is a 30-million-flop tax per
+    instance for an answer that cannot have changed.  ``AtomPool`` defines no
+    ``__eq__``, so it hashes by identity and the key is exactly "this pool
+    object"; a pool built from the same atoms a second time is a cache miss,
+    which is the conservative direction.
+
+    The cache holds a strong reference to every pool it has seen, so ``maxsize``
+    is bounded rather than ``None``: a long sweep that builds many pools must not
+    keep all of them alive.  The returned array is marked read-only, because it
+    is now shared between callers and a mutation would silently change every
+    later ``redundancy``.
     """
     ids = pool.ids()
     if not ids:
-        return ids, np.zeros((0, 0), dtype=np.float64)
+        return ids, _frozen(np.zeros((0, 0), dtype=np.float64))
     width = max((pool[aid].feat.shape[0] for aid in ids), default=0)
     if width == 0:
-        return ids, np.zeros((len(ids), len(ids)), dtype=np.float64)
+        return ids, _frozen(np.zeros((len(ids), len(ids)), dtype=np.float64))
     matrix = np.zeros((len(ids), width), dtype=np.float64)
     for i, aid in enumerate(ids):
         feat = pool[aid].feat
@@ -170,7 +191,7 @@ def _similarity_matrix(pool: AtomPool) -> tuple[tuple[str, ...], np.ndarray]:
     norms = np.linalg.norm(matrix, axis=1, keepdims=True)
     norms[norms == 0.0] = 1.0
     unit = matrix / norms
-    return ids, np.clip(unit @ unit.T, 0.0, 1.0)
+    return ids, _frozen(np.clip(unit @ unit.T, 0.0, 1.0))
 
 
 def redundancy(X: ProofSet | Iterable[str], pool: AtomPool) -> float:

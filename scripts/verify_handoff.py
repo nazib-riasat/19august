@@ -12,9 +12,23 @@ compare the output with a teammate's::
 * **manifest fingerprint** — a hash of the manifest's ``reproducibility`` block.
   Differs when the config, the seed, the commit, or a pinned package version
   differs — and *not* when the hostname, OS or GPU differs.
+* **lattice fingerprints** (Phase-2 gap G9) — one ``environment_fingerprint`` per
+  suite, over the spec, the pool including ``feat``, the obligations, the
+  snapshot digest, the gold set, both proof templates **and the enumerated
+  graph**.  Two machines must confirm they enumerated the same environment
+  *before* comparing any Gate-2 number; binding only the generator's inputs
+  would let two machines whose masks or checker differ enumerate different
+  graphs and still agree.
 
-If any of the three disagree between two machines running the same commit, that
-is a real bug and worth chasing before it contaminates a result.
+  Excludes β on purpose: ``config_hash`` moves when the Phase-3 sweep freezes β,
+  so a fingerprint containing it would change after the suites were frozen.  The
+  β-dependent layer is ``target_fingerprint``, printed separately.
+
+If any of these disagree between two machines running the same commit, that is a
+real bug and worth chasing before it contaminates a result.
+
+The lattice section costs a few seconds (it enumerates thirty lattices), so
+``--no-lattice`` skips it when only the config and log digests are wanted.
 """
 
 from __future__ import annotations
@@ -56,10 +70,47 @@ def build_reference_log(path: Path, n_nodes: int = 50) -> EventLog:
     return log
 
 
+def lattice_fingerprints() -> list[tuple[str, str, str]]:
+    """``(suite, environment_fingerprint, target_fingerprint)`` per suite.
+
+    Aggregated over each suite's instances in order, so one digest per suite
+    stands for the whole thing: a single instance differing anywhere moves it.
+    """
+    from graft.canonical import digest_of
+    from graft.synth.enumerate import environment_fingerprint, reachable_states
+    from graft.synth.exact import target_distribution, target_fingerprint
+    from graft.synth.lattice import benchmark_suite, probe_suite, tuning_suite
+
+    out: list[tuple[str, str, str]] = []
+    for name, build in (
+        ("main", benchmark_suite),
+        ("probe", probe_suite),
+        ("tuning", tuning_suite),
+    ):
+        environments: list[str] = []
+        targets: list[str] = []
+        for instance in build():
+            graph = reachable_states(instance, instance.cfg)
+            env = environment_fingerprint(instance, graph)
+            environments.append(env)
+            targets.append(
+                target_fingerprint(
+                    target_distribution(instance, instance.cfg, graph=graph), env
+                )
+            )
+        out.append((name, digest_of(environments), digest_of(targets)))
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preset", default="default", help="config preset to fingerprint")
     parser.add_argument("--seed", type=int, default=13)
+    parser.add_argument(
+        "--no-lattice",
+        action="store_true",
+        help="skip the Phase-2 suites (they enumerate thirty lattices)",
+    )
     args = parser.parse_args()
 
     cfg = load_config(preset=args.preset)
@@ -94,6 +145,12 @@ def main() -> int:
     print(f"terminal_checks  {ledger.snapshot()['totals']['terminal_checks']} "
           f"(cap {cfg.checker_budget})")
     print(f"graph            {snapshot.counts()}")
+
+    if not args.no_lattice:
+        print()
+        for suite, environment, target in lattice_fingerprints():
+            print(f"lattice {suite:<8} env {environment[:32]}  target(beta={cfg.beta:g}) "
+                  f"{target[:32]}")
 
     if repro["git"]["dirty"]:
         print("\nNote: the working tree is dirty, so the commit alone does not "

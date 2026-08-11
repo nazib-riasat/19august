@@ -49,6 +49,7 @@ __all__ = [
     "conv_ids",
     "atom_intervals",
     "validity_intervals",
+    "source_node",
     "source_tier",
     "matches_anchor",
     "supplies_value_type",
@@ -273,6 +274,32 @@ def validity_intervals(atom: CandidateAtom, G: GraphSnapshot) -> tuple[Interval,
 # --------------------------------------------------------------------------
 
 
+def source_node(atom: CandidateAtom, G: GraphSnapshot) -> Node | None:
+    """The ``Source`` node this atom's evidence rests on, or ``None``.
+
+    Split out from :func:`source_tier` so that "did the source resolve?" and
+    "what is it worth?" are separately answerable. They are different questions
+    and conflating them hides one inside the other: ``source_tier`` returns
+    ``default_tier`` for an atom with no source at all, and ``unknown`` is
+    *itself* a tier with that same score — so a caller counting distinct scores
+    cannot tell a resolved ``unknown`` from an unresolved anything.
+
+    Either the atom touches a ``Source`` node directly, or it reaches one through
+    a live ``asserted_by`` edge out of one of its endpoints.
+    """
+    for node in endpoint_nodes(atom, G):
+        if node.ntype == "Source":
+            return node
+    for node in endpoint_nodes(atom, G):
+        for edge in G.edges_of(node.node_id, "asserted_by"):
+            if edge.src != node.node_id or not G.is_live(edge.edge_id):
+                continue
+            source = G.node(edge.dst)
+            if source is not None and source.ntype == "Source":
+                return source
+    return None
+
+
 def source_tier(atom: CandidateAtom, G: GraphSnapshot, cfg: "Config") -> float:
     """Reliability score in [0, 1] for the atom's source.
 
@@ -281,17 +308,10 @@ def source_tier(atom: CandidateAtom, G: GraphSnapshot, cfg: "Config") -> float:
     makes evidence *weak*, and disqualifying it is `H`'s job, not `U`'s.
     """
     default = cfg.source_tiers[cfg.default_tier]
-    for node in endpoint_nodes(atom, G):
-        if node.ntype == "Source":
-            return cfg.source_tiers.get(node.payload.get(PAYLOAD_TIER, ""), default)
-    for node in endpoint_nodes(atom, G):
-        for edge in G.edges_of(node.node_id, "asserted_by"):
-            if edge.src != node.node_id or not G.is_live(edge.edge_id):
-                continue
-            source = G.node(edge.dst)
-            if source is not None and source.ntype == "Source":
-                return cfg.source_tiers.get(source.payload.get(PAYLOAD_TIER, ""), default)
-    return default
+    node = source_node(atom, G)
+    if node is None:
+        return default
+    return cfg.source_tiers.get(node.payload.get(PAYLOAD_TIER, ""), default)
 
 
 # --------------------------------------------------------------------------

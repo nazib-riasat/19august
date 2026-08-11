@@ -301,3 +301,49 @@ def test_gold_scores_higher_than_a_random_subset(inst):
         if set(subset) == set(inst.gold.atoms):
             continue
         assert U(subset, inst.obligations, inst.graph, inst.pool, inst.gold, CFG) <= best
+
+
+# -- P2.0: the similarity-matrix cache (Phase-2 gap G7) ---------------------
+
+
+def test_the_similarity_matrix_is_computed_once_per_pool(inst):
+    """Phase-2 build step 1.
+
+    Every downstream enumeration scores thousands of terminals against one pool,
+    and ``redundancy`` rebuilds a ``pool_cap x pool_cap`` matrix on each call.
+    Keyed on pool identity, because ``AtomPool`` defines no ``__eq__``.
+    """
+    from graft.core.utility import _similarity_matrix
+
+    _similarity_matrix.cache_clear()
+    first = _similarity_matrix(inst.pool)
+    before = _similarity_matrix.cache_info()
+    second = _similarity_matrix(inst.pool)
+    after = _similarity_matrix.cache_info()
+
+    assert after.hits == before.hits + 1
+    assert after.misses == before.misses
+    assert second[0] == first[0]
+    assert second[1] is first[1]
+
+
+def test_the_cached_matrix_cannot_be_mutated_by_a_caller(inst):
+    """It is shared between callers now, so a write would change every later
+    ``redundancy`` silently."""
+    from graft.core.utility import _similarity_matrix
+
+    _, sim = _similarity_matrix(inst.pool)
+    assert not sim.flags.writeable
+    with pytest.raises(ValueError):
+        sim[0, 0] = 0.5
+
+
+def test_redundancy_is_unchanged_by_the_cache(inst):
+    """The amendment is a caching change and nothing else."""
+    from graft.core.utility import _similarity_matrix
+
+    ids = sorted(inst.gold.atoms)
+    _similarity_matrix.cache_clear()
+    cold = redundancy(ids, inst.pool)
+    warm = redundancy(ids, inst.pool)
+    assert cold == warm
