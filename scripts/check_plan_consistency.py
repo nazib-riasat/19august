@@ -38,9 +38,15 @@ LIVE_DOCS = (
     "GRAFT_PHASE0_BUILD.md",
     "GRAFT_PHASE1_BUILD.md",
     "GRAFT_PHASE2_BUILD.md",
+    # Added 11 Aug 2026. The R12 retired wordings below name this file and had
+    # never been checked against it, because it was not on this list — a guard
+    # that lists rules for a document it does not read is the same defect class
+    # the rules themselves exist to catch.
+    "GRAFT_PHASE3_BUILD.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
     "PHASE2_DECISIONS.md",
+    "PHASE3_DECISIONS.md",
     "CLAUDE.md",
     "README.md",
 )
@@ -107,6 +113,25 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "regeneration is the branch for *no* eligible candidate, not for a failed winner", "R11", None),
     ("Amend the candidate set to `{4, 8}` before any sweep runs",
      "the grid is unchanged; the eligibility rule derives the feasible set from decision 14's band", "R11", "PHASE2_DECISIONS.md"),
+    # R12 — Phase-3 plan. Four review rounds; in three of them a correction
+    # landed in the gap section and not in the exit criteria, the build order or
+    # the risk table. These are the values that were left behind each time.
+    ("True for L7, L7b and GAFlowNet",
+     "delta_d is True for L7/L7b only; GAFlowNet's Δd reaches its loss, never its policy (decision 19a)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("by wall-clock only",
+     "decision 4's bounded adaptive ladder, recorded as adaptive rather than throughput-only", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("/ |log R(X(τ))|",
+     "per-instance valid-terminal log R range, with a zero-range guard (decision 13)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("p95 is **not worse** than",
+     "both pass decision 13's band, plus a non-inferiority margin (decision 15)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("6 h per (arm, seed)",
+     "c0 = 1 h with rungs 1/2/4 h; the GPU-day cost is tabulated at decision 5", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("reference implementation's defaults",
+     "literal LED coefficients plus a pinned commit hash (decision 23a)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("8 × 3 × C × 20",
+     "nine evaluated arms: 9 x 3 x 50 x 20 = 27,000 (decision 2)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    ("the seven architecture learners",
+     "nine evaluated arms — L1-L7, L7b and GAFlowNet (decision 1)", "R12", "GRAFT_PHASE3_BUILD.md"),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
@@ -130,28 +155,73 @@ INCOMPATIBLE: tuple[tuple[str, str, str], ...] = (
 )
 
 
+def _tables(text: str) -> list[list[str]]:
+    """Markdown tables, as blocks of consecutive pipe-prefixed lines."""
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if line.startswith("|"):
+            current.append(line)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+    return blocks
+
+
 def _check_numbering(name: str, text: str) -> list[str]:
     """Numbered lists must run 1..n with no gaps or repeats.
 
     Renumbering by hand after an insertion produced a duplicate or a hole in
     three separate rounds. This is cheaper than remembering.
+
+    **Two things this deliberately does not require, both learned from turning
+    the check on against the Phase-3 plan** (11 Aug 2026), where it fired twice
+    and both were the checker's fault rather than the document's:
+
+    *Decision tables are checked as a **set**, not as a sequence.* Phase-3 §6
+    ends `… 23, 26, 27, 25, 24, 28` because each review round appended its own,
+    and the numbers are cited from code and tests ("decision 19a", "decision
+    23b"). Sorting them would break every cross-reference to buy tidiness. What
+    matters — and what a hand renumber actually broke three times — is that no
+    number is missing and none is used twice.
+
+    *Only a table whose header says "Decision" is one.* The old pattern matched
+    any table with a bare integer in its first column, so it read the Phase-3
+    build-order table (steps 1–10, one of them bolded and therefore invisible to
+    it) and the ladder-cost table (rungs 0, 1, 2) as decision tables and reported
+    both as corrupt.
     """
     out: list[str] = []
-    for label, pattern in (
-        ("decisions table", r"^\| (\d+) \|"),
-        ("numbered list", r"^(\d+)\. "),
-    ):
-        nums = [int(m) for m in re.findall(pattern, text, re.M)]
-        seen: list[int] = []
-        for value in nums:
-            if value == 1:
-                if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
-                    out.append(f"{name}: {label} runs {seen} — expected 1..{len(seen)}")
-                seen = [1]
-            else:
-                seen.append(value)
-        if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
-            out.append(f"{name}: {label} runs {seen[:6]}… — expected 1..{len(seen)}")
+
+    for block in _tables(text):
+        if len(block) < 3 or "decision" not in block[0].lower():
+            continue
+        nums = [int(m) for line in block for m in re.findall(r"^\| (\d+) \|", line)]
+        if len(nums) < 4:
+            continue
+        if len(nums) != len(set(nums)):
+            duplicated = sorted({v for v in nums if nums.count(v) > 1})
+            out.append(f"{name}: decisions table repeats {duplicated}")
+        missing = sorted(set(range(1, max(nums) + 1)) - set(nums))
+        if missing:
+            out.append(
+                f"{name}: decisions table is missing {missing} "
+                f"(runs to {max(nums)})"
+            )
+
+    nums = [int(m) for m in re.findall(r"^(\d+)\. ", text, re.M)]
+    seen: list[int] = []
+    for value in nums:
+        if value == 1:
+            if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
+                out.append(f"{name}: numbered list runs {seen} — expected 1..{len(seen)}")
+            seen = [1]
+        else:
+            seen.append(value)
+    if len(seen) > 3 and seen != list(range(1, len(seen) + 1)):
+        out.append(f"{name}: numbered list runs {seen[:6]}… — expected 1..{len(seen)}")
     return out
 
 

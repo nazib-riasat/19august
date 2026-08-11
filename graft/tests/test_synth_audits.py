@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
+import subprocess
 import math
 import pkgutil
 import sys
@@ -380,11 +382,33 @@ ML_LIBRARIES = (
 def test_graft_synth_imports_no_ml_library():
     """Exit criterion 21.  Phase 2 builds the environment and the ruler; the
     evaluator is numpy and dictionaries.  If a ``graft/synth/`` file imports
-    ``torch``, something has gone wrong."""
+    ``torch``, something has gone wrong.
+
+    **Run in a subprocess since Phase 3 arrived.**  This test originally read
+    ``sys.modules`` in-process, which was sound while nothing in the suite
+    imported torch.  Phase 3's ``graft.setgen`` does, so an in-process check now
+    reports whatever another test happened to import first — it would have gone
+    red for a reason that has nothing to do with ``graft.synth``, and worse,
+    could have gone *green* while ``graft.synth`` genuinely pulled torch in.  A
+    clean interpreter is the only honest way to ask the question.
+    """
     root = Path(graft.synth.__file__).parent
-    for info in pkgutil.walk_packages([str(root)], prefix="graft.synth."):
-        importlib.import_module(info.name)
-    leaked = sorted(lib for lib in ML_LIBRARIES if lib in sys.modules)
+    names = [i.name for i in pkgutil.walk_packages([str(root)], prefix="graft.synth.")]
+    program = "\n".join(
+        [
+            "import importlib, sys, json",
+            f"for n in {names!r}:",
+            "    importlib.import_module(n)",
+            f"print(json.dumps(sorted("
+            f"l for l in {list(ML_LIBRARIES)!r} if l in sys.modules)))",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True,
+        cwd=str(Path(graft.__file__).parent.parent),
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
     assert not leaked, f"graft.synth imported ML libraries: {leaked}"
 
     for path in sorted(root.rglob("*.py")):

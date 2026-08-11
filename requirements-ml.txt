@@ -1,0 +1,30 @@
+# Phase-3 onward only.  Install on top of requirements.txt:
+#
+#     pip install torch --index-url https://download.pytorch.org/whl/cu128
+#     pip install -r requirements.txt -r requirements-ml.txt
+#
+# **Phases 0-2 never need this file.**  The deterministic core (`graft.core`),
+# the enumerable environment and the exact evaluator (`graft.synth`) run on a
+# bare interpreter, which is what keeps the suite runnable inside a Kaggle
+# notebook before any heavy install and what
+# `test_the_phase_0_to_2_surface_imports_no_ml_library` enforces.
+#
+# **The CUDA build is not incidental here.**  This project's GPU is Blackwell
+# (RTX 50-series, compute capability sm_120), and sm_120 kernels first ship in
+# the cu128 wheels.  A cu124 build installs cleanly, imports cleanly, reports
+# `torch.cuda.is_available() == True`, and then fails at the first kernel launch
+# -- so "torch is installed" is not the check.  The check is:
+#
+#     python -c "import torch; a=torch.randn(8,8,device='cuda'); print((a@a).sum())"
+#
+# Verified on this machine: torch 2.11.0+cu128, sm_120 present in
+# `torch.cuda.get_arch_list()`, matmul executes.
+#
+# Pinned rather than floating, for the same reason every other version here is:
+# `runtime.run_manifest` records package versions, and a floating pin makes two
+# machines' manifests differ for reasons nobody chose.  The index URL stays out
+# of this file because it is per-machine -- a CPU-only laptop or a Kaggle T4
+# needs a different one, and hard-coding cu128 would make the file unusable
+# there.
+
+torch==2.11.0

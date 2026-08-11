@@ -1,8 +1,8 @@
-# Session handoff — GRAFT, Phases 0–2
+# Session handoff — GRAFT, Phases 0–3
 
-**Written 11 Aug 2026, at the end of the session that built Phases 0 and 1 and
-planned Phase 2.** Read this plus `CLAUDE.md` and you can continue without
-re-deriving anything.
+**Rewritten 11 Aug 2026.** This replaces the earlier handoff, which described a
+state two commits and one whole phase out of date. Read this plus `CLAUDE.md`
+and you can continue without re-deriving anything.
 
 ---
 
@@ -12,116 +12,226 @@ re-deriving anything.
 |---|---|
 | **Phase 0** — scaffold, schemas, event log, ledger, config | **Built, green.** All 13 exit criteria. |
 | **Phase 1** — `H`, `U`, `R`, masks, obligations, `d(s)` | **Built, green.** All 16 exit criteria. |
-| **Phase 2** — ProofLattice + exact evaluator | **Planned, signed off, not started.** |
-| Phases 3–11 | Not started. |
+| **Phase 2** — ProofLattice + exact evaluator | **Built, green.** All 21 exit criteria. |
+| **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** Plan is at revision R5, §6 partly signed off. |
+| Phases 4–11 | Not started. |
 
-**367 tests, ~8 s, all passing.** Head is `b7c2155` on `master`.
+**568 tests, ~2 min 50 s, all passing. Nothing skipped, nothing xfailed.**
+
+The suite got slower because Phase 3 added `test_setgen_convergence.py`, which
+actually trains: it is the only place a *learned* quantity is asserted, and steps
+2–5 exist precisely because a broken sampler or adapter yields plausible curves
+and meaningless numbers.
 
 ```bash
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
+pip install torch --index-url https://download.pytorch.org/whl/cu128
 pytest -q
 python scripts/check_plan_consistency.py
-python scripts/verify_handoff.py
+python scripts/verify_handoff.py --preset synthetic
 ```
 
 Python **3.11** (`py -3.11`); the system default here is 3.14, which PyTorch has
-no wheels for. `.venv` is never copied between machines — see
-`PHASE0_DECISIONS.md` §3.1.
+no wheels for. `.venv` is never copied between machines — `PHASE0_DECISIONS.md`
+§3.1.
+
+**Git state.** `master`, no remote, linear solo history.
 
 ---
 
 ## 2. Read these, in this order
 
+**Tier 1 — you cannot work without these (~1 hour).**
+
 1. `CLAUDE.md` — why decisions are what they are, what was cut, cost to reverse.
-2. `GRAFT_RESEARCH_PLAN_v1.md` (v1.2) — the science. **Wins any conflict.**
-3. `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (v1.1) — 12 phases, fixes F1–F13.
-4. `PHASE0_DECISIONS.md`, `PHASE1_DECISIONS.md` — what the builds decided.
-5. `GRAFT_PHASE2_BUILD.md` — **the next thing to build.** §6 is normative.
+   §4.1 (ideas that died and why), §5 (errors already caught), §6 (frozen values)
+   and §8 (the four gates) are the load-bearing sections.
+2. `GRAFT_RESEARCH_PLAN_v1.md` (v1.2) — the science. **Wins any conflict with
+   every other document.** §4.1 (reward), §4.3 (masking), §4.5 (local credit),
+   §5.1 (matched baselines), §6.3 (five ceilings), §7 (the gates).
+3. `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (v1.1) — 12 phases in build order, and
+   the F1–F13 fix table that phase plans cite constantly.
+4. `GRAFT_PHASE3_BUILD.md` — **the thing being built right now.** §6 is
+   normative; the changelog at the top records five revision rounds and what
+   each fixed.
+
+**Tier 2 — read before touching the corresponding code.**
+
+5. `PHASE0_DECISIONS.md` — before changing a config default.
+6. `PHASE1_DECISIONS.md` — before touching `H`, `U` or `d(s)`.
+7. `PHASE2_DECISIONS.md` — before touching the generator, `Target` or
+   `ActionPolicy`. §4.2 (the β eligibility finding) and §5 (three post-build
+   fixes) matter most.
+7b. `PHASE3_DECISIONS.md` — **before running the calibration gate or touching any
+   learner.** §2.3 (L7 is the slowest arm to converge, and what that risks for
+   Contribution 3) and §4 (eight open items) are the ones to read first.
+8. `GRAFT_PHASE0_BUILD.md` / `GRAFT_PHASE1_BUILD.md` / `GRAFT_PHASE2_BUILD.md` —
+   the gap sections (G*n*) explain why each module is shaped as it is.
+9. `README.md` — setup on a new machine, Kaggle, what must match across machines.
+10. `Research papers/INDEX.md` — 103 papers with verified titles and venues.
+    **Also holds the dataset selection** (§7), which is the thing `CLAUDE.md` §7
+    wrongly says was never written down.
+
+**Tier 3 — historical. Do not treat as live.**
+
+`GRAFT2_9_EPISETFLOW_PIPELINE.md`, `GRAFT2_9_EVIDENCE_REVIEW.md`,
+`GRAFT2_9_EPISETFLOW_EVIDENCE_AUDIT.md`, `GRAFT_MERGED_PLAN_EVIDENCE_CROSSCHECK.md`.
+These describe superseded designs and *should* contain retired wording;
+`scripts/check_plan_consistency.py` excludes them for that reason.
+
+**Code, in dependency order.** `graft/schemas.py` → `graft/config/schema.py` →
+`graft/core/{checker,masks,obligations,utility,reward,incremental,resolve}.py` →
+`graft/synth/{lattice,enumerate,exact,policies,audits}.py` →
+`graft/setgen/{features,policy,rollout,flgfn_probe,trainer,gate2}.py` →
+`graft/setgen/learners/*.py`. Every module's docstring carries its own reasoning;
+they are not decoration and are the fastest way in. **Start with `trainer.py`'s
+docstring** — it defines the `g[i]` coordinates all four flow objectives are
+written in, and none of the learner files makes sense without it.
 
 ---
 
 ## 3. What to do next
 
-**Build Phase 2**, following `GRAFT_PHASE2_BUILD.md` §4's eight steps. §6 is
-signed off (including the `Δd ≤ 0.6` band, 9 Aug 2026); there are no open
-questions.
+**Step 6, the calibration gate. It is a hard stop and it is the only thing
+standing between here and a Gate-2 result.**
 
-The plan's own build order puts the tiny instance, the target and the flow oracle
-**before** the generator (steps 3–5). That ordering was earned: the flow
-recurrence, the FCS estimator and the mode definitions are exactly where review
-found errors, and they are the parts a hand-computed 6-atom table settles in an
-afternoon.
+```bash
+python scripts/phase3_calibrate.py --out artefacts/phase3_calibration.json
+```
+
+The script implements decision 4's ladder in decision 4's order: β eligibility →
+`N` from the wall-clock ceiling by an L5 throughput pilot on the **tuning** suite
+→ β sweep at that `N` → freeze β → the L4/L5 sanity check at decision 6's 0.10.
+Pass ⇒ adopt; fail ⇒ next rung; fail at the last ⇒ **Gate 2 inconclusive**, never
+a negative verdict on C3.
+
+Budget: **12 GPU-hours** at rung 0 (`c₀ = 1 h`), rising to 84 cumulative if the
+ladder goes to its top rung. `--quick --rungs 3` is a three-second wiring check
+and its output must never be written into §6.
+
+**Then, and only then:** write `N` and the frozen β into `GRAFT_PHASE3_BUILD.md`
+§6, and run the matrix — `graft.setgen.gate2.run_matrix(envs, spec)`. After any
+L6/L7/GAFlowNet run the §6b amendment procedures are contaminated by learner
+results, which is why nothing may be adjusted afterwards.
+
+**Read `PHASE3_DECISIONS.md` §2.3 before running the gate.** Measured on
+`tiny_instance()`, L7 is the *slowest* of the six flow arms to converge. If the
+adopted `N` lands where it has not converged, criterion 26 records C3 unsupported
+for a reason that is about budget, not mechanism. §2.3 lists three options and
+notes that option 2 — raising decision 6's threshold — is the only clean one and
+must be ruled **before** the gate runs, not after.
+
+### Built in Phase 3
+
+| Step | Module | What it is |
+|---|---|---|
+| 1 | `requirements-ml.txt`, narrowed structural test | the ML boundary: `graft.core` and `graft.synth` still import no ML library; `graft.setgen` may |
+| 2 | `graft/setgen/flgfn_probe.py` | the FL-GFN discharge — numpy only, no learner needed |
+| 2 | `graft/setgen/features.py` | `SyntheticFeaturizer`, the fix-F6 boundary; the only module that reads an atom id |
+| 2 | `graft/setgen/policy.py` | `Policy`, `LogZHead`, `StateFlowHead`, `PotentialHead`, `DeficitHead`, `capacity`, `match_capacity` |
+| 3 | `graft/setgen/rollout.py` | `sample_trajectories`; re-exports `uniform_backward` rather than reimplementing it |
+| 4 | `graft/setgen/trainer.py` | `TrainSpec` / `Environment` / `Batch` / `Arm` / `Trainer`. Owns ε, `N`, the checkpoint schedule, capacity, the seeds, `ledger=None`, **and the `g[i]` coordinates every flow objective is written in** |
+| 5, 7–9 | `graft/setgen/learners/` | all nine arms. L6 and L7 share `led_db_loss` verbatim; the entire difference is `delta_d=True` on L7's featurizer |
+| 10 | `graft/setgen/gate2.py` | `run_matrix`, `paired_bootstrap`, `consistency_report`, `audit_block`, and decision 26's verdict applied |
+| 6 | `scripts/phase3_calibrate.py` | **the gate — wired, not run** |
+
+### Measured results already in hand
+
+**The FL-GFN discharge** (decision 24). Best-fitting member of the deficit-potential
+family over all 8,638 main-suite terminals, every coefficient and a per-instance
+constant free: RMS **0.4666**, R² 0.910, all 8,638 terminals off tolerance, at
+every eligible β. Named special cases: `deficits_only` RMS 0.4717, `uniform_omega`
+RMS 1.0298.
+
+**This disproves that potential family. It does not show FL-GFN is inapplicable** —
+plan §4.5.2 retired that stronger reading once already, and the two-part claim
+string ships with the numbers so they cannot be separated later.
 
 ---
 
-## 4. The one thing to understand before continuing
+## 4. The environment, and one discrepancy
 
-**The plan documents went through ten review rounds and roughly seventy defects.
-The code went through one.** That gap is not about care; it is structural, and it
-matters for how the next phase is run.
+`torch 2.11.0+cu128`, verified working: `sm_120` in `torch.cuda.get_arch_list()`
+and a real matmul executes. **A cu124 build would install, import, report
+`cuda.is_available() == True`, and then fail at the first kernel launch** — this
+GPU is Blackwell. `requirements-ml.txt` records that trap and the check that
+catches it.
 
-Measured: each decision is restated in four or five places — the gap section, the
-module spec, the exit criterion, the normative table, the next phase's handoff.
-A correction is therefore a four-or-five-place edit, and landing three of them
-leaves a contradiction that *reads* as authoritative. In the fifth round, seven of
-eleven defects were introduced by the fourth round's own fixes; in the eighth, ten
-of fourteen were introduced by the seventh's.
-
-Two mitigations are in place:
-
-* **§6 of the Phase-2 plan is normative.** Where a restatement disagrees with the
-  table, the table wins and the restatement is a bug. Restatements of high-drift
-  decisions now *point at a decision number* instead of repeating its value.
-* **`scripts/check_plan_consistency.py` runs in the test suite** — 36 retired
-  wordings, 3 incompatible pairs, and a sequential-numbering check. It catches
-  *recurrence*, not new errors. It has caught its own over-broad rules twice.
-
-**The practical conclusion: stop reviewing the prose and start writing the code.**
-Further review rounds on this document have been producing defects at roughly the
-rate they remove them. The build will surface real problems — the ones that matter
-— and tests will hold them fixed.
+**`CLAUDE.md` line 7 says "1× RTX 5090 (32 GB)". The actual machine is an
+RTX 5050 Laptop GPU with 8 GB.** Phases 0–4 use no GPU models, so nothing built
+so far is affected. But fix F7 (VRAM collision — 7B extractor + 3B reader +
+embedder, stage-sequential) was reasoned against 32 GB and is far tighter at 8.
+**Not corrected**, because "Setup assumed" may describe a target machine rather
+than this laptop. Someone has to say which.
 
 ---
 
-## 5. Defects found by review that you should not re-introduce
+## 5. Open items, honestly
 
-These were real, and each is now a registered retirement. They are listed because
-the reasoning matters more than the string.
+| Item | Blocks | Where |
+|---|---|---|
+| **The terminal convention was never written down** | nothing now; it should still be recorded | plan §4.1 says "pick one and write it down"; nobody did. The code *has* picked one — measured on `tiny_instance()`, a state that is both a valid stop and has children gives `F(s) = 181.49` vs `R(s) = 14.88`, so `R` is the flow on the terminating `STOP` edge, **not** the terminal state flow. Phase 3 now depends on it in four objectives and honours it: the terminating transition is a first-class step with its own `log P_F(STOP \| x)`, `log P_B = 0` and `φ` slot, so no loss assumes `F(X) = R(X)`. **Three lines to record; still not done.** |
+| **Phase-3 §6 not fully signed off** | quoting any Gate-2 number | ε, lr, batch, the 1 h ceiling, the 0.10 sanity threshold, `c₀`, the 0.05 consistency band, `λ_aux` are all `[recommended]`; **the build adopted them as written and says so** (`PHASE3_DECISIONS.md` §4 item 2). `N` and β come from step 6. `23a` is filled from LED-GFN Appendix C. |
+| **SubTB's λ is in no decision table** | L5, and therefore β and `N` | set to 0.9 in `TrainSpec.subtb_lambda` — SubTB (ICML 2023)'s own default, so at least not invented here, but **[ANALYSIS]** as applied to this environment. Added to §6 as decision 28 by the build; **not signed.** L5 is the arm that selects β *and* sizes `N`, so it is the worst arm to have an unlisted hyperparameter. |
+| **L7 is the slowest flow arm to converge** | the calibration gate | measured on `tiny_instance()`, one seed: 0.167 at 20k against GAFlowNet's 0.097. If `N` lands where L7 has not converged, criterion 26 records C3 unsupported for a budget reason. `PHASE3_DECISIONS.md` §2.3 has the three options; option 2 must be ruled **before** step 6 runs. |
+| **Gate-0 re-sign-off** for the β eligibility amendment | formally, Phase 3 | `GRAFT_PHASE2_BUILD.md` §6b, decision-rule procedure, step 2. Has not happened. |
+| **The 0.001 margin** | possibly a regeneration | one main-suite instance clears the `neither` band at β = 4 by 0.001. Both exits cost something; deliberately undecided. `PHASE2_DECISIONS.md` §4.2. |
+| **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | item 8 is a *measurement* from the Phase-2.5 spike, not something draftable. D1 and D2 have no off-the-shelf supervision. |
+| **`CLAUDE.md` §7 has two errors** | nothing, but misleads | (a) it says the dataset analysis "was never written into a document" — it is in `Research papers/INDEX.md` §7; (b) it attributes Phase 2.5 to conflict/supersession alone, while the architecture says **D1 and D2** are the two decoders with no off-the-shelf supervision. |
+| **Three late-found baselines** | plan §5.3 | HyperMem, Chain-of-Memory, *How Memory Management Impacts LLM Agents* — in the library, not in the plan. |
+
+---
+
+## 6. How this project stays correct
+
+These are the habits that produced the parts that hold up. They are not optional
+decoration; skipping them is how the defects below happened.
+
+**Label every claim.** `[EVIDENCE]` (named paper, venue stated) / `[HYPOTHESIS]`
+(this project tests it) / `[ANALYSIS]` (judgment made here). Never blur them.
+
+**Verify a citation before relying on it.** Cite the verified published title,
+never the short name. Several numbers in this project's history survived multiple
+review rounds and turned out not to be in the paper.
+
+**Do not fabricate numbers.** This has been caught three times: an FCS literal
+invented past the digits actually printed, a "70% restates INDEX" statistic with
+nothing behind it, and a `torch==2.5.1` pin that would have failed on this GPU.
+Every literal in a test should be independently re-derivable, and several now are
+(the FCS reference is recomputed in exact rational arithmetic in its own test).
+
+**A correction lands in four or five places, and three is the usual score.**
+Decisions are restated in the gap section, the module spec, the exit criterion,
+the normative table and the next phase's handoff. Phase 3 hit this in three
+consecutive review rounds. Two mitigations are in place: **restatements point at
+a decision number instead of repeating its value**, and
+`scripts/check_plan_consistency.py` runs inside the test suite with 49 retired
+wordings that fail the build if they reappear.
+
+**The consistency script only catches textual recurrence.** It does not catch
+semantic contradictions, and several rounds of real defects passed it cleanly.
+
+**Say what is not known.** "No evidence found" is a finding. So is "this band is
+a guess calibrated on Phase-1 fixtures, not on the lattice".
+
+---
+
+## 7. Defects found by review that should not be re-introduced
+
+The reasoning matters more than the string; every one is now a registered
+retirement in `scripts/check_plan_consistency.py`.
 
 | Defect | Correct position |
 |---|---|
-| `exp(β·0) = 1` — an invalid set scoring 1 | The validity indicator is **multiplicative** |
-| The empty proof set is formally valid and scores `R = 7.39` | `1 ≤ \|X\| ≤ max_atoms`; `stop_allowed(root)` is `False` |
+| `exp(β·0) = 1` — an invalid set scoring 1 | the validity indicator is **multiplicative** |
 | `p*(FAIL)` called a TV floor | `FAIL` is in **both** distributions, so TV = 0 is reachable |
-| "A dead end proves no proof exists" | It licenses only *no proof found under this pool, policy, attempt count, budget* |
-| `coverage = 1 − mean(d₁..d₄)` | Makes `temporal_correctness` identically `1 − d_time`; coverage is **binary per slot** |
-| Equivalent-action collisions treated as measurable | Impossible on labelled sets — a theorem, and SA-GFN's correction does not apply |
-| SA-GFN "L₁ ≈ 0.12 vs 0.01" | **Not in the paper.** Use 5,220 vs 1,042 cyclohexane fragments per 5,000 samples |
-| "FCS is needed because Phase 9 relies on it" | **Invented.** No document specifies a Phase-9 distribution metric |
-| Per-terminal DP for `p_θ` | One forward pass over the policy-independent state graph — 35 h → 0.3 h |
-| `uint32` for `pool_cap ≤ 64` | 32 bits cannot address 64 atoms; `uint64` |
-
----
-
-## 6. Open items, honestly
-
-* **Gate-0 data contract** (v1.2 §7 items 1–10) is still unwritten. It blocks
-  Phases 5–9, not Phases 2–4. `CLAUDE.md` §7 has the detail.
-* **Three late-found baselines** — HyperMem, Chain-of-Memory, *How Memory
-  Management Impacts LLM Agents* — are in the library but not in plan §5.3.
-* **No reader-size experiment** exists, though the minimality claim's scope
-  condition rests on a provisional single-author preprint.
-* **β = 4.0** is a placeholder until the Phase-3 sweep. The `r_fail_margin` check
-  in `graft/config/schema.py` refuses a β that makes `FAIL` competitive.
-
----
-
-## 7. Working agreements that produced the good parts
-
-* Label every claim `[EVIDENCE]` / `[HYPOTHESIS]` / `[ANALYSIS]`, and never blur
-  them.
-* **Verify a citation before relying on it.** One number in this project's
-  documents survived six rounds and turned out not to be in the paper.
-* Record decisions with their *cost to reverse*, not just their value.
-* When a review finds a defect, fix the class, not the instance.
-* Say what is not known. "No evidence found" is a finding.
+| "A dead end proves no proof exists" | it licenses only *no proof found under this pool, policy, attempt count, budget* |
+| Per-terminal DP for `p_θ` | one forward pass over the policy-independent state graph |
+| `environment_fingerprint` carrying β | it must be β-independent, or freezing β after Gate 0 changes the identity of frozen suites |
+| `validate_bands` failing open on an unknown scope | it raises; every other decision on that path fails closed |
+| Counting source tiers over the whole pool | count tier **keys** among atoms whose `Source` resolves |
+| LED consistency measured per terminal | LED decomposes per **trajectory**; one terminal has many |
+| GAFlowNet with `Δd` in its policy | `Δd` reaches its **loss** only, or it becomes L7 with extra steps |
+| `c_N = 0` proving unbiasedness | Theorem 1 also assumes `L = 0`; call it a finite-budget empirical control |
+| Scattering per-edge `Δd` by a state→row map | duplicate states in one batch silently lose their features — a **false negative** for Contribution 3 |
+| Asserting 1e-12 agreement for a float32 network | float32 carries ~1e-7; test the adapter in float64 and report the dtype separately |

@@ -6,13 +6,33 @@ evidence-set learner.
 - **The science:** [`GRAFT_RESEARCH_PLAN_v1.md`](GRAFT_RESEARCH_PLAN_v1.md) (v1.2). Wins any conflict.
 - **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases.
 - **Why things are the way they are:** [`CLAUDE.md`](CLAUDE.md) — decisions, what was rejected, and the cost of changing your mind.
-- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md).
+- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md) · [`PHASE3_DECISIONS.md`](PHASE3_DECISIONS.md).
+- **Picking up a cold session:** [`chatcontext1.md`](chatcontext1.md) — current state, reading order, open items. Start there.
 
 Current state: **Phases 0, 1 and 2 complete** — scaffold and data contracts; the
 deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`); and the
 enumerable synthetic environment with its exact evaluator (ProofLattice, the
 forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen suites and the Gate-2
-audits). Phase 3, the seven learners, is next.
+audits). **568 tests, all passing.**
+
+**Phase 3 is code complete and uncalibrated.** Steps 1–5 and 7–10 of
+[`GRAFT_PHASE3_BUILD.md`](GRAFT_PHASE3_BUILD.md) §4 are built and green: the ML
+dependency boundary, the FL-GFN discharge (measured — 8,638/8,638 terminals off
+terminal identity at every eligible β), the fix-F6 adapter, the policy and its
+five heads, the trajectory sampler, the shared trainer, **all nine arms** (L1–L7,
+L7b, GAFlowNet) and the Gate-2 harness with its hierarchical paired bootstrap.
+
+**Step 6, the calibration gate, has not run.** `N` and β are therefore not
+frozen, and no L6/L7/GAFlowNet result may be quoted — the plan's own ordering
+constraint, so that β and `N` are fixed before the proposed method trains once.
+Run it with:
+
+```bash
+python scripts/phase3_calibrate.py --out artefacts/phase3_calibration.json
+```
+
+Phase 3 needs torch — see `requirements-ml.txt`, and note that the CUDA build is
+**not** incidental on a Blackwell GPU.
 
 `python scripts/verify_handoff.py --preset synthetic` prints the config, log and
 **lattice** fingerprints that must match across machines before any Gate-2 number

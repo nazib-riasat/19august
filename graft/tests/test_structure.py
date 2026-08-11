@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 import pkgutil
 import sys
 from pathlib import Path
@@ -25,9 +26,26 @@ PACKAGE_ROOT = Path(graft.__file__).parent
 REPO_ROOT = PACKAGE_ROOT.parent
 
 
-def _source_files(subdir: str | None = None) -> list[Path]:
+#: Packages that may import an ML library, and the phase that opened each.
+#: Everything else in ``graft`` must stay importable on a bare interpreter.
+#:
+#: **This list is a narrowing, not a weakening** (Phase-3 P3.0).  Phase 3 needs
+#: torch for its learners, so a blanket "``graft`` imports no ML library" test
+#: would have had to be deleted the moment the first learner was written.
+#: Deleting it would also have removed the guard on ``graft.core`` and
+#: ``graft.synth``, where the rule still matters: Phase-2 exit criterion 21
+#: requires the exact evaluator to run without a GPU stack, and Phase 1's whole
+#: prohibition is that nothing learned may reach ``H``.
+ML_ALLOWED_PACKAGES = ("graft.setgen",)
+
+
+def _source_files(subdir: str | None = None, *, ml_allowed: bool = False) -> list[Path]:
     root = PACKAGE_ROOT if subdir is None else PACKAGE_ROOT / subdir
-    return sorted(p for p in root.rglob("*.py") if "tests" not in p.parts)
+    files = sorted(p for p in root.rglob("*.py") if "tests" not in p.parts)
+    if ml_allowed:
+        return files
+    allowed = tuple(pkg.split(".", 1)[1] for pkg in ML_ALLOWED_PACKAGES)
+    return [p for p in files if not any(part in allowed for part in p.parts)]
 
 
 def _module_names() -> list[str]:
@@ -52,19 +70,54 @@ ML_LIBRARIES = (
 )
 
 
-def test_phase0_imports_no_ml_library():
-    """Criterion 13.  Phases 0-4 run with no GPU model at all, and the suite must
-    stay runnable on a bare interpreter — including inside a Kaggle notebook
-    before any heavy install."""
-    for name in _module_names():
-        importlib.import_module(name)
-    leaked = sorted(lib for lib in ML_LIBRARIES if lib in sys.modules)
-    assert not leaked, f"Phase 0 imported ML libraries: {leaked}"
+def test_the_phase_0_to_2_surface_imports_no_ml_library():
+    """Phase-0 criterion 13, narrowed by Phase-3 P3.0 rather than deleted.
+
+    Everything outside :data:`ML_ALLOWED_PACKAGES` must stay importable on a bare
+    interpreter — Kaggle before any heavy install, and Phase-2 exit criterion 21,
+    which keeps the exact evaluator usable without a GPU stack.
+
+    Run in a **subprocess** because the check is on ``sys.modules``: importing
+    ``graft.setgen`` in this process to test something else would put torch there
+    and make the assertion unfalsifiable. A clean interpreter is the only honest
+    way to ask "does *this* subset pull in an ML library".
+    """
+    import subprocess
+
+    names = [n for n in _module_names() if not n.startswith(ML_ALLOWED_PACKAGES)]
+    program = (
+        "import importlib, sys, json\n"
+        f"for n in {names!r}:\n"
+        "    importlib.import_module(n)\n"
+        f"print(json.dumps(sorted(l for l in {list(ML_LIBRARIES)!r} if l in sys.modules)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
+    assert not leaked, f"the Phase 0-2 surface imported ML libraries: {leaked}"
+
+
+def test_the_ml_boundary_is_a_narrowing_not_a_hole():
+    """The allowance is one package, and it is the one Phase 3 owns.
+
+    A future phase widening this list is making a decision; a future phase
+    widening it *silently* is removing the guard that keeps ``H`` free of
+    anything learned (v1.2 §4.4).
+    """
+    assert ML_ALLOWED_PACKAGES == ("graft.setgen",)
+    for pkg in ML_ALLOWED_PACKAGES:
+        importlib.import_module(pkg)
 
 
 def test_torch_is_only_referenced_lazily():
     """`runtime.set_seed` may use torch when it is present, but only from inside
-    a function body — never at module scope."""
+    a function body — never at module scope.
+
+    Scoped to everything outside :data:`ML_ALLOWED_PACKAGES`: Phase 3's learners
+    import torch at module scope deliberately, which is what the narrowing in
+    P3.0 permits."""
     for path in _source_files():
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:  # module scope only
