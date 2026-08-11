@@ -200,7 +200,7 @@ attempts accepted.
 **This band is genuinely tight, and that is a finding, not a defect.** It is
 recorded here so a future β change is not made casually — see §4.2.
 
-### 4.2 The `neither` band fails at half the predeclared β grid — resolve it *before* Phase 3 trains
+### 4.2 The `neither` band fails at half the predeclared β grid — resolved by an eligibility rule
 
 **[ANALYSIS]** Measured across **all twenty** main-suite instances, not one:
 
@@ -223,17 +223,23 @@ that the environment could not be built, or restart the sweep. So "raise this at
 the start of the sweep" was too weak. **The amendment has to be decided and
 recorded before Phase 3 trains anything.**
 
-Three options, and they are not equally viable:
+**Resolved: eligibility precedes selection.** The plan now declares (G9 item 3,
+decisions 19 and 22) that a candidate is *eligible* only if the main suite
+satisfies its bands at that β, and that the argmin runs over the eligible
+candidates. **The predeclared grid `{1, 2, 4, 8}` is unchanged** — what changed
+is a decision rule, not the candidate set and not the instrument.
 
-1. **Amend the candidate set to `{4, 8}` before any sweep runs.** Feasible now
-   and uncontaminated. It is itself an amendment to decision 19 and needs the
-   §6b paperwork, but the recorded reason must be *"the instrument cannot
-   resolve at β ∈ {1, 2}"* — a property of the environment measured before any
-   learner existed — and never *"those β looked bad"*. **[EVIDENCE]** *The
-   Hitchhiker's Guide to Testing Statistical Significance in Natural Language
-   Processing* (ACL 2018) is the project's standing authority for a predeclared
-   decision rule, and it is the reason the distinction between those two
-   sentences is not pedantry.
+Measured eligibility on the frozen main suite: **{4, 8} eligible, {1, 2} not.**
+
+Three ways this could have gone, recorded because the rejected two are the ones a
+reader will think of:
+
+1. **Hand-pick `{4, 8}`.** Same outcome today, and it was this document's first
+   recommendation. Rejected: a hand-chosen list is a new predeclared object that
+   has to be defended on its own, and it silently goes stale the moment the
+   suites are ever regenerated. The eligibility rule is derived from decision
+   14's band, which was signed off on 9 August 2026 — before the generator
+   existed — so it defends itself and survives regeneration.
 2. **Regenerate the instrument so all four candidates pass.** This looks
    *infeasible*, not merely expensive, and saying otherwise would be dishonest.
    At β = 1 a missing gold atom costs a factor of `exp(1 · w_suff/|P_A|) =
@@ -242,16 +248,36 @@ Three options, and they are not equally viable:
    lower. Clearing 0.5 there needs a lattice near the 200-terminal floor with
    almost no near-misses, which trades away the discriminating power the band
    exists to protect.
-3. **Keep the grid and accept the outcome.** If 1 or 2 wins, §6b's second exit
-   applies: report that the environment could not be built at that β. Honest,
-   but it spends a full sweep to learn something already measured here.
+3. **Keep the old rule and accept the outcome.** If 1 or 2 had won, §6b's second
+   exit applies: report that the environment could not be built at that β.
+   Honest, but it spends a full seven-learner sweep to learn something already
+   measured here — and by then the amendment is contaminated.
 
-**Recommendation: option 1, decided and written before Phase 3 starts.** The
-justification is G10's own: at β = 1 roughly four fifths of the target mass sits
-on terminals that complete no designed proof, so exact TV would be substantially
-measuring whether learners can match a near-uniform tail — which is precisely the
-failure the band was introduced to prevent, and it makes Gate 2 unable to resolve
-what it is pointed at.
+**Why this is legitimate and not β-shopping.** Eligibility reads no learner and
+no training run. It is a property of `p*`, a function of the environment and β
+alone, computable before Phase 3 exists — and decision 10 already required
+exactly this measurement on exactly this suite. The rule changes *when* the check
+runs, not what it sees: a condition that can only ever fail after the winner is
+picked is not a gate, it is a post-mortem. **[EVIDENCE]** *The Hitchhiker's Guide
+to Testing Statistical Significance in Natural Language Processing* (ACL 2018) is
+the project's standing authority for a predeclared decision rule; the reason for
+recording this now, rather than after the sweep, is that its force comes entirely
+from the ordering.
+
+The substantive justification is G10's own: at β = 1 roughly four fifths of the
+target mass sits on terminals completing no designed proof, so exact TV would be
+substantially measuring whether learners can match a near-uniform tail — the
+failure the band was introduced to prevent, and one that makes Gate 2 unable to
+resolve what it is pointed at.
+
+**A correction to this section's own earlier claim.** It said the amendment
+"needs the §6b paperwork". It does not — §6b as written governs amending a
+**band**, and its steps 2–4 regenerate the suites and mint a new environment
+fingerprint. None of that applies here: no band moved, the generator is
+untouched, and the suites are byte-identical. Applying it would have discarded a
+valid instrument. `GRAFT_PHASE2_BUILD.md` §6b now carries a **second** procedure
+for amending a predeclared decision rule — new plan version, Gate-0 re-sign-off,
+no learner results inspected — which is what this amendment was run under.
 
 **The β = 4 margin is thin, and that belongs here too.** The main suite spans
 0.463–0.499 against a hard band of 0.5: one instance clears it by **0.001**. A
@@ -473,12 +499,12 @@ Unchanged from the plan's §8, with one addition:
    budget is derived from it.
 3. **The backward policy is uniform over *removable* atoms.** `uniform_backward`
    reads them off the enumerated in-edges, which are exactly the removable atoms.
-4. **The β sweep uses `Target.at_beta`**, on the tuning suite, and the frozen β is
-   re-validated with `validate_bands("main")`. **Settle the candidate set before
-   training anything** — §4.2 measures 20/20 main-suite failures at β ∈ {1, 2},
-   and §6b's amendment procedure forbids relaxing a band after any learner result
-   has been inspected. Once the sweep has run it is too late to amend without
-   contamination.
+4. **The β sweep uses `Target.at_beta`**, on the tuning suite, and runs its argmin
+   over the **eligible** candidates only — a candidate is eligible when
+   `validate_bands("main")` passes at that β (G9 item 3, decisions 19 and 22).
+   Measured on the frozen main suite: **{4, 8} eligible, {1, 2} not** (§4.2).
+   Re-check eligibility rather than trusting that line if anything about the
+   suites or the reward has moved since.
 5. **Exact TV converges to 0.** `p*(FAIL)` is a diagnostic beside it, never a
    floor. `divergence_report` returns them together so the rule cannot drift.
 6. **The Gate-2 decision rule is predeclared and unchanged.**

@@ -598,21 +598,36 @@ missing:
    forbid.
 2. **Selected on the tuning suite only.** The main and probe suites are not
    enumerated at any candidate β except the winner.
-3. **Re-validated on the main suite before Gate 2 runs**, per **decision 10**
-   — `at_beta` for `r_fail_margin`, `validate_bands("main")` for the mass bands.
-   If the main suite fails its bands at the frozen β, that is a regeneration
-   under the amendment procedure of §6b — not a shrug.
+3. **Eligibility precedes selection.** A candidate is *eligible* only if the main
+   suite satisfies its bands at that β — `at_beta` for `r_fail_margin` and
+   `validate_bands("main")` for the target-mass bands, per **decision 10**.
+   Ineligible candidates are excluded from the argmin rather than discovered
+   after it, so an eligible winner cannot then fail re-validation. The
+   regenerate-the-suites branch survives for the case it was written for: **no**
+   candidate is eligible, which means the environment cannot be built at any
+   declared β, and that is a regeneration under §6b — not a shrug.
+
+**Why a main-suite condition may gate the candidate set without "touching test
+data".** v1.2 §4.1 forbids choosing β to suit the instances the learners are
+scored on. Eligibility looks at no learner and no training run: it is a property
+of `p*`, which is a function of the environment and β alone, computable before
+Phase 3 exists. And **decision 10 already required this exact measurement on this
+exact suite** — the post-selection re-validation item 3 replaces. So no
+information is read that the plan did not already mandate reading; what changes
+is *when*. A condition that can only ever fail after the winner is picked is not
+a gate, it is a post-mortem.
 
 All three suites are frozen at Gate 0 alongside the β candidate set.
 
 **β's winner-selection rule, which the candidate grid alone does not supply.**
 Declared before any sweep runs: the winner is the candidate minimising **mean
-exact TV across the tuning suite**, for **L5 (SubTB) at a fixed budget of
-sampled training trajectories**, averaged over the three training seeds; ties
-broken toward the **smaller** β. L5 rather than L7 on purpose — selecting β with
-the proposed method would tune the environment's reward temperature in favour of
-Contribution 3 before Gate 2 tests it. A grid plus a tuning suite without a rule
-is still a decision made after seeing results.
+exact TV across the tuning suite**, **among the eligible candidates of item 3**,
+for **L5 (SubTB) at a fixed budget of sampled training trajectories**, averaged
+over the three training seeds; ties broken toward the **smaller** β. L5 rather
+than L7 on purpose — selecting β with the proposed method would tune the
+environment's reward temperature in favour of Contribution 3 before Gate 2 tests
+it. A grid plus a tuning suite without a rule is still a decision made after
+seeing results.
 
 ### G10 — Two valid modes existing does not make the target multimodal [ANALYSIS]
 
@@ -1192,10 +1207,10 @@ happened once.
 | 16 | Dead-end audit | exact absorption mass by `\|X\|` under `ForcedContinuationPolicy`; **conditional** early share `Σ_{|d|<max_atoms−1} f(d) / Σ_{d∈D} f(d)` ≤ 0.05, not absolute mass | a modal-bin statistic that passes with an unhealthy tail |
 | 17 | Evaluation budget | total ≤ 1 h across 21,000 evaluations ⇒ ≤ 0.15 s each, DP only; forward pass reported separately | a per-unit limit that silently permits 2.9 h |
 | 18 | Full-scale MC | `N = 200,000`, seed `20260810`, top-20 within 5σ | "within 5σ" without an `N` is not a criterion |
-| 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; swept on a **separate tuning suite** (seed `20260811`); the frozen β re-validated on the main suite per **decision 10** | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
+| 19 | β lifecycle | candidates `{1, 2, 4, 8}` predeclared; **eligibility precedes selection** — a candidate whose main-suite bands fail at that β is excluded from the argmin (decisions 10 and 14), so re-validation cannot fail *after* a winner is picked; swept on a **separate tuning suite** (seed `20260811`) | β chosen on the same instances the learners are scored on, and a frozen suite silently violating its own acceptance band |
 | 20 | FCS | `fcs(p_theta, target, m=8, n_subsets=2000, seed=20260812)`, `P_S` per Cor. 1, exact `p_θ`, `FAIL` included; reported beside exact TV (v1.2 §6.4, Gate 2 item 3) | a metric named but not executable — and a signature without the reward cannot compute it |
 | 21 | Fingerprints | `environment_fingerprint` over spec, pool (with `feat`), obligations, snapshot digest, gold, both templates **and the enumerated graph**, excluding β; `target_fingerprint(β)` separate; both sensitivity-tested | a fingerprint that proves only the seed matched, or one that moves when β is frozen after the suites were |
-| 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, L5 at **the same fixed trajectory budget the Gate-2 primary comparison uses** (fix F12) — one number, preregistered once in Phase 3, used in both places; 3 seeds; ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
+| 22 | β winner-selection | minimise mean exact TV on the **tuning suite**, **over the eligible candidates of decision 19**, L5 at **the same fixed trajectory budget the Gate-2 primary comparison uses** (fix F12) — one number, preregistered once in Phase 3, used in both places; 3 seeds; ties to smaller β | a grid without a rule is still a choice made after seeing results — and selecting on L7 would tune the reward in favour of Contribution 3 |
 | 23 | Mode separation | `\|P_A ∩ P_B\| / \|P_A ∪ P_B\| ≤ 0.5` | `P_A ≠ P_B` permits a one-atom difference, which is not "materially different" |
 | 24 | Structural assertions | both templates valid and reachable; **each** planted failure mechanism separately reachable; tiers, features, intervals and targets asserted per instance; the invalidated edge and quarantined assertion **present in the snapshot and asserted *unreachable*** — the masks prune them, so they are negative cases, not selectable evidence | an instance whose planted mechanisms are broken passing every other criterion, and a malformed `P_B` being written up as "effectively unimodal" |
 
@@ -1274,6 +1289,31 @@ Any relaxation requires, in order:
 
 Point 6 is the one that matters and the one that is easy to skip, because by the
 time a band is failing there is usually a half-finished run sitting there.
+
+### Amending a predeclared *decision rule* — a different procedure, and why
+
+The procedure above governs a change to the **instrument**, which is why it
+regenerates the suites and mints a new environment fingerprint. A change to a
+predeclared *decision rule* — the candidate set, the eligibility condition, the
+argmin — is a different object: no band moves, the generator is untouched, the
+suites stay byte-identical, and the environment fingerprint must **not** move,
+because it is β-independent by construction (decision 21).
+
+Applying steps 2–4 there would discard a valid instrument and destroy
+comparability for nothing. Such an amendment requires:
+
+1. a **new plan version** recording which rule moved, to what, and why;
+2. **Gate-0 re-sign-off**;
+3. **no learner results inspected beforehand** — identical to point 6 above and
+   for the identical reason. This is the binding constraint, and it bites
+   earlier than it looks: decision 22's sweep *is* a learner result, so a rule
+   change made after it has run is contaminated whether or not the instrument
+   moved.
+
+Recorded because the first amendment this plan actually needed was of the second
+kind — the eligibility rule of G9 item 3 — and the first procedure did not fit
+it. Reaching for the wrong one would have regenerated three suites that were
+already correct.
 
 ---
 

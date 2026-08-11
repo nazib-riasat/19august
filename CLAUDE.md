@@ -121,7 +121,7 @@ These were frozen so that comparisons stay controlled. They are yours to change 
 
 | Value | Default | Cost to change |
 |---|---|---|
-| `beta` | 4.0 (swept on the synthetic lattice in Phase 3, then frozen) | Re-run everything after the sweep |
+| `beta` | 4.0 (swept on the synthetic lattice in Phase 3, then frozen). Candidates `{1, 2, 4, 8}`, but the argmin runs over the **eligible** ones only — those whose main-suite target-mass bands pass at that β. Measured on the frozen suite: `{4, 8}` eligible, `{1, 2}` not | Re-run everything after the sweep |
 | `u_weights` | `{suff 1.0, cov 0.5, src 0.25, temp 0.5, red 0.25, size 0.1}` | Must be **identical across all seven learners**, or the comparison measures reward engineering rather than learning |
 | `U` term ranges | all normalized to [0, 1] | β becomes uninterpretable; reward re-derivation |
 | `size` term | `\|X\| / max_atoms`, one weight | Reward changes → all learners re-run |
@@ -147,7 +147,7 @@ These were frozen so that comparisons stay controlled. They are yours to change 
 | **Conflict/supersession annotation** | **No dataset provides it.** LongMemEval's knowledge-updates subset is closest and is small. This is the binding constraint on C1 and the reason Phase 2.5 exists. |
 | **Wikipedia→conversation transfer** | Stage D trains on 2Wiki/MuSiQue-style proofs and is evaluated on conversational memory. A declared, untested claim. The training loader is deliberately source-agnostic so a conversational variant is a drop-in if it fails. |
 | **`r_fail` after the β sweep** | If β moves substantially in Phase 3, the gap between `r_fail` and the valid reward range moves with it. One-line re-check, belongs in the β-sweep task — and `Target.at_beta` now performs it automatically. |
-| **β and the `neither`-mass band — decide before Phase 3 trains** | Measured on **all 20** main-suite instances: `neither` mass is 0.78–0.81 at β = 1 and 0.68–0.71 at β = 2 (20/20 fail the ≤ 0.5 band), 0.46–0.50 at β = 4 and 0.17–0.20 at β = 8 (0/20 fail). Decision 22 picks β by *running L5*, and §6b forbids relaxing a band after any learner result has been inspected — so the candidate set must be amended (recommendation: `{4, 8}`) **before** the sweep, not after. Regenerating so β = 1 passes looks infeasible, not merely costly. Note also that one instance clears the band at β = 4 by 0.001. `PHASE2_DECISIONS.md` §4.2. |
+| **How close the main suite sits to its own `neither` band** | At the frozen β = 4 the twenty main-suite instances span 0.463–**0.499** against a hard band of 0.5 — one clears it by 0.001. A weight change, a feature change or a NumPy release that moves the `default_rng` stream could push an instance over and force a regeneration for no scientific reason. Two exits, both costly: record the fragility and accept a possible regeneration, or move the generator for headroom — a change to a frozen instrument at the full §6b price. **Not decided.** `PHASE2_DECISIONS.md` §4.2. |
 | **Three baselines found late, not yet in the plan** | **HyperMem** (ACL 2026) reports 92.73% LLM-judge on LoCoMo — the closest structured-memory competitor. **Chain-of-Memory** (ACL 2026) gets 7.5–10.4% gains at ~2.7% of the token cost, which is the strongest published argument against building a heavy graph at all. **How Memory Management Impacts LLM Agents** (ACL 2026) empirically documents error propagation, upgrading that risk from `[ANALYSIS]` to `[EVIDENCE]`. All three are in the paper library; none are in the plan's §5.3 yet. |
 
 ---

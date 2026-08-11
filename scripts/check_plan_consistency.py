@@ -91,6 +91,22 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("rounded to 10 decimal places", "quantised to 1e-12; 1e-10 hides 1.25e-7 of TV", "R10", None),
     ("still awaiting sign-off is the", "delta-d 0.6 was signed off 9 Aug 2026; no open items in section 6", "R10", None),
     ("must converge to it", "state a tolerance: within 4 SE of the enumerated literal", "R10", None),
+    # R11 — the beta lifecycle. The grid `{1, 2, 4, 8}` is unchanged and stays
+    # legal; what was retired is selecting a winner *before* checking whether the
+    # main suite can be scored at that beta. Measured after the Phase-2 build:
+    # {1, 2} fail the neither-mass band on 20/20 main-suite instances, so the old
+    # ordering could only ever discover that after a full seven-learner sweep,
+    # by which point Section 6b forbids amending anything.
+    ("predeclared; swept on a **separate tuning suite**",
+     "eligibility precedes selection — ineligible candidates leave the argmin (decision 19)", "R11", None),
+    ("the frozen β re-validated on the main suite per **decision 10**",
+     "eligibility is checked before the sweep, not after the winner is picked", "R11", None),
+    ("exact TV across the tuning suite**, for **L5",
+     "argmin over the ELIGIBLE candidates of G9 item 3 (decision 22)", "R11", None),
+    ("If the main suite fails its bands at the frozen β, that is a regeneration",
+     "regeneration is the branch for *no* eligible candidate, not for a failed winner", "R11", None),
+    ("Amend the candidate set to `{4, 8}` before any sweep runs",
+     "the grid is unchanged; the eligibility rule derives the feasible set from decision 14's band", "R11", "PHASE2_DECISIONS.md"),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
