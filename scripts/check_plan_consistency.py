@@ -44,6 +44,7 @@ LIVE_DOCS = (
     # that lists rules for a document it does not read is the same defect class
     # the rules themselves exist to catch.
     "GRAFT_PHASE3_BUILD.md",
+    "GRAFT_PHASE4_BUILD.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
     "PHASE2_DECISIONS.md",
