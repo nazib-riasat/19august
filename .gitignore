@@ -10,6 +10,15 @@ env/
 # Export deliberately when a specific run needs to travel.
 runs/
 
+# Phase-3 step 6 and step 10 write here by default: the calibration record, the
+# Gate-2 report, and one model checkpoint per (arm, seed) -- 27 of them.  None
+# of it is versioned, and the calibration record in particular does not need to
+# be: the plan requires `N` and the frozen beta to be **transcribed into
+# GRAFT_PHASE3_BUILD.md section 6**, so the decision travels in the document and
+# the JSON is only its evidence.  Export deliberately if a specific run has to
+# travel.
+artefacts/
+
 # The paper library and its backup zip are large binaries that are already
 # reproducible via Research papers/download_papers.ps1.  The index (INDEX.md,
 # papers.csv, README.md) and the download script stay tracked; the ~192 MB of
