@@ -164,6 +164,18 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "G-Retriever prizes nodes AND edges; C_e is tuned per dataset, so it is declared once and never swept", "R14", None),
     ("(0.451 F1 vs 0.429 for a tuned heuristic on multi-hop HotpotQA)",
      "one cell of Table 6 — the only significant budget of four, at 3B; the paper concludes parity", "R14", None),
+    # R15 — the Phase-4 measurement audit. Every one of these was a rule written
+    # from reasoning that a measurement then contradicted: greedy is globally
+    # optimal, the pool is disconnected, closure only adds atoms, and
+    # stop_allowed IS H. Measured before any method was built.
+    ("S5 must beat S3 and S4",
+     "S5 must beat S1, S2, S3 AND S4 on distinct valid sets; best-of-K is reported against the p* ceiling, never tested (G5, G9)", "R15", None),
+    ("8 ε-greedy restarts at ε = 0.05",
+     "forced-distinct first atoms: eps-restarts measured 2.10 distinct from 8, all deviations non-argmax (G3)", "R15", None),
+    ("median pre-completion output size is closest to",
+     "median POST-completion size: completion only adds atoms, so the pre- criterion selected for H rejecting on size (P4.5)", "R15", None),
+    ("every method spends 8 of its 32 checks",
+     "0 for mask-driven arms (stop_allowed IS H), 1 per candidate for direct builders (G3, G6)", "R15", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
