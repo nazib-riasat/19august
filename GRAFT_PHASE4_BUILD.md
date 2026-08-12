@@ -17,10 +17,31 @@ Gaps are numbered **G1–G8**, matching the Phase-0/1/2/2.5/3 convention.
 
 **The question.** Does the learned set constructor beat *training-free* search at
 equal budget? `CLAUDE.md` §8 names the two most likely to embarrass the project —
-**submodular greedy** (0.451 F1 against 0.429 for a tuned heuristic on multi-hop
-HotpotQA) and **PCST** (G-Retriever, NeurIPS 2024, whose connected subgraph is
-structurally the closest classical object to a proof) — and says: *run them
-early*. This is that.
+**submodular greedy** and **PCST** (G-Retriever, NeurIPS 2024, whose connected
+subgraph is structurally the closest classical object to a proof) — and says:
+*run them early*. This is that.
+
+**One inherited number is cited too strongly, and it is corrected here.**
+`CLAUDE.md` §8 and earlier drafts of this plan quote the submodular packer at
+"0.451 F1 vs 0.429 for a tuned heuristic on multi-hop HotpotQA". That is one cell
+of arXiv 2607.00725's Table 6 — the **single budget out of four** at which the
+gap is significant, at one reader size:
+
+| Budget | submod F1 | focused F1 | Δ | p |
+|---|---|---|---|---|
+| 96 | 0.374 | 0.392 | **−0.018** | 0.08 |
+| 128 | 0.426 | 0.427 | −0.001 | 0.90 |
+| **160** | **0.451** | **0.429** | **+0.022** | **< .05** |
+| 224 | 0.472 | 0.459 | +0.013 | 0.14 |
+
+At 7B the same comparison is **−0.010 (p = 0.45)**, and the paper's own abstract
+concludes it *"reaches parity, winning outright only where evidence density is the
+binding constraint."* So the honest statement is **parity with a hand-tuned
+heuristic in most settings**, not a win. **[ANALYSIS]** This does not weaken
+Gate 3 — the threat here is a *training-free* method matching a *learned* one,
+which is a different comparison entirely — but quoting the winning cell as if it
+were the result is `CLAUDE.md` §5's "overreaching on what a paper establishes",
+and this plan reproduced it before the paper was reread.
 
 **Why it comes before the data phases.** Plan §7 calls Gate 3 *"the highest-risk
 gate"*: if PCST, MIP or submodular greedy matches the learned constructor at
@@ -45,8 +66,9 @@ Gate 3's synthetic table is a kill-shot, not a coronation.
 
 ### G1 — `relevance` has no source on the lattice, and it decides how strong S3 and S4 are [ANALYSIS]
 
-S3's objective opens with `1.0·rel` and S4's PCST needs **node prizes**. Both are
-*relevance*, which in the finished system comes from Stage C's hybrid retrieval —
+S3's objective opens with `w_rel·Rel` and S4's PCST needs **prizes** (on nodes
+*and* edges — see P4.5). Both are *relevance*, which in the finished system comes
+from Stage C's hybrid retrieval —
 **Phase 7, which does not exist.** Verified: a pool atom carries a 12-dimensional
 feature vector and no relevance channel.
 
@@ -67,29 +89,53 @@ S5 wins, it wins against a relevance-informed S3/S4; if S5 loses, the loss is no
 explained away by a weak proxy. **[ANALYSIS]** the cost is one extra column, not
 one extra method.
 
-### G2 — PCST's connected output is **not** a closed set, and fix F10 says it is
+### G2 — Fix F10's PCST claim is true under one graph mapping and false under the other, and the architecture states neither
 
-Architecture fix F10 states: *"PCST's connected output maps to a closed set with
-no conversion logic."* **That is false, and it is checkable in one line.**
+Architecture fix F10 says: *"PCST's connected output maps to a closed set with no
+conversion logic."* Whether that holds depends entirely on **how the pool becomes
+a graph**, which no document specifies. Measured arity across the main suite:
 
-Closure requires that every atom's `refs` are present. Connectivity in the
-reference graph is strictly weaker. Measured on the first benchmark instance:
+| Atom kind | Count | `refs` per atom |
+|---|---|---|
+| node | 306 | 0 |
+| edge | 95 | **exactly 2** |
+| binding | 60 | **1 (×20) or 2 (×40)** |
+
+**Mapping A — atoms are PCST nodes, `refs` are PCST edges.** Then F10 is
+**false**, checkable in one line on benchmark instance 0:
 
 ```
 atom 58f7e4a0… (kind=edge) refs=[6d9cf606…, 870232c0…]
-{58f7e4a0…, 6d9cf606…}  is CONNECTED     (the edge touches that endpoint)
+{58f7e4a0…, 6d9cf606…}  is CONNECTED     (the reference link is present)
                         is NOT CLOSED    (870232c0… is referenced and absent)
 ```
 
-An edge atom with two referenced endpoints is connected to a subgraph containing
-either one; closure needs **both**. So PCST needs an explicit **closure
-completion** step, and completion has consequences the plan must fix: it adds
-atoms, which can breach `max_atoms`, and it changes the set PCST's own objective
-selected. Decide and record: complete-then-`H`-filter, or drop atoms whose
-references PCST omitted. **[ANALYSIS]** Completion is the better default — dropping
-an edge discards exactly the connective evidence PCST was chosen for — but it must
-be the declared one, and the completion rate must be reported, because a high rate
-means PCST's objective and this environment's feasibility rule disagree.
+Connectivity is strictly weaker than closure, so this mapping needs an explicit
+**closure completion** step — which adds atoms, can breach `max_atoms`, and
+changes the set PCST's own objective chose.
+
+**Mapping B — GRAFT's node-atoms are PCST nodes and its 2-ary atoms are PCST
+edges.** This is the mapping that matches G-Retriever, which **assigns prizes to
+nodes *and* edges** (NeurIPS 2024, §Prize-Collecting Steiner Tree: *"assigns
+higher prize values to nodes and e[dges]"*). Under it F10 is **true for 2-ary
+atoms by construction** — a subtree containing an edge contains both its
+endpoints, which is exactly closure. But it fails elsewhere: a **1-ary binding
+becomes a self-loop, and a tree contains no loops**, so **20 of the suite's 60
+binding atoms could never be selected by S4 at all.**
+
+**Neither mapping is free, and the plan must pick with the cost named.**
+
+* Mapping A: F10's "no conversion logic" is wrong; completion is required and its
+  rate must be reported, because a high rate means PCST's objective and this
+  environment's feasibility rule disagree.
+* Mapping B: faithful to G-Retriever and closure-free for 2-ary atoms, but S4
+  becomes structurally unable to return a third of the bindings — which is not a
+  fair baseline, it is a crippled one.
+
+**[ANALYSIS] Recommended: Mapping A with completion**, precisely because a
+baseline that *cannot express* part of the answer space is worthless as a threat,
+and `CLAUDE.md` §8 wants these baselines dangerous. Record that F10's sentence is
+correct only under Mapping B and that this phase does not adopt it.
 
 ### G3 — A fixed checker budget is only an axis if every method can spend it [ANALYSIS]
 
@@ -272,27 +318,66 @@ Both go through the Phase-1 masks, so their construction-time validity is free
 ### P4.4 `search/s3_submodular.py`
 
 **[EVIDENCE]** objective, weights and algorithm from arXiv 2607.00725 (*provisional
-venue, declared*): `F(S) = 1.0·rel + 0.5·query-coverage + 0.4·saturated
-facility-location + 0.3·concave-over-source-diversity`, cost-scaled greedy with
-the Lin & Bilmes (ACL 2011) singleton fallback, then `H`-filter.
+venue, declared*), Eq. 1: `F(S) = w_rel·Rel + w_qry·QueryCov + w_cov·Repr +
+w_div·Div`, with the paper's values **`w_rel = 1.0, w_qry = 0.5, w_cov = 0.4,
+w_div = 0.3`** and — omitted by earlier drafts of this plan and by the
+architecture — the facility-location saturation parameter **`α = 0.3`**. Five
+constants, not four.
 
 **The weights are the paper's and are not tuned here.** Tuning them would make S3
 a comparison of tuning effort, which is the objection v1.2 §5.2 raises against
 unequal hyperparameter budgets.
 
-**One inherited guarantee does not transfer, and the write-up must not claim it.**
-Nemhauser–Wolsey–Fisher (1978) gives `(1 − 1/e)` for a monotone submodular
-function under a **cardinality** constraint. Under the closure rule the feasible
-family is not a cardinality constraint — it is the closed sets of a dependency
-relation — so the guarantee is **not established here**. Report S3 as the
-published *algorithm*, not as an approximation-ratio-bearing one. **[ANALYSIS]**
-this is `CLAUDE.md` §5's "asserting math without checking it", pre-empted.
+**"Cost-scaled" has no work to do on the lattice, and the plan should say so.**
+The paper's greedy is cost-scaled **per token** under a **token budget `B`**, and
+its Lin–Bilmes singleton fallback compares the greedy set against the best single
+snippet — machinery for a *knapsack* constraint. GRAFT's lattice has no token
+cost: the constraint is `max_atoms`, so **every atom costs 1**, marginal-gain-per-
+cost collapses to marginal gain, and the fallback is near-vacuous at a cap of 8.
+
+The consequence is worth stating plainly rather than discovering in the table:
+**S1 and S3 become the same algorithm under different objectives** — greedy on
+`U` versus greedy on `F`. That is still a legitimate and arguably cleaner
+comparison, but S3 does not contribute a different *search strategy* here, and the
+write-up must not imply it does.
+
+**The guarantee: the source paper already declines it, and so does this phase.**
+An earlier draft argued that Nemhauser–Wolsey–Fisher's `(1 − 1/e)` fails to
+transfer because closure is not a cardinality constraint. That argument was aimed
+at a claim nobody makes. arXiv 2607.00725 §4.2 states it directly:
+
+> *"stronger constant-factor guarantees for the knapsack case require additional
+> partial enumeration (Sviridenko, 2004; Nemhauser et al., 1978), which we do not
+> perform — we use the algorithm for its empirical behaviour under a token budget,
+> not for a guarantee."*
+
+So there is no inherited guarantee to lose. GRAFT has one *additional* reason to
+claim none: Gate 3 scores `U` on the **`H`-filtered** set, while any approximation
+result would concern `F` on the unfiltered one — two different objectives and two
+different objects. Report S3 as the published *algorithm*, exactly as its own
+authors do.
 
 ### P4.5 `search/s4_pcst.py`
 
-Node prizes from `relevance`, uniform edge costs, unrooted, over the **reference
-graph** of the pool. Then **closure completion** per G2, then `H`-filter. Reports
-the completion rate and the `max_atoms` breach rate.
+Prizes from `relevance`, unrooted, over the graph mapping G2 selects (recommended:
+Mapping A, the pool's **reference graph**). Then **closure completion**, then
+`H`-filter. Reports the completion rate and the `max_atoms` breach rate.
+
+**Two details the architecture's one-line spec omits, both from the paper.**
+
+*Prizes go on nodes **and** edges.* G-Retriever: *"assigns higher prize values to
+nodes and e[dges]"*, and its appendix selects top-`k` for each separately
+(WebQSP: `k = 3` nodes, `k = 5` edges). "Node prizes" alone is half the
+formulation. Under Mapping A every atom is a node, so this resolves cleanly —
+but it must be resolved deliberately, not by omission.
+
+*Edge cost is a declared parameter, not a constant.* The appendix sets `C_e = 1`
+for SceneGraphs and `C_e = 0.5` for WebQSP — **tuned per dataset**. GRAFT has no
+dataset to tune against and v1.2 §5.2 requires an *equal hyperparameter-tuning
+budget for every method*, so `C_e` is **declared once in §6 and never swept**.
+Sweeping it would buy S4 a tuning budget no other method gets; leaving it
+undeclared would let it be chosen after seeing results, which is the same defect
+G5 closes for the decision rule.
 
 ### P4.6 `search/s5_portfolio.py`
 
@@ -360,13 +445,13 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 | # | Decision | Value | Cost if changed later |
 |---|---|---|---|
 | 1 | **Relevance on the lattice** | **[recommended]** obligation-match as primary, `U`-marginal as a declared "informed" variant, both reported (G1) | the two baselines `CLAUDE.md` §8 calls most dangerous are silently weakened, and a Gate-3 pass means nothing |
-| 2 | **PCST closure policy** | **[recommended]** complete-then-filter, with completion rate and `max_atoms` breach rate reported (G2) | fix F10's "no conversion logic" is carried into code where it is false |
+| 2 | **PCST graph mapping and closure** | **[recommended]** Mapping A (atoms are PCST nodes, `refs` are PCST edges) + complete-then-filter, with completion rate and `max_atoms` breach rate reported. Mapping B is faithful to G-Retriever and makes closure automatic, but turns 1-ary bindings into self-loops a tree cannot contain — **20 of 60 in the suite would be unselectable** (G2) | fix F10's "no conversion logic" is carried into code where it holds only under a mapping nobody declared; or S4 is crippled into a baseline that cannot express part of the answer space |
 | 3 | **Budget spending** | **[recommended]** restarts/perturbation so every method can consume the budget, **and** the budget-level curve v1.2 §5.2 asks for (G3) | best-of-1 is compared with best-of-8 under the label "equal budget" |
 | 4 | **Seed semantics** | declared per method; deterministic methods reported once (G4) | a zero-width interval makes a paired test against S5 look impossibly significant |
 | 5 | **The Gate-3 decision rule** | S5 beats **S3 and S4** on the one-sided 95% upper bound, `gate2.paired_bootstrap`, seed `20260814`, 10,000 resamples — predeclared (G5) | Gate 3 repeats the unfalsifiable-rule defect fix F12 retired for Gate 2 |
 | 6 | **Ledger discipline** | `would_exceed()` before every spend; completed-set checks only; spend reported per method (G6) | methods drift over budget and the comparison is unfair without anyone noticing |
-| 7 | **S3's weights** | the paper's, unmodified, `[EVIDENCE]` provisional venue declared; **no `(1 − 1/e)` claim** (P4.4) | S3 becomes a comparison of tuning effort, or an unearned guarantee enters the write-up |
-| 8 | **PCST solver** | pin `pcst_fast`, **or** implement directly and verify against it offline — decided before S4 is written (G8) | a compiled dependency lands mid-build on a Windows laptop |
+| 7 | **S3's constants and its guarantee** | **five** of the paper's values unmodified — `w_rel 1.0, w_qry 0.5, w_cov 0.4, w_div 0.3, α 0.3`; `[EVIDENCE]` provisional venue declared. **No approximation-ratio claim**: arXiv 2607.00725 §4.2 declines it itself ("we do not perform [partial enumeration] — we use the algorithm for its empirical behaviour... not for a guarantee"). Record that cost-scaling degenerates under unit atom costs, so **S1 and S3 differ by objective, not by search strategy** (P4.4) | S3 becomes a comparison of tuning effort; α is silently defaulted; or an unearned guarantee enters the write-up that the source paper itself refuses |
+| 8 | **PCST solver and edge cost** | pin `pcst_fast`, **or** implement directly and verify against it offline — decided before S4 is written (G8). **`C_e` is declared here and never swept**: G-Retriever tunes it per dataset (1.0 SceneGraphs, 0.5 WebQSP) and v1.2 §5.2 requires an equal hyperparameter-tuning budget for every method | a compiled dependency lands mid-build on a Windows laptop; or S4 gets a tuning budget no other method has, chosen after seeing results |
 | 9 | **Two-stage exit** | Stage A (S1–S4) may be reported; only Stage B is Gate 3 (G7) | a table without the learned sampler is read as the gate |
 
 ---
