@@ -38,6 +38,7 @@ LIVE_DOCS = (
     "GRAFT_PHASE0_BUILD.md",
     "GRAFT_PHASE1_BUILD.md",
     "GRAFT_PHASE2_BUILD.md",
+    "GRAFT_PHASE2_5_BUILD.md",
     # Added 11 Aug 2026. The R12 retired wordings below name this file and had
     # never been checked against it, because it was not on this list — a guard
     # that lists rules for a document it does not read is the same defect class

@@ -112,6 +112,15 @@ The script implements decision 4's ladder in decision 4's order: β eligibility 
 Pass ⇒ adopt; fail ⇒ next rung; fail at the last ⇒ **Gate 2 inconclusive**, never
 a negative verdict on C3.
 
+**Rung 0 should adopt — measured forecast, 12 Aug 2026.** L5 on the tuning
+suite, seed 13, at the default β: TV **0.386** at 100k trajectories, **0.191** at
+400k, **0.0990** at 1.2M. So L5 crosses decision 6's 0.10 at ~1.2M, and rung 0's
+ceiling buys **N ≈ 4.0M** — 3.3x headroom. The ladder should not escalate, which
+puts calibration at ~4.5 h rather than the ~31 h a walk to rung 2 would cost.
+A scheduling forecast only: one seed, one arm, and decision 6 needs L4 **and** L5
+averaged over three. It reads L5 on the tuning suite, which is exactly the read
+the ladder itself performs, and decision 6 was already ruled before it was taken.
+
 Budget: **12 GPU-hours** at rung 0 (`c₀ = 1 h`), rising to 84 cumulative if the
 ladder goes to its top rung. `--quick --rungs 3` is a three-second wiring check
 and its output must never be written into §6.
