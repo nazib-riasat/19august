@@ -338,6 +338,8 @@ def calibrate(
         device=device,
     )
     rate, eval_cost, per_arm = measure_throughput(envs, base)
+    print(f"throughput pilot: slowest {min(per_arm, key=per_arm.__getitem__)} at "
+          f"{rate:.0f} traj/s, eval {eval_cost:.3f}s", flush=True)
     record["throughput_traj_per_s"] = rate
     record["throughput_per_arm"] = per_arm
     record["slowest_arm"] = min(per_arm, key=per_arm.__getitem__)
@@ -351,11 +353,14 @@ def calibrate(
         spec = base.replace(n_trajectories=n)
         rung: dict[str, Any] = {"rung": i, "ceiling_s": ceiling, "N": n}
 
+        print(f"  rung {i}: ceiling {ceiling:.0f}s -> N={n:,}; sweeping beta over "
+              f"{eligible} on L5 x {len(SEEDS)} seeds...", flush=True)
         rung["beta_sweep"] = beta_sweep(envs, eligible, spec)
         beta = rung["beta_sweep"]["winner"]
         for env in envs:
             retarget(env, beta)
         rung["beta"] = beta
+        print(f"  rung {i}: beta={beta}; decision-6 sanity on L4/L5...", flush=True)
         rung["sanity"] = sanity_check(envs, spec)
 
         # **The slowest single run, not the mean of them.** Decision 5's ceiling
@@ -383,6 +388,10 @@ def calibrate(
         rung["predicted_for"] = record["slowest_arm"]
         rung["max_s_per_run"] = max(measured, predicted)
         rung["ceiling_respected"] = rung["max_s_per_run"] <= ceiling
+        print(f"  rung {i}: sanity "
+              f"{'PASS' if rung['sanity']['passed'] else 'fail'}, "
+              f"slowest run {rung['max_s_per_run']:.0f}s vs ceiling {ceiling:.0f}s",
+              flush=True)
         record["rungs"].append(rung)          # every rung tried is recorded
 
         if not rung["ceiling_respected"]:
