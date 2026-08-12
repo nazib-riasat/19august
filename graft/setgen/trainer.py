@@ -562,18 +562,25 @@ class Trainer:
                 )
         self.state_dim, self.action_dim = state_dim, action_dim
 
-        self.policy = Policy(state_dim, action_dim, self.hidden, spec.depth).to(spec.dtype)
-        self.logz = LogZHead(state_dim, self.hidden, spec.depth).to(spec.dtype)
+        # `device` as well as `dtype`: the featurizer builds its tensors on
+        # `spec.device`, so a network left on the CPU meets CUDA inputs and
+        # raises on the first forward.  `--device cuda` was advertised and
+        # broken until someone actually passed it.
+        def _place(module: torch.nn.Module) -> torch.nn.Module:
+            return module.to(device=spec.device, dtype=spec.dtype)
+
+        self.policy = _place(Policy(state_dim, action_dim, self.hidden, spec.depth))
+        self.logz = _place(LogZHead(state_dim, self.hidden, spec.depth))
         self.flow = (
-            StateFlowHead(self.hidden, spec.depth).to(spec.dtype) if arm.needs_flow else None
+            _place(StateFlowHead(self.hidden, spec.depth)) if arm.needs_flow else None
         )
         self.potential = (
-            PotentialHead(state_dim, action_dim, self.hidden, spec.depth).to(spec.dtype)
+            _place(PotentialHead(state_dim, action_dim, self.hidden, spec.depth))
             if arm.needs_potential
             else None
         )
         self.aux = (
-            DeficitHead(self.hidden, N_DEFICIT, spec.depth).to(spec.dtype)
+            _place(DeficitHead(self.hidden, N_DEFICIT, spec.depth))
             if arm.needs_aux
             else None
         )
