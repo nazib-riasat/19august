@@ -152,6 +152,18 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "the per-evaluation cost is the DP; FCS runs once per (arm, seed) at final θ (decision 2)", "R13", None),
     ("50 checkpoints × 20 instances = **27,000**",
      "51 evaluations per run — the trajectory-0 baseline plus C = 50 — so 27,540 (decision 2)", "R13", None),
+    # R14 — the Phase-4 paper audit. Every one of these was a compression of a
+    # compression: the architecture summarised a paper, a later document
+    # summarised the architecture, and the condition attached to the number was
+    # dropped at one of the two hops. Checked against the PDFs, not the summary.
+    ("PCST's connected output maps to a closed set with no conversion logic",
+     "PCST needs a declared graph mapping; under atoms-as-nodes it needs explicit closure completion (Phase-4 G2)", "R14", None),
+    ("guarantee from Nemhauser–Wolsey–Fisher 1978",
+     "arXiv 2607.00725 section 4.2 declines the guarantee: no partial enumeration is performed", "R14", None),
+    ("node prizes = relevance scores, uniform edge costs",
+     "G-Retriever prizes nodes AND edges; C_e is tuned per dataset, so it is declared once and never swept", "R14", None),
+    ("(0.451 F1 vs 0.429 for a tuned heuristic on multi-hop HotpotQA)",
+     "one cell of Table 6 — the only significant budget of four, at 3B; the paper concludes parity", "R14", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
