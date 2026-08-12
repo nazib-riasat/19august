@@ -5,7 +5,7 @@
 Date: 12 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 4, fixes F5/F10/F13) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2 §5.2, §6.4, Gate 3) · `GRAFT_PHASE3_BUILD.md` §8 · `PHASE3_DECISIONS.md` §5
 Effort: ~1.5 weeks **[ANALYSIS]** — an estimate, not a measurement. Cheap in compute: four of the five methods are training-free.
-Status: **§6 unsigned.** Nothing here has run.
+Status: **§6 RULED 12 Aug 2026.** Every decision is locked; nothing has run. Two of them were not merely unsigned but *incomplete* — decision 3 named a mechanism without a procedure and decision 8 required a value it never gave — and both are now executable.
 
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 
@@ -155,18 +155,35 @@ against "best of 8" and calling it *equal budget* is not a comparison — it is 
 statement that one method was allowed to look 8 times and another once. Two
 honest resolutions, and the plan must pick one:
 
-1. **Give every method a way to consume the budget** — randomised tie-breaking
-   with restarts for S1/S3, multiple PCST solves under prize perturbation for S4 —
-   so all five return a portfolio and best-of-K is over comparable K.
-2. **Report the budget each method actually spends**, plot performance against
-   budget level as v1.2 §5.2 requires ("plot performance against several budget
-   levels rather than reporting a single point"), and state plainly that the
-   deterministic methods saturate at 1.
+**RULED: every method returns exactly `K = 8` candidates**, and the way each one
+gets there is fixed below. Fix F5 already makes `K = 8` and `checker_budget = 32`
+one constant set used everywhere, so a portfolio of 8 per method is *literally*
+equal opportunity: every method spends 8 of its 32 checks and best-of-K compares
+eight against eight.
 
-**Recommended: both.** (1) makes the headline number comparable; (2) is what the
-plan already asks for and is what shows a reader *where* each method saturates.
-**[EVIDENCE]** v1.2 §5.2's corrected protocol is explicitly "one primary budget,
-plotted across levels", not a single point.
+| Method | Its eight candidates | Deterministic? |
+|---|---|---|
+| S1 greedy | **8 ε-greedy restarts at ε = 0.05** — Phase-3 decision 10's frozen exploration constant, reused rather than invented | no — seeded |
+| S2 beam | beam width `b = K = 8`, the eight survivors | yes |
+| S3 submodular | 8 ε-greedy restarts, same ε | no — seeded |
+| S4 PCST | **8 values of G-Retriever's own top-`k` knob** — the paper's portfolio control (its appendix uses `k = 3` nodes / `k = 5` edges for WebQSP, `k = 0` for a whole small graph) | yes |
+| S5 portfolio | `K = 8` = 1 greedy + 7 sampled (fix F5) | no — seeded |
+
+**Why ε-restarts and not randomised tie-breaking**, which an earlier draft
+proposed: with `U` as a continuous scorer, exact ties are vanishingly rare, so
+tie-break randomisation would return **eight identical sets** and quietly turn
+best-of-8 back into best-of-1. That failure would be invisible in the table — the
+column would simply read as a weak baseline. ε-greedy restarts diversify where it
+matters, and reuse a constant the project already froze.
+
+**Why S4's knob and not prize perturbation**: perturbation needs an invented
+magnitude; top-`k` is the paper's own control for exactly this, and it keeps S4
+**deterministic**, which is a cleaner answer to G4 than adding a seed dependence
+nobody needs.
+
+**And the budget curve stays** (v1.2 §5.2: "plot performance against several
+budget levels rather than reporting a single point"). Eight-of-thirty-two is the
+headline; the curve is what shows a reader where each method saturates.
 
 ### G4 — "Three seeds" is vacuous for three of the five methods [ANALYSIS]
 
@@ -177,12 +194,12 @@ make a paired test against S5 look impossibly significant.
 
 State per method what a seed *is*:
 
-| Method | What the seed varies |
-|---|---|
-| S1, S3 | tie-breaking among equal-gain atoms, **only if** G3's restart option is adopted; otherwise nothing |
-| S2 | tie-breaking at beam boundaries |
-| S4 | nothing, unless G3's prize perturbation is adopted |
-| S5 | the sampler — the seed is the trained model *and* the draw |
+| Method | What the seed varies | Reported |
+|---|---|---|
+| S1, S3 | the ε-greedy restarts of G3 | three seeds |
+| S2 | nothing — beam width 8 is deterministic | **once** |
+| S4 | nothing — the eight top-`k` solves are deterministic | **once** |
+| S5 | the sampler: the seed is the trained model *and* the draw | three seeds |
 
 **[ANALYSIS]** Where a method is deterministic, report it once and say so, rather
 than printing three copies and inviting a variance estimate that does not exist.
@@ -371,13 +388,34 @@ nodes and e[dges]"*, and its appendix selects top-`k` for each separately
 formulation. Under Mapping A every atom is a node, so this resolves cleanly —
 but it must be resolved deliberately, not by omission.
 
-*Edge cost is a declared parameter, not a constant.* The appendix sets `C_e = 1`
-for SceneGraphs and `C_e = 0.5` for WebQSP — **tuned per dataset**. GRAFT has no
-dataset to tune against and v1.2 §5.2 requires an *equal hyperparameter-tuning
-budget for every method*, so `C_e` is **declared once in §6 and never swept**.
-Sweeping it would buy S4 a tuning budget no other method gets; leaving it
-undeclared would let it be chosen after seeing results, which is the same defect
-G5 closes for the decision rule.
+*Edge cost is a declared parameter, not a constant — and on this environment it
+carries the size constraint.* The appendix sets `C_e = 1` for SceneGraphs and
+`C_e = 0.5` for WebQSP: **tuned per dataset**. Worse for GRAFT, under Mapping A
+the PCST "edges" are *reference links*, which are not evidence and have no cost
+semantics of their own — at `C_e = 0` PCST degenerates and takes every
+positive-prize atom in the component.
+
+What `C_e` actually does here is control **output size**, which matters because
+**PCST has no cardinality constraint and `max_atoms = 8` does**. G-Retriever says
+so itself: *"By adjusting the prizes and costs on nodes and edges, users can
+fine-tune the subgraph's extent."* So `C_e` cannot be a literal lifted from the
+paper — it has to be calibrated to this environment's size regime.
+
+**The procedure, which mirrors Phase 3's β/`N` calibration exactly** (decision 8):
+
+1. Grid `C_e ∈ {0.25, 0.5, 1.0, 2.0}` — predeclared, and **anchored on the paper's
+   own two values** rather than invented around them.
+2. Evaluated on the **tuning** suite, never the main suite — the same separation
+   Phase-2 decision 22 enforces for β.
+3. Selected by the value whose **median pre-completion output size is closest to
+   `max_atoms`** — a purely *structural* criterion. It reads no `U`, no best-of-K
+   and no Gate-3 number, so it cannot be tuned toward a result.
+4. Frozen before S4 runs on main, and recorded in §6 beside the achieved median.
+
+**[ANALYSIS]** This is the one thing Phase 4 calibrates, and it calibrates a
+baseline *toward feasibility*, not toward performance — the direction that keeps
+S4 dangerous. A `C_e` that made PCST return 30-atom sets would hand it a 100%
+closure-breach rate and a free loss.
 
 ### P4.6 `search/s5_portfolio.py`
 
@@ -401,9 +439,9 @@ same Phase-2 source.
 |---|---|---|
 | 1 | P4.1 protocol + ledger wiring | a method that overspends raises; `would_exceed()` is called before every check (G6) |
 | 2 | P4.2 relevance, both variants | both are pure functions of `(atom, obligations \| env)` and are unit-tested against hand cases |
-| 3 | P4.3 S1 + S2 | outputs are closed and `H`-valid by construction; spend is 1 and ≤ `b` |
+| 3 | P4.3 S1 + S2 | outputs are closed and `H`-valid by construction; **each returns exactly `K = 8`** — S1 by ε-restarts, S2 by beam width — and each spends 8 checks (decision 3) |
 | 4 | P4.4 S3 | reproduces the paper's objective on a hand-built example; singleton fallback fires at least once in the suite |
-| 5 | P4.5 S4 + closure completion | **a connected-but-unclosed PCST output is completed and passes `H`** — the G2 case, as a regression test |
+| 5 | P4.5 S4 + closure completion + **`C_e` calibration on the tuning suite** | **a connected-but-unclosed PCST output is completed and passes `H`** — the G2 case, as a regression test; and `C_e` is frozen from the structural median before S4 touches the main suite (decision 8) |
 | 6 | **Gate-3 Stage A**: S1–S4 across the main suite, budget curve, audits | the table exists with S5 empty and says so |
 | 7 | P4.6 S5 (code only, no checkpoint yet) | loads a Phase-3 checkpoint without importing the trainer |
 | 8 | **Gate-3 Stage B**, *after Phase 3's matrix* | S5's row filled; G5's predeclared rule applied and the outcome written |
@@ -431,6 +469,8 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 10. Best-of-K valid-set utility at `checker_budget`, per method, across the main suite, **plotted across budget levels** and not only at 32 (v1.2 §5.2, G3).
 11. The **predeclared G5 rule** is applied with `gate2.paired_bootstrap`: S5 must beat S3 **and** S4 on the one-sided 95% upper bound.
 12. PCST's closure-completion rate and `max_atoms` breach rate are reported (G2).
+12b. **`C_e` was calibrated by decision 8's procedure** — grid on the **tuning** suite, selected on median pre-completion output size, frozen before S4 touched main — and §6 records the chosen value beside its achieved median. A `C_e` chosen after a Gate-3 number existed would be the same defect G5 closes for the decision rule.
+12c. **Every method returned exactly `K = 8`** and spent 8 checks (decision 3); the per-method spend in criterion 6 confirms it rather than assuming it.
 13. Audits carried into every table from `gate2.audit_block` — `FAIL` rate, collision rate (0), unconstructible rate (0), `Δd` densities, target-mass profile, `neither`-mass at the run's β.
 14. Every run records the `environment_fingerprint` and `target_fingerprint` of the suite it used (Phase-2 decision 21).
 15. **The two-stage exit is honoured** (G7): a table without S5 is labelled Stage A and is not called Gate 3.
@@ -440,19 +480,19 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 
 ---
 
-## 6. Decisions to lock before writing code — **UNSIGNED**
+## 6. Decisions to lock before writing code — **RULED 12 Aug 2026**
 
 | # | Decision | Value | Cost if changed later |
 |---|---|---|---|
-| 1 | **Relevance on the lattice** | **[recommended]** obligation-match as primary, `U`-marginal as a declared "informed" variant, both reported (G1) | the two baselines `CLAUDE.md` §8 calls most dangerous are silently weakened, and a Gate-3 pass means nothing |
-| 2 | **PCST graph mapping and closure** | **[recommended]** Mapping A (atoms are PCST nodes, `refs` are PCST edges) + complete-then-filter, with completion rate and `max_atoms` breach rate reported. Mapping B is faithful to G-Retriever and makes closure automatic, but turns 1-ary bindings into self-loops a tree cannot contain — **20 of 60 in the suite would be unselectable** (G2) | fix F10's "no conversion logic" is carried into code where it holds only under a mapping nobody declared; or S4 is crippled into a baseline that cannot express part of the answer space |
-| 3 | **Budget spending** | **[recommended]** restarts/perturbation so every method can consume the budget, **and** the budget-level curve v1.2 §5.2 asks for (G3) | best-of-1 is compared with best-of-8 under the label "equal budget" |
-| 4 | **Seed semantics** | declared per method; deterministic methods reported once (G4) | a zero-width interval makes a paired test against S5 look impossibly significant |
-| 5 | **The Gate-3 decision rule** | S5 beats **S3 and S4** on the one-sided 95% upper bound, `gate2.paired_bootstrap`, seed `20260814`, 10,000 resamples — predeclared (G5) | Gate 3 repeats the unfalsifiable-rule defect fix F12 retired for Gate 2 |
-| 6 | **Ledger discipline** | `would_exceed()` before every spend; completed-set checks only; spend reported per method (G6) | methods drift over budget and the comparison is unfair without anyone noticing |
-| 7 | **S3's constants and its guarantee** | **five** of the paper's values unmodified — `w_rel 1.0, w_qry 0.5, w_cov 0.4, w_div 0.3, α 0.3`; `[EVIDENCE]` provisional venue declared. **No approximation-ratio claim**: arXiv 2607.00725 §4.2 declines it itself ("we do not perform [partial enumeration] — we use the algorithm for its empirical behaviour... not for a guarantee"). Record that cost-scaling degenerates under unit atom costs, so **S1 and S3 differ by objective, not by search strategy** (P4.4) | S3 becomes a comparison of tuning effort; α is silently defaulted; or an unearned guarantee enters the write-up that the source paper itself refuses |
-| 8 | **PCST solver and edge cost** | pin `pcst_fast`, **or** implement directly and verify against it offline — decided before S4 is written (G8). **`C_e` is declared here and never swept**: G-Retriever tunes it per dataset (1.0 SceneGraphs, 0.5 WebQSP) and v1.2 §5.2 requires an equal hyperparameter-tuning budget for every method | a compiled dependency lands mid-build on a Windows laptop; or S4 gets a tuning budget no other method has, chosen after seeing results |
-| 9 | **Two-stage exit** | Stage A (S1–S4) may be reported; only Stage B is Gate 3 (G7) | a table without the learned sampler is read as the gate |
+| 1 | **RULED. Relevance on the lattice** | obligation-match as primary, `U`-marginal as a declared "informed" variant, **both reported in every table** (G1). Ruled rather than left recommended because this choice decides how strong the two baselines are, and a value that decides a baseline's strength cannot be settled while looking at that baseline's results | the two baselines `CLAUDE.md` §8 calls most dangerous are silently weakened, and a Gate-3 pass means nothing |
+| 2 | **RULED. PCST graph mapping and closure** | Mapping A (atoms are PCST nodes, `refs` are PCST edges) + complete-then-filter, with completion rate and `max_atoms` breach rate reported. Mapping B is faithful to G-Retriever and makes closure automatic, but turns 1-ary bindings into self-loops a tree cannot contain — **20 of 60 in the suite would be unselectable** (G2) | fix F10's "no conversion logic" is carried into code where it holds only under a mapping nobody declared; or S4 is crippled into a baseline that cannot express part of the answer space |
+| 3 | **RULED. Portfolio size, per method** | **every method returns exactly `K = 8`** and spends 8 of its 32 checks: S1/S3 by **ε-greedy restarts at the frozen ε = 0.05**, S2 by beam width 8, S4 by **8 values of G-Retriever's top-`k`**, S5 by fix F5's 1 greedy + 7 sampled. Plus the budget-level curve of v1.2 §5.2 (G3). **Randomised tie-breaking is explicitly rejected**: with a continuous scorer ties are vanishingly rare, so it would return eight identical sets and turn best-of-8 into best-of-1 invisibly | best-of-1 is compared with best-of-8 under the label "equal budget" |
+| 4 | **RULED. Seed semantics** | S1/S3/S5 over the frozen `{13, 42, 7}`; **S2 and S4 are deterministic and reported once**, not as three identical rows (G4) | a zero-width interval makes a paired test against S5 look impossibly significant |
+| 5 | **RULED. The Gate-3 decision rule** | S5 beats **S3 and S4** on the one-sided 95% upper bound, `gate2.paired_bootstrap`, seed `20260814`, 10,000 resamples — predeclared (G5) | Gate 3 repeats the unfalsifiable-rule defect fix F12 retired for Gate 2 |
+| 6 | **RULED. Ledger discipline** | `would_exceed()` before every spend; completed-set checks only; spend reported per method (G6) | methods drift over budget and the comparison is unfair without anyone noticing |
+| 7 | **RULED. S3's constants and its guarantee** | **five** of the paper's values unmodified — `w_rel 1.0, w_qry 0.5, w_cov 0.4, w_div 0.3, α 0.3`; `[EVIDENCE]` provisional venue declared. **No approximation-ratio claim**: arXiv 2607.00725 §4.2 declines it itself ("we do not perform [partial enumeration] — we use the algorithm for its empirical behaviour... not for a guarantee"). Record that cost-scaling degenerates under unit atom costs, so **S1 and S3 differ by objective, not by search strategy** (P4.4) | S3 becomes a comparison of tuning effort; α is silently defaulted; or an unearned guarantee enters the write-up that the source paper itself refuses |
+| 8 | **RULED. PCST solver and edge cost** | **`pcst_fast`, pinned.** The platform risk an earlier draft raised is not real: a prebuilt `cp311-win_amd64` wheel exists (1.0.10, verified by download), so no compiler is needed and the more defensible option — G-Retriever's own solver — costs nothing. **`C_e` is calibrated, not picked**: grid `{0.25, 0.5, 1.0, 2.0}` anchored on the paper's two values, on the **tuning** suite, selected by median pre-completion output size closest to `max_atoms` — a structural criterion reading no `U` and no Gate-3 number — then frozen and recorded here with its achieved median (P4.5) | a compiled dependency lands mid-build on a Windows laptop; or S4 gets a tuning budget no other method has, chosen after seeing results |
+| 9 | **RULED. Two-stage exit** | Stage A (S1–S4) may be reported; only Stage B is Gate 3 (G7) | a table without the learned sampler is read as the gate |
 
 ---
 
