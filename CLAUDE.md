@@ -168,7 +168,7 @@ Four gates exist to kill bad directions early. They are the reason the build ord
 | **Gate 0 / Phase 2.5** | Is the required annotation volume actually achievable? Measured, not estimated. | Narrow the schema or question types **here**, not later by weakening the evaluation |
 | **Gate 1** | Does the learned graph constructor beat a GraphMixer-style MLP and LLM-prompted linking? | C1 is in trouble; GraphMixer (ICLR 2023) beat RNN/attention temporal GNNs, so this is not a strawman |
 | **Gate 2** | Does checker-conditioned LED beat **capacity-matched** LED-GFN on exact TV at a fixed training budget, 3 seeds, paired test? | **C3 is not supported; consolidate on C1.** This is the cheapest place in the project to learn that |
-| **Gate 3** | Does the learned sampler beat training-free PCST and submodular greedy at equal budget? | Stage D's claim narrows before the expensive real-data phases begin |
+| **Gate 3** | Does the learned sampler beat training-free PCST and submodular greedy at equal budget — **under a proxy scorer**? | Stage D's claim narrows before the expensive real-data phases begin. **Amended 12 Aug 2026:** the *synthetic* stage cannot ask this. With fix F13's exact-`U` scorer, greedy is globally optimal on 30/30 instances and a flawless sampler is 0.038 short at K = 8, so the lattice answers by arithmetic. Phase 4 is a diagnostic; the decision is Phase 9's, where the distilled head is noisy |
 
 **The two baselines most likely to embarrass the project**, both training-free and both cheap to run: **submodular greedy** and **PCST** (G-Retriever, NeurIPS 2024 — returns a *connected* subgraph, structurally the closest classical algorithm to a proof). Run them early.
 

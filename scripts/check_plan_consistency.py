@@ -176,6 +176,17 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "median POST-completion size: completion only adds atoms, so the pre- criterion selected for H rejecting on size (P4.5)", "R15", None),
     ("every method spends 8 of its 32 checks",
      "0 for mask-driven arms (stop_allowed IS H), 1 per candidate for direct builders (G3, G6)", "R15", None),
+    # R16 - Gate 3's placement. R15's entries were strings that appeared in no
+    # upstream document, so the guard passed while three of them still carried
+    # the retired rule. These are the sentences that were actually there.
+    ("Explicit written decision: does the learned sampler beat S3/S4 on the lattice?",
+     "Phase 4 is a diagnostic; the gate's decision moves to Phase 9 under a proxy scorer (G5, G9)", "R16", None),
+    ("Does the learned sampler beat training-free PCST and submodular greedy at equal budget? |",
+     "the same question UNDER A PROXY SCORER; the lattice answers it by arithmetic (CLAUDE.md Gate-3 row)", "R16", None),
+    ("S5 returns strictly more **distinct valid proof sets** than",
+     "the count is capped at K=8, beam saturates it and the p* ceiling is 7.78, so a strictly-more rule cannot pass", "R16", None),
+    ("8 genuinely different sets **deterministically**",
+     "forced-distinct openers measured 2.45 distinct; the count is reported, not guaranteed (decision 3)", "R16", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
@@ -295,6 +306,53 @@ def _live_sources() -> list[Path]:
     )
 
 
+
+def _table_cells(line: str) -> int:
+    """Pipes that actually delimit cells — an escaped ``\|`` does not."""
+    count, i, n = 0, 0, len(line)
+    while i < n:
+        if line[i] == "\\" and i + 1 < n and line[i + 1] == "|":
+            i += 2
+            continue
+        if line[i] == "|":
+            count += 1
+        i += 1
+    return count - 1
+
+
+def _check_tables(name: str, text: str) -> list[str]:
+    """Rows whose cell count disagrees with their table's.
+
+    **Added R16.** A literal ``|`` inside a cell — ``E[best-of-K | p*]`` — splits
+    that row into an extra column, and markdown silently drops the overflow. It
+    cost `GRAFT_PHASE4_BUILD.md` its headline measurement: the flawless-sampler
+    row rendered three cells into a two-column table and the number 1.8865
+    vanished from the rendered page while reading correctly in the source. The
+    blocklist cannot catch that, because nothing is misspelled.
+    """
+    out: list[str] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        if not lines[i].startswith("|"):
+            i += 1
+            continue
+        j = i
+        while j < len(lines) and lines[j].startswith("|"):
+            j += 1
+        widths = [_table_cells(l) for l in lines[i:j]]
+        expected = max(set(widths), key=widths.count)
+        for k, (line, w) in enumerate(zip(lines[i:j], widths), start=i + 1):
+            if w != expected:
+                out.append(
+                    f"{name}:{k}: table row has {w} cells, table has {expected}"
+                    " — an unescaped '|' inside a cell drops content when rendered"
+                    f"\n    {line[:90]}"
+                )
+        i = j
+    return out
+
+
 def main() -> int:
     failures: list[str] = []
 
@@ -328,6 +386,7 @@ def main() -> int:
             continue
 
         failures.extend(_check_numbering(name, text))
+        failures.extend(_check_tables(name, text))
 
         for left, right, why in INCOMPATIBLE:
             if left in text and right in text:

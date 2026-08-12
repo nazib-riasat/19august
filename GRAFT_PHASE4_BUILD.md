@@ -201,8 +201,18 @@ worse. Since plain greedy reaches the global optimum (G9), one of the 8 restarts
 is a clean greedy run with probability ≈ 0.9998, and **best-of-8 therefore equals
 best-of-1 in value on every instance**. That is precisely the failure the earlier
 revision rejected randomised tie-breaking for — "eight identical sets… invisible
-in the table" — readmitted through a different constant. Forced-distinct openers
-give 8 genuinely different sets **deterministically**, with no ε and no seed.
+in the table" — readmitted through a different constant.
+
+**And forced-distinct openers, which replaced them, barely help: measured 2.45
+distinct (range 2–3, 20/20) against ε-restarts' 2.10.** The cause is G9 itself —
+greedy on exact `U` funnels to the same global optimum whatever atom it starts
+from, so the opener does not survive to the terminal. Three mechanisms have now
+been tried and all three fail for one reason, which is the finding: **on this
+environment greedy has no portfolio to give.** So decision 3 stops trying to
+manufacture one. Every method *attempts* `K = 8` and **reports how many distinct
+valid sets it actually returned**; engineering greedy into eight forks would be
+engineering the baseline, and a table saying 8 when the truth is 2.45 is the
+label the last two attempts were really wrong about.
 
 **S2's "eight survivors" was undefined and is now specified.** Terminals appear at
 many layers of the DAG, so the final beam layer and the best terminals *seen* are
@@ -216,6 +226,15 @@ So the budget binds on S3 and S4 only — which is exactly the "real cost differ
 between method families" G6 claims and the earlier revision's flat 8-for-everyone
 accounting erased. The budget curve (v1.2 §5.2) is consequently informative for
 S3/S4 and flat for S1/S2/S5, and *that shape is itself the finding*.
+
+**But `checker_budget = 32` binds on nobody, and that has to be said rather than
+implied.** The maximum any method spends is `K = 8` — one check per candidate for
+the direct builders, zero for the rest. So the curve's **levels are `{1, 2, 4, 8}`**
+and the frozen 32 is **inert on this environment**. `CLAUDE.md` §6 pins 32 as the
+units the Stage-D primary is *defined* in, so the write-up must state that Phase 4
+reports at a budget which constrains no method, rather than quoting "at
+`checker_budget`" and implying it bit. It becomes binding at Phase 9, where a pool
+of 64 and a noisy scorer make more candidates worth validating.
 
 ### G4 — "Three seeds" is vacuous for three of the five methods [ANALYSIS]
 
@@ -283,15 +302,44 @@ sets"* — which the earlier revision dropped entirely. It is where a portfolio 
 *supposed* to beat a single-solution method, and unlike best-of-K it is not
 decided in advance: greedy returns one set, a sampler returns a distribution.
 
-> **Predeclared, before any run.** S5's portfolio claim holds on the lattice iff
-> S5 returns **strictly more distinct valid proof sets than S1, S2, S3 *and* S4**
-> at equal budget, on the one-sided 95% upper bound of the hierarchical paired
-> bootstrap. **S1 is in that list** — G9 makes plain greedy the strongest method
-> here, and an earlier revision named only S3 and S4 because `CLAUDE.md` §8 did,
-> which would have let S5 lose to the cheapest method in the phase and still pass.
+**The distinct-*count* replacement was predetermined too, and measuring it before
+writing it down is what caught that.** Decision 3 caps every method at `K = 8`;
+beam-8 returns **8.00 distinct on 20/20** (there are 353–552 terminals to draw
+from); and a flawless sampler's expectation is **E[distinct \| 8 draws of `p*`] =
+7.78**, maximum 8. A rule reading "S5 must return *strictly more* than S1–S4"
+therefore has `P(pass) = 0`. The first rule was rigged against S5 by arithmetic;
+its replacement was rigged against S5 by a cap. Writing a third rule without
+measuring it first would be the same mistake a third time.
+
+**So the rules were measured before being written, and none survives as a gate.**
+
+| Candidate criterion | Why it cannot be the gate |
+|---|---|
+| best-of-K vs any rival | greedy is globally optimal (G9); a flawless sampler is 0.038 short. Arithmetic |
+| distinct-set **count** | capped at `K = 8`; beam saturates it and the `p*` ceiling is 7.78 |
+| distinct-set **diversity** (mean pairwise Jaccard) | **live but near-definitional**: measured, `p*` spreads at 0.453 against beam's 0.225 on 20/20 — but a GFlowNet is *defined* as sampling ∝ reward, so conditional on Gate 2 passing, S5 ≈ `p*` and this value is determined by Gate 2, not by Gate 3 |
+
+> **RULED: Gate 3's synthetic stage is a diagnostic, not a verdict.** Under fix
+> F13's perfect scorer this environment cannot host the architecture's Gate-3
+> comparison, and **the gate's decision moves to Phase 9**, where the distilled
+> head is noisy and Robust Scheduling's precondition actually holds. Phase 4
+> reports; Phase 9 decides.
 >
-> **Failing best-of-K against greedy is *not* a Gate-3 failure** and may not be
-> reported as one. It is arithmetic.
+> **One necessary condition remains live and can fail here.** If S5's portfolio
+> diversity does not exceed the training-free arms', then the flow method is not
+> producing a portfolio at all on this environment and its Robust-Scheduling
+> justification has no support even before the noisy-scorer test. That is a
+> genuine failure — a mode-collapsed or under-trained sampler fails it — and it is
+> the one thing Phase 4 may conclude on its own.
+>
+> **No best-of-K comparison against any rival may be reported as a Gate-3
+> failure.** It is arithmetic.
+
+**This is an amendment to the architecture's gate placement**, not an
+implementation choice, and it is recorded as one: `GRAFT_EXECUTION_ARCHITECTURE_v1.md`
+§Phase 4 puts Gate 3's synthetic exit here. The measurements forcing it are of
+`p*`, `U`, greedy and beam — **no learner result was inspected** — so
+`GRAFT_PHASE2_BUILD.md` §6b's second procedure is satisfied.
 
 **What this costs, stated plainly.** Gate 3's synthetic stage can no longer answer
 the architecture's question — *"does the learned sampler beat training-free search
@@ -382,7 +430,7 @@ closed-form or exhaustive, neither involving a learner:
 |---|---|
 | mean global max `U` over valid terminals (20 main instances) | **1.9245** |
 | **greedy on exact `U` reaches that global argmax** | **30 / 30 instances** (20 main, 5 probe, 5 tuning) |
-| mean `E[best-of-8 | p*]` — a *flawless* sampler | **1.8865** |
+| mean `E[best-of-8 \| p*]` — a *flawless* sampler | **1.8865** |
 | gap to greedy at `K = 8` | **−0.0380** (range −0.0454 … −0.0319, negative on **20/20**) |
 | gap at `K = 32` — the whole checker budget | −0.0066 |
 | gap at `K = 256` | −0.0001 |
@@ -632,7 +680,7 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 ## 5. Exit criteria
 
 **The methods are correct**
-1. Every returned set passes `H` — the filter is not assumed, it is asserted per method per instance.
+1. Every returned set passes `H` — the filter is not assumed, it is asserted per method per instance. **The assertion runs with `ledger=None`.** `checker.py` increments `terminal_checks` on *every* `H` call that receives a ledger, so running this verification against the live ledger would charge S1/S2/S5 eight checks each and erase the 0-versus-1 family difference criterion 6 exists to expose. Out-of-band verification is what Phase 2's exhaustive enumeration already does for the same reason.
 2. S1 and S2's outputs are closed *by construction* (they use the masks); S3 and S4's are closed *after* their filter/completion — and a test exercises the G2 case where PCST's raw output is connected but not closed.
 3. S3 reproduces the arXiv 2607.00725 objective on a hand-computable example, with the paper's weights unmodified.
 4. S5 loads a checkpoint through `graft.setgen.policy` alone, with no import of `graft.setgen.trainer` (Phase-3 §8 requirement 1), asserted by an import test.
@@ -645,13 +693,13 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 9. All five score with **exact `U`** (fix F13), and the write-up carries the "perfect scorer, optimistic relative to deployment" caveat.
 
 **Gate 3**
-10. Best-of-K valid-set utility at `checker_budget`, per method, across the main suite, **plotted across budget levels** and not only at 32 (v1.2 §5.2, G3).
-11. The **predeclared G5 rule** is applied: S5 must return strictly more **distinct valid proof sets** than **S1, S2, S3 and S4** on the one-sided 95% upper bound, with `gate3.py` **negating** before calling `paired_bootstrap` and **broadcasting** deterministic arms to three rows (G4, G5, P4.7).
+10. Best-of-K valid-set utility per method across the main suite, **plotted over the budget levels `{1, 2, 4, 8}`** — and the write-up states that the frozen `checker_budget = 32` is **inert on this environment**, since no method can spend more than `K = 8` (G3, v1.2 §5.2).
+11. The **predeclared G5 ruling** is applied: Phase 4 publishes a **diagnostic**, not a Gate-3 verdict, and the one live condition — S5's portfolio diversity exceeding the training-free arms' — is tested with `gate3.py` **negating** before `paired_bootstrap` and **broadcasting** deterministic arms to three rows (G4, G5, P4.7).
 11b. **The `p*` ceiling row is present**, and best-of-K is reported against it rather than against a rival (G9). A best-of-K loss to greedy is recorded as arithmetic and **may not be reported as a Gate-3 failure**.
 11c. **Plan §6.4's Stage-D secondaries are reported**, not dropped: distinct-valid-set count and diversity, `E[U]` of sampled sets, valid-terminal rate as an *efficiency* measure, and evidence-set size.
 12. PCST's closure-completion rate and `max_atoms` breach rate are reported (G2).
 12b. **`C_e` was calibrated by decision 8's procedure** — grid on the **tuning** suite, selected on median **post**-completion output size, frozen before S4 touched main — and §6 records the chosen value beside its achieved median. A `C_e` chosen after a Gate-3 number existed would be the same defect G5 closes for the decision rule.
-12c. **Every method returned exactly `K = 8`**, and the eight are **genuinely distinct** — a method returning fewer than 8 distinct valid sets is reported with that count, because 8 nominal candidates collapsing to 2 is the defect G3 retires.
+12c. **The distinct-set count is reported per method, never assumed.** Every method *attempts* `K = 8`; measured, S1 and S3 return **2.45** distinct (range 2–3, 20/20) because greedy funnels to one optimum, and the table says 2.45 rather than 8 (decision 3, G3).
 12d. **S4's forest is honoured**: PCST solved per connected component, with the component count and the gold-spans-components rate reported (G2).
 13. Audits carried into every table from `gate2.audit_block` — `FAIL` rate, collision rate (0), unconstructible rate (0), `Δd` densities, target-mass profile, `neither`-mass at the run's β.
 14. Every run records the `environment_fingerprint` and `target_fingerprint` of the suite it used (Phase-2 decision 21).
@@ -668,14 +716,14 @@ Steps 1–7 need nothing from Phase 3's runs. Step 8 is the only one that waits.
 |---|---|---|---|
 | 1 | **RULED. Relevance on the lattice** | obligation-match as primary, `U`-marginal as a declared "informed" variant, **both reported in every table** (G1). Ruled rather than left recommended because this choice decides how strong the two baselines are, and a value that decides a baseline's strength cannot be settled while looking at that baseline's results | the two baselines `CLAUDE.md` §8 calls most dangerous are silently weakened, and a Gate-3 pass means nothing |
 | 2 | **RULED. PCST graph mapping, forest, and closure** | Mapping A (atoms are PCST nodes, `refs` are PCST edges), **solved per connected component and unioned** — a declared departure from G-Retriever's single tree, forced by measurement: the pool has 6–15 components and the gold set spans more than one on **8/20** instances, so a single tree cannot reach 40% of the golds. Under Mapping A the PCST edges are reference links, so **G-Retriever's edge prizes have no counterpart and are dropped** — S4 is PCST applied here, not G-Retriever transplanted. Plus complete-then-filter, with completion rate and `max_atoms` breach rate reported. Mapping B is faithful to G-Retriever and makes closure automatic, but turns 1-ary bindings into self-loops a tree cannot contain — **20 of 60 in the suite would be unselectable** (G2) | fix F10's "no conversion logic" is carried into code where it holds only under a mapping nobody declared; or S4 is crippled into a baseline that cannot express part of the answer space |
-| 3 | **RULED. Portfolio size and budget semantics** | **every method returns exactly `K = 8`**, generated deterministically: S1/S3 by **forced-distinct first atoms**, S2 by the **8 best terminals seen anywhere in the beam**, S4 by 8 values of G-Retriever's top-`k`, S5 by fix F5's 1 greedy + 7 sampled. **Spend is 0 for S1/S2/S5 and 1 per candidate for S3/S4** — `stop_allowed` *is* `H`, so mask-driven arms validate for free and the budget binds only on the direct builders. **ε-restarts are rejected on measurement** (2.10 distinct from 8, all deviations non-argmax, so best-of-8 = best-of-1 in value); **flat 8-checks-for-everyone is rejected** as accounting fiction that erased G6's cost difference and made `checker_budget` non-binding (G3, G6) | best-of-1 is compared with best-of-8 under the label "equal budget" |
+| 3 | **RULED. Portfolio size and budget semantics** | every method **attempts** `K = 8` and **reports how many distinct valid sets it actually returned** — it is not guaranteed 8 and must not be labelled 8. Measured: forced-distinct openers give **2.45** distinct (range 2–3, 20/20), barely above the ε-restarts' **2.10** they replaced, because G9's funnelling sends greedy to the same optimum whatever the opener. **Engineering 8 distinct out of greedy would be engineering the baseline**; greedy genuinely returns ~2.5 and the honest table says so. S2 reaches 8 by taking the best terminals seen; S5 by fix F5's 1 greedy + 7 sampled. **Spend is 0 for S1/S2/S5 and 1 per candidate for S3/S4** — `stop_allowed` *is* `H` (G3, G6) | a portfolio of ~2.5 wearing a `K = 8` label, which is best-of-1 in value with extra bookkeeping |
 | 4 | **RULED. Seed semantics** | **S1–S4 are all deterministic** under decision 3's generation rules and are **reported once**; S5 runs the frozen `{13, 42, 7}`. For the paired test a deterministic arm is **broadcast to three rows** — its seed variance really is zero, and broadcasting is what lets the bootstrap see zero rather than raise on a shape mismatch (G4). This resolves the contradiction an earlier revision left between decisions 4 and 5 | a zero-width interval makes a paired test against S5 look impossibly significant |
-| 5 | **RULED. The Gate-3 decision rule** | **Tested:** S5 returns strictly more **distinct valid proof sets** than **S1, S2, S3 and S4** — plan §6.4's own secondary — on the one-sided 95% upper bound, `paired_bootstrap` **negated**, seed `20260814`, 10,000 resamples. **Reported, never tested:** best-of-K beside `E[best-of-K | p*]`. **S1 is in the tested list**; an earlier revision named only S3/S4 because `CLAUDE.md` §8 did, and G9 shows S1 is the strongest method here — S5 could have lost to the cheapest arm and still passed. **A best-of-K loss to greedy is arithmetic and is not a Gate-3 failure** (G5, G9) | Gate 3 repeats the unfalsifiable-rule defect fix F12 retired for Gate 2 |
+| 5 | **RULED. Gate 3's synthetic stage is a DIAGNOSTIC, not a verdict** | Measured before writing: best-of-K is arithmetic (G9); distinct-set **count** is capped at `K = 8`, which beam saturates on 20/20 while the `p*` ceiling is 7.78, so a strictly-more rule has `P(pass) = 0`; distinct-set **diversity** is live (`p*` 0.453 vs beam 0.225 on 20/20) but near-definitional, since a GFlowNet is *defined* as sampling ∝ reward and Gate 2 already measures the distance. **So the gate's decision moves to Phase 9**, where the distilled head is noisy and Robust Scheduling's precondition holds. **One live necessary condition stays here**: if S5's portfolio diversity does not exceed the training-free arms', the flow method is not producing a portfolio at all and its justification has no support — a mode-collapsed or under-trained sampler fails this. **No best-of-K comparison against a rival may be reported as a Gate-3 failure** (G5, G9) | a third predetermined rule; or a phase with no failure condition in either direction |
 | 6 | **RULED. Ledger discipline** | `would_exceed()` before every spend; completed-set checks only; **spend reported per method and it differs by family — 0 for S1/S2/S5, 1 per candidate for S3/S4** (G6). `stop_allowed` *is* `H`, so mask-driven arms are valid by construction and have nothing to validate; charging them anyway erases the cost difference the budget exists to expose | methods drift over budget and the comparison is unfair without anyone noticing |
 | 7 | **RULED. S3's constants, their label, and its guarantee** | **`[ANALYSIS]`, not `[EVIDENCE]`, for the weights as applied**: the algorithm is the paper's, but five constants fitted to token-budgeted HotpotQA snippets, transplanted onto four features re-defined over atoms with `rel` an admitted stand-in, is not fidelity (P4.4). **five** of the paper's values unmodified — `w_rel 1.0, w_qry 0.5, w_cov 0.4, w_div 0.3, α 0.3`; `[EVIDENCE]` provisional venue declared. **No approximation-ratio claim**: arXiv 2607.00725 §4.2 declines it itself ("we do not perform [partial enumeration] — we use the algorithm for its empirical behaviour... not for a guarantee"). Record that cost-scaling degenerates under unit atom costs, so **S1 and S3 differ by objective, not by search strategy** (P4.4) | S3 becomes a comparison of tuning effort; α is silently defaulted; or an unearned guarantee enters the write-up that the source paper itself refuses |
 | 8 | **RULED. PCST solver and edge cost** | **`pcst_fast`, pinned.** The platform risk an earlier draft raised is not real: a prebuilt `cp311-win_amd64` wheel exists (1.0.10, verified by download), so no compiler is needed and the more defensible option — G-Retriever's own solver — costs nothing. **`C_e` is calibrated, not picked**: grid `{0.25, 0.5, 1.0, 2.0}` anchored on the paper's two values, on the **tuning** suite, selected by median **post**-completion output size closest to `max_atoms` — a structural criterion reading no `U` and no Gate-3 number — then frozen and recorded here with its achieved median. **Post-, not pre-**: completion only adds atoms, so the earlier pre-completion criterion put ~half the outputs over the cap and selected for the very failure §6b lists as a risk (P4.5) | a compiled dependency lands mid-build on a Windows laptop; or S4 gets a tuning budget no other method has, chosen after seeing results |
-| 10 | **RULED. The `p*` ceiling is a reported row** | `E[best-of-K | p*]`, closed-form from `Target`, printed beside every method's best-of-K. It splits an otherwise uninterpretable loss into S5-to-ceiling (**learning**) and ceiling-to-greedy (**an artefact of fix F13's perfect scorer**). Costs nothing; without it Gate 3 reports a predetermined number as a result (G9) |
 | 9 | **RULED. Two-stage exit** | Stage A (S1–S4) may be reported; only Stage B is Gate 3 (G7) | a table without the learned sampler is read as the gate |
+| 10 | **RULED. The `p*` ceiling is a reported row** | `E[best-of-K \| p*]`, closed-form from `Target`, printed beside every method's best-of-K. It splits an otherwise uninterpretable loss into S5-to-ceiling (**learning**) and ceiling-to-greedy (**an artefact of fix F13's perfect scorer**). Costs nothing; without it Gate 3 reports a predetermined number as a result (G9) | Gate 3 reports a predetermined number as if it were a result, and the phase's headline loses the only row that makes it interpretable |
 
 ---
 

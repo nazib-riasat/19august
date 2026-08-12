@@ -701,7 +701,7 @@ Each gate can stop or redirect the project cheaply. That is the point.
 2. Report **candidate**, **packing** and **reader** ceilings (3, 4, 5).
 3. Evaluate on the complementary-evidence probe set **and** on ordinary LongMemEval/LoCoMo cases.
 
-**[ANALYSIS] This is the highest-risk gate.** PCST, MIP and submodular greedy are training-free. If any of them matches the learned set constructor at equal budget, the learning contribution for Stage D does not hold, and the project should consolidate around Contribution 1.
+**[ANALYSIS] This is the highest-risk gate.** PCST, MIP and submodular greedy are training-free. If any of them matches the learned set constructor at equal budget, the learning contribution for Stage D does not hold, and the project should consolidate around Contribution 1. **[CORRECTION, 12 Aug 2026]** That test must be run **where the scorer is a proxy**, not where it is the evaluation metric itself. On the enumerable environment, fix F13 makes the scorer exactly `U`, and it is then measured that plain greedy attains the global optimum on 30/30 instances while a flawless reward-proportional sampler falls 0.038 short at K = 8 — so on the lattice this criterion narrows Stage D's claim automatically, by arithmetic, whatever the sampler learned. Gate 3's *decision* therefore belongs to the real-data stage, whose distilled utility head is the cheap proxy Robust Scheduling's argument requires; the synthetic stage is a diagnostic that establishes the training-free frontier.
 
 ### Gate 4 — End-to-end with a frozen reader
 

@@ -256,7 +256,7 @@ These are frozen at Gate 0 and every later phase inherits them. Confirm or amend
 | 2 | `checker_budget` | 32/query | Same |
 | 3 | `K` | 8 (returned portfolio; also "returned sets" in the search comparison) | Same, plus search table re-runs |
 | 4 | `U` term ranges | all terms normalized to [0, 1] (G4) | β becomes uninterpretable; reward re-derivation |
-| 5 | Size term | `|X| / max_atoms`, one weight (G3) | Reward changes → all learners re-run |
+| 5 | Size term | `\|X\| / max_atoms`, one weight (G3) | Reward changes → all learners re-run |
 | 6 | `beta` | 4.0, swept on the synthetic lattice in Phase 3, then frozen | Re-run everything after the sweep |
 | 7 | `u_weights` | per architecture §12, identical across all seven learners | v1.2 §5.1 violated — comparison measures reward engineering |
 | 8 | ID scheme | truncated SHA-256, content-derived | Log incompatibility |

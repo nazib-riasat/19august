@@ -511,7 +511,7 @@ per G8; `derive_bindings` from `AtomPool` per P1.0.)
 | 3 | temporal | no bound claim whose validity is **disjoint** from the constraint; no `supersedes` edge pointing at a later `t_created` (G5) | scoped to affected binding |
 | 4 | retired evidence | no atom's `target` is an edge with `t_invalid` set at the pinned snapshot | per-atom |
 | 5 | scope | the `target`'s provenance resolves inside `q.scope`; fails closed when unresolvable (G6) | per-atom |
-| 6 | size | `1 ≤ |X| ≤ max_atoms` (G1) | counter |
+| 6 | size | `1 ≤ \|X\| ≤ max_atoms` (G1) | counter |
 | 7 | support eligibility | no atom whose `target` is an assertion fails `G.is_eligible` (fix F9) | per-atom |
 | 8 | structural closure | every atom's `refs` are selected (fix F10) | membership test |
 | 9 | binding consistency | no two binding atoms claim the same slot (G3) | per-atom |
@@ -555,12 +555,12 @@ one public function per term.
 
 | Term | Definition | Range | Character |
 |---|---|---|---|
-| `sufficiency` | `|X ∩ gold| / |gold|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+15.6 acc / +17.2 F1 over sparse terminal reward) |
+| `sufficiency` | `\|X ∩ gold\| / \|gold\|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+15.6 acc / +17.2 F1 over sparse terminal reward) |
 | `coverage` | `1 − mean(d₁..d₄)` over active slots; 1.0 when no slots are active | [0,1] | deterministic; shares `slot_status` with `d(s)` (G4) |
 | `source_quality` | mean tier over selected atoms, from `config.source_tiers` (G7) | [0,1] | metadata-derived |
-| `temporal_correctness` | `|constraint ∩ ⋃ evidence intervals| / |constraint|`; 1.0 when unbounded (G5) | [0,1] | deterministic interval arithmetic |
+| `temporal_correctness` | `\|constraint ∩ ⋃ evidence intervals\| / \|constraint\|`; 1.0 when unbounded (G5) | [0,1] | deterministic interval arithmetic |
 | `redundancy` | `(Σ_x F({x}) − F(X)) / Σ_x F({x})`, `F` facility location **over the pool** with similarity **clamped to [0,1]**; 0 for a singleton and when the denominator is 0 | [0,1) | deterministic, submodular |
-| `size` | `|X| / max_atoms` | [0,1] | deterministic |
+| `size` | `\|X\| / max_atoms` | [0,1] | deterministic |
 
 **On `redundancy`.** This is the v1.2 replacement for the degenerate
 `max(0, S(X\e) − S(X) + ε)` form, which is near-constant when the proof score is
@@ -729,7 +729,7 @@ Frozen at Gate 0; every later phase inherits them.
 
 | # | Decision | Recommended | Cost if changed later |
 |---|---|---|---|
-| 1 | Empty set legal? | **No** — `1 ≤ |X| ≤ max_atoms` (G1) | Target support changes; `p*` re-derived; every Gate-2 result re-runs |
+| 1 | Empty set legal? | **No** — `1 ≤ \|X\| ≤ max_atoms` (G1) | Target support changes; `p*` re-derived; every Gate-2 result re-runs |
 | 2 | Atom resolution | `AtomPool` in `schemas.py` Tier A **and** `CandidateAtom.target`; `atom_id` keyed on target (G2) | Log migration after Phase 5 |
 | 3 | Bindings | derived from `binding`-kind atoms via `AtomPool.derive_bindings`; sub-check 9 forbids duplicate slots (G3) | Changes what a terminal is; Phases 2–4 re-run |
 | 4 | `d(s)` | 6 components as tabled, with `d_source = 1` on the unmet-and-unbound case (G4) | **Re-runs Gate 2** — L7 is defined on `Δd` |
