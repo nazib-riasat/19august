@@ -132,6 +132,24 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "nine evaluated arms: 9 x 3 x 50 x 20 = 27,000 (decision 2)", "R12", "GRAFT_PHASE3_BUILD.md"),
     ("the seven architecture learners",
      "nine evaluated arms — L1-L7, L7b and GAFlowNet (decision 1)", "R12", "GRAFT_PHASE3_BUILD.md"),
+    # R13 — an external code review, checked against the papers. Three of its
+    # findings were defects in *controls*, all running in the direction that
+    # flatters the proposed method. These are the specifications that permitted
+    # them, and every one reads as reasonable until the equation is opened.
+    ("Π_t ( 1 + r(s_t→s_{t+1}) / F(s_{t+1}) )",
+     "GAFlowNet Eq. 4 puts the term beside P_B: Π (P_B + r/F), so the TB correction is log(1 + r/(F·P_B))", "R13", None),
+    ("the **plain** form, *not* the correction-term variant",
+     "the redistribution form of Appendix B.1, which is what LED-GFN denotes in the paper's experiments; LED-GFN* stays out (decision 23b)", "R13", None),
+    ("trainable params within 1%, control never smaller",
+     "live trainable params, control never smaller, narrowest admissible width — the 1% is unachievable by width (decision 11)", "R13", None),
+    ("their capacity match is exact rather than within 1%",
+     "the nominal match was exact and the live match was 1.46% short; matching is on live capacity (decision 11)", "R13", None),
+    ("the match is 0.00% rather than",
+     "a 0.00% nominal match concealed 768 dead parameters; decision 11 matches live capacity", "R13", None),
+    ("so FCS is the binding term",
+     "the per-evaluation cost is the DP; FCS runs once per (arm, seed) at final θ (decision 2)", "R13", None),
+    ("50 checkpoints × 20 instances = **27,000**",
+     "51 evaluations per run — the trajectory-0 baseline plus C = 50 — so 27,540 (decision 2)", "R13", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction
@@ -225,17 +243,50 @@ def _check_numbering(name: str, text: str) -> list[str]:
     return out
 
 
+def _live_sources() -> list[Path]:
+    """Every `.py` under `graft/` and `scripts/`.
+
+    **Added in R6, after a retirement landed in four documents and survived in
+    three docstrings.** This project keeps most of its reasoning in module
+    docstrings — `chatcontext1.md` says they "are not decoration and are the
+    fastest way in" — so the medium the guard could not read held as much
+    normative prose as the medium it could. One of the three survivors did not
+    merely restate the retired claim, it asserted the disproved version as fact.
+
+    Scoped retirements name a `.md` file, so they skip sources; unscoped ones
+    (`scope=None`) are exactly the project-wide claims that should hold
+    everywhere, and those are what this catches.
+    """
+    me = Path(__file__).resolve()
+    return sorted(
+        p
+        for d in ("graft", "scripts")
+        for p in (REPO / d).rglob("*.py")
+        # This file *is* the blocklist: every retired string appears in it by
+        # construction, so scanning it reports each retirement as its own
+        # violation.
+        if p.resolve() != me
+    )
+
+
 def main() -> int:
     failures: list[str] = []
 
-    for name in LIVE_DOCS:
-        path = REPO / name
+    targets = [(name, REPO / name) for name in LIVE_DOCS]
+    targets += [
+        (str(p.relative_to(REPO)).replace("\\", "/"), p) for p in _live_sources()
+    ]
+
+    for name, path in targets:
         if not path.is_file():
             failures.append(f"{name}: listed as live but missing")
             continue
         text = path.read_text(encoding="utf-8")
+        is_doc = name in LIVE_DOCS
 
         for retired, replacement, round_, scope in RETIRED:
+            # A scoped retirement names one document; sources only ever carry
+            # the unscoped, project-wide claims.
             if scope is not None and scope != name:
                 continue
             if retired in text:
@@ -246,6 +297,9 @@ def main() -> int:
                     f"{name}:{line}: retired in {round_} — {retired!r}\n"
                     f"    superseded by: {replacement}"
                 )
+
+        if not is_doc:
+            continue
 
         failures.extend(_check_numbering(name, text))
 
@@ -265,7 +319,8 @@ def main() -> int:
         return 1
 
     print(f"plan consistency OK — {len(LIVE_DOCS)} live documents, "
-          f"{len(RETIRED)} retired wordings, {len(INCOMPATIBLE)} incompatible pairs")
+          f"{len(_live_sources())} sources, {len(RETIRED)} retired wordings, "
+          f"{len(INCOMPATIBLE)} incompatible pairs")
     return 0
 
 

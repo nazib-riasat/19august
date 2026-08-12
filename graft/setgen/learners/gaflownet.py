@@ -1,17 +1,30 @@
 """GAFlowNet — augmented trajectory balance. **The second required control.**
 
-**[EVIDENCE]** *Generative Augmented Flow Networks* (ICLR 2023). Intermediate
-rewards ``r(s→s′)`` are added to the flow network as *augmented* flow, and the
-trajectory balance condition becomes
+**[EVIDENCE]** *Generative Augmented Flow Networks* (ICLR 2023), **Eq. 4**.
+Intermediate rewards ``r(s→s′)`` are added to the flow network as *augmented*
+flow, and the trajectory balance condition becomes
 
 .. code-block:: text
 
     Z_θ Π_t P_F(s_{t+1}|s_t)
-        = R(x) Π_t P_B(s_t|s_{t+1}) Π_t ( 1 + r(s_t→s_{t+1}) / F(s_{t+1}) )
+        = R(x) Π_t ( P_B(s_t|s_{t+1}) + r(s_t→s_{t+1}) / F(s_{t+1}) )
 
-so the loss is TB's residual minus ``Σ_t log(1 + r_t / F(s_{t+1}))``. The
-``r/F(s′)`` term is why this arm needs a ``StateFlowHead`` even though its base
-objective is TB and TB does not (decision 27, G12).
+**The augmented term sits beside ``P_B``, not beside 1.** Factoring ``P_B`` out
+to express this as a correction to TB's own residual gives
+
+.. code-block:: text
+
+    Σ_t log( P_B + r/F )  =  Σ_t log P_B  +  Σ_t log( 1 + r / (F·P_B) )
+
+so the loss is TB's residual minus ``Σ_t log(1 + r_t / (F(s_{t+1})·P_B))``.
+Dropping the ``P_B`` divisor — which an earlier build did — implements an
+intrinsic reward of ``P_B·r`` instead of ``r``. Since ``P_B`` is uniform over
+removable atoms, that attenuates the augmentation by the removable count and the
+attenuation *grows with set size*, so it is not even a rescaling of ``c₀``. The
+arm would then not be the control decision 19 declares, and the error runs in
+the direction that flatters L7. The ``r/F(s′)`` term is why this arm needs a
+``StateFlowHead`` even though its base objective is TB and TB does not
+(decision 27, G12).
 
 **Why it is a required control and not an optional extra.** Plan §4.5.4 makes it
 one, and the reason is sharp: "an intermediate signal improves credit
@@ -73,13 +86,16 @@ def augmented_tb_loss(batch: "Batch", trainer: "Trainer", spent: int) -> torch.T
     residual = tb_residual(batch)
     if c_t > 0.0:
         r = intrinsic_reward(batch, c_t)
-        # log(1 + r/F(s′)) as softplus(log r − log F(s′)): F is held in log space
-        # and can be large or tiny, so forming the ratio directly would overflow
-        # at one end and underflow to a silent zero at the other.
+        # log(1 + r/(F(s′)·P_B)) as softplus(log r − log F(s′) − log P_B): every
+        # factor is already held in log space and can be large or tiny, so
+        # forming the ratio directly would overflow at one end and underflow to
+        # a silent zero at the other.  `log_pb` is 0 on padding and on the
+        # terminating transition, where `r` is 0 anyway, so those slots
+        # contribute softplus(−1e30) = 0 and the mask below is belt-and-braces.
         log_r = torch.where(
             r > 0.0, torch.log(r.clamp(min=1e-30)), torch.full_like(r, _LOG_ZERO)
         )
         log_flow_child = batch.flow_raw[:, 1:]
-        term = torch.nn.functional.softplus(log_r - log_flow_child)
+        term = torch.nn.functional.softplus(log_r - log_flow_child - batch.log_pb)
         residual = residual - (term * batch.valid.to(term.dtype)).sum(dim=1)
     return (residual**2).mean()

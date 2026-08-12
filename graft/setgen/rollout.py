@@ -134,6 +134,7 @@ def sample_trajectories(
     n: int,
     rng: np.random.Generator,
     epsilon: float = 0.0,
+    greedy: int = 0,
 ) -> Trajectories:
     """Walk the MDP ``n`` times from the empty root.
 
@@ -146,9 +147,42 @@ def sample_trajectories(
     not the behaviour policy's: trajectory-balance-family objectives are
     off-policy-capable, so exploring with a mixture and scoring with ``P_F`` is
     correct rather than a bias to be corrected.
+
+    **That justification does not cover L3**, and saying so is the point. GRPO is
+    an on-policy policy gradient: trajectories drawn from the ε-mixture and
+    scored with ``P_F`` give a gradient with no importance correction, which is a
+    genuine bias rather than a licensed choice. At ε = 0.05 it is small, and
+    decision 10 makes ε identical across every arm so it cannot threaten
+    fairness — but L3's write-up owes it a line, and it is recorded as a third
+    declared L3 departure in ``PHASE3_DECISIONS.md`` §1.4 beside the two that
+    were already there.
+
+    ``greedy`` makes the **first** ``greedy`` trajectories take the
+    highest-probability legal action at every step instead of sampling one. Fix
+    F5 defines the portfolio as ``K = 8`` = *1 greedy + 7 sampled*, and best-of-K
+    is measured over that portfolio rather than over eight stochastic draws.
+    More than one greedy rollout is pointless — they are identical — so callers
+    pass ``greedy=1``.
+
+    It lives here rather than in a second walk somewhere else for the reason
+    this module's header gives: every downstream number comes from trajectories
+    produced here, and a parallel implementation is a second chance to disagree
+    with the exact DP in a way no loss curve reveals.
+
+    **The greedy row does not leave the other rows unchanged**, and it is worth
+    saying so rather than assuming otherwise: the draw is sized by how many
+    trajectories are still live, so a greedy rollout that terminates at a
+    different step from the sampled one it replaced shifts every later draw.
+    Measured, not reasoned — the tail of a ``greedy=1`` call does not reproduce
+    the tail of a plain call at the same seed. This costs nothing here, because
+    the portfolio is compared across arms under one frozen stream rather than
+    against a non-greedy baseline, but a caller expecting the weaker property
+    would be wrong.
     """
     if not 0.0 <= epsilon <= 1.0:
         raise ValueError(f"epsilon must be in [0, 1], got {epsilon}")
+    if not 0 <= greedy <= n:
+        raise ValueError(f"greedy must be in [0, n]={[0, n]}, got {greedy}")
     n_atoms, n_states = graph.n_atoms, graph.n_states
     max_len = graph.max_atoms
 
@@ -205,6 +239,14 @@ def sample_trajectories(
         picks = (cumulative[here] < u[:, None]).sum(axis=1)
         # Guard the closed-interval edge case: u == 1.0 would index past the end.
         np.minimum(picks, n_atoms, out=picks)
+
+        if greedy:
+            # The draw above still happened, so a greedy call consumes the same
+            # random stream as a non-greedy one and the sampled rows of a
+            # portfolio are the rows a pure sample would have produced.
+            take_max = live < greedy
+            if take_max.any():
+                picks[take_max] = probs[here[take_max]].argmax(axis=1)
 
         stopped = picks == n_atoms
         if stopped.any():

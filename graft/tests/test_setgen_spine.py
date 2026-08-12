@@ -355,6 +355,89 @@ def test_the_adapter_layer_is_a_closed_list():
     )
 
 
+def test_the_portfolio_is_one_greedy_plus_seven_sampled(bench, bench_graph):
+    """Fix F5 defines `K = 8` **and its composition**: 1 greedy + 7 sampled. An
+    earlier build sampled all eight, which measures a different portfolio from
+    the one Phase 9 ships and Phase 4's S5 is compared against — the greedy
+    candidate is the one a reward-maximiser would return.
+
+    The greedy row is deterministic: it takes the argmax legal action at every
+    step, so it does not move with the seed."""
+    from graft.setgen.learners import build_arm
+    from graft.setgen.trainer import Environment, Trainer, TrainSpec
+
+    env = Environment(bench, bench_graph)
+    trainer = Trainer(build_arm("l4_tb"), [env], TrainSpec(n_trajectories=256))
+    trainer.train()
+    feat = trainer.featurizers[0]
+
+    firsts = {
+        int(sample_trajectories(feat, bench_graph, 8, np.random.default_rng(s), 0.0,
+                                greedy=1).terminal[0])
+        for s in (1, 2, 3, 4)
+    }
+    assert len(firsts) == 1, "the greedy candidate moved with the seed"
+
+    # ...and it is genuinely the argmax walk, not just some fixed rollout
+    traj = sample_trajectories(feat, bench_graph, 8, np.random.default_rng(1), 0.0,
+                               greedy=1)
+    log_add, log_stop = feat.action_log_probs(np.asarray([0], dtype=np.int64), bench_graph)
+    best = int(np.argmax(np.concatenate([log_add[0], log_stop])))
+    assert int(traj.actions[0, 0]) == best or best == bench_graph.n_atoms
+
+    # the sampled rows still vary with the seed
+    tails = {
+        tuple(sample_trajectories(feat, bench_graph, 8, np.random.default_rng(s), 0.0,
+                                  greedy=1).terminal[1:].tolist())
+        for s in (1, 2, 3)
+    }
+    assert len(tails) > 1, "the sampled candidates are not sampling"
+
+    with pytest.raises(ValueError, match="greedy"):
+        sample_trajectories(feat, bench_graph, 4, np.random.default_rng(0), 0.0, greedy=9)
+
+
+def test_a_checkpoint_round_trips_and_loads_without_the_trainer(tmp_path, bench, bench_graph):
+    """Build step 4's done-when ("checkpointing round-trips") and Phase-3 §8
+    requirement 1 ("loadable without the trainer"). Neither held: the trainer's
+    "checkpoints" are exact-TV evaluations, no `state_dict` was ever written, and
+    `run_matrix` deleted each trainer as it went — so a Gate-2 run discarded
+    every model it trained and Phase 4's S5 had nothing to consume.
+
+    The load path is exercised through `graft.setgen.policy` alone, which is the
+    requirement: a module importing only torch."""
+    import torch
+
+    from graft.setgen.learners import build_arm
+    from graft.setgen.policy import CHECKPOINT_FORMAT, load_policy
+    from graft.setgen.trainer import Environment, Trainer, TrainSpec
+
+    env = Environment(bench, bench_graph)
+    trainer = Trainer(build_arm("l7_checker_led"), [env], TrainSpec(n_trajectories=64))
+    trainer.train()
+    path = trainer.save_checkpoint(tmp_path / "l7.seed13.pt")
+
+    policy, blob = load_policy(path)
+    assert blob["format"] == CHECKPOINT_FORMAT
+    assert blob["arm"] == "l7_checker_led"
+    # the caller needs delta_d: an L7 policy behind an L6 featurisation reads a
+    # zeroed Δd block, which is a silently wrong policy rather than an error
+    assert blob["delta_d"] is True
+    assert blob["fingerprints"] == [env.fingerprints()]
+    assert blob["live_capacity"] == trainer.live_capacity
+
+    # ...and the weights are the trained ones, not a fresh initialisation
+    for before, after in zip(
+        trainer.policy.state_dict().values(), policy.state_dict().values()
+    ):
+        assert torch.equal(before, after)
+
+    with pytest.raises(ValueError, match="format"):
+        blob["format"] = 999
+        torch.save(blob, tmp_path / "stale.pt")
+        load_policy(tmp_path / "stale.pt")
+
+
 def test_uniform_backward_is_re_exported_not_reimplemented():
     """Decision 18 and the P3.3 surface. Phase 2's version reads the enumerated
     in-edges, which *are* the removable atoms; a second implementation here would

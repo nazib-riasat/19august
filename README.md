@@ -13,7 +13,7 @@ Current state: **Phases 0, 1 and 2 complete** — scaffold and data contracts; t
 deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`); and the
 enumerable synthetic environment with its exact evaluator (ProofLattice, the
 forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen suites and the Gate-2
-audits). **568 tests, all passing.**
+audits). **590 tests, all passing.**
 
 **Phase 3 is code complete and uncalibrated.** Steps 1–5 and 7–10 of
 [`GRAFT_PHASE3_BUILD.md`](GRAFT_PHASE3_BUILD.md) §4 are built and green: the ML
@@ -21,6 +21,13 @@ dependency boundary, the FL-GFN discharge (measured — 8,638/8,638 terminals of
 terminal identity at every eligible β), the fix-F6 adapter, the policy and its
 five heads, the trajectory sampler, the shared trainer, **all nine arms** (L1–L7,
 L7b, GAFlowNet) and the Gate-2 harness with its hierarchical paired bootstrap.
+
+A review on 12 Aug 2026 (plan revision **R6**) corrected three defects in the
+*controls* — GAFlowNet's Eq. 4, LED-GFN's Eq. 5 and its decomposition-error
+redistribution, and the L6/L7 capacity match, which was counting parameters no
+gradient could reach. All three ran in the direction that flatters the proposed
+method. `PHASE3_DECISIONS.md` §6 has the papers, the arithmetic and what was
+*not* upheld.
 
 **Step 6, the calibration gate, has not run.** `N` and β are therefore not
 frozen, and no L6/L7/GAFlowNet result may be quoted — the plan's own ordering

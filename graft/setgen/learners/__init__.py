@@ -29,10 +29,16 @@ GAFN    augmented TB               **[EVIDENCE]** GAFlowNets (ICLR 2023); the
 
 **L6 and L7 differ by one boolean and by nothing else.** They share this file's
 ``led_db_loss`` verbatim; the difference is ``delta_d=True`` on L7's featurizer,
-which fills the ``Δd`` block of ``action_repr`` that L6 leaves zeroed. Because
-the block is *present and zeroed* rather than absent, the two arms have byte-for-
-byte identical parameter shapes and their capacity match is exact rather than
-within 1% — which is the strongest form decision 11 can take.
+which fills the ``Δd`` block of ``action_repr`` that L6 leaves zeroed.
+
+**That does not make their capacity match exact, and an earlier version of this
+paragraph said it did.** The block being present and zeroed gives byte-identical
+*shapes*, but L6's weights reading it get gradient ``δ·0`` forever, so at equal
+width the control held **1.46% less trainable capacity** than the proposed
+method. Decision 11 matches **live** parameters and widens L6 accordingly
+(``Trainer.dead_capacity_of``, ``gate2.capacity_matched_arm``); the two arms run
+at different widths and the same live capacity, not the same width and different
+live capacity.
 """
 
 from __future__ import annotations

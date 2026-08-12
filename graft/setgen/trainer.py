@@ -59,14 +59,16 @@ from __future__ import annotations
 
 import math
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 import numpy as np
 import torch
 
 from graft.core import obligations as ob
-from graft.setgen.features import SyntheticFeaturizer
+from graft.setgen.features import STATE_EXTRA_DIMS, SyntheticFeaturizer
 from graft.setgen.policy import (
+    CHECKPOINT_FORMAT,
     DeficitHead,
     LogZHead,
     Policy,
@@ -89,12 +91,23 @@ __all__ = [
     "Trainer",
     "TrainLog",
     "SEEDS",
+    "DECISION5_RUNGS",
+    "CHECKPOINT_FORMAT",
 ]
 
 #: The frozen seed set (``CLAUDE.md`` §6, exit criterion 10).  **[EVIDENCE]** the
 #: ACL 2018 significance protocol requires multiple seeds; the *set* is frozen so
 #: no arm is ever replicated over a different one.
 SEEDS: tuple[int, ...] = (13, 42, 7)
+
+#: Decision 5's ladder, in seconds: ``c₀ = 1 h``, rungs 1 → 2 → 4, at most two
+#: doublings.  Lives here rather than in ``scripts/phase3_calibrate.py`` because
+#: **admissibility has to check it**: the ceilings are a script argument, so a
+#: calibration run at ``--rungs 0.5`` produces a perfectly well-formed "adopted"
+#: record at a meaningless budget, and every other admissibility clause would
+#: pass it.  One source, read by the script that spends it and the gate that
+#: refuses it.
+DECISION5_RUNGS: tuple[float, ...] = (3600.0, 7200.0, 14400.0)
 
 N_DEFICIT = len(ob.DEFICIT_COMPONENTS)
 
@@ -106,7 +119,8 @@ class TrainSpec:
         "n_trajectories", "batch_size", "checkpoints", "lr", "epsilon",
         "grad_clip", "hidden", "depth", "seed", "device", "dtype",
         "subtb_lambda", "led_lr", "led_dropout", "led_iters", "gafn_c0",
-        "gafn_tail", "lambda_aux", "wall_clock_ceiling",
+        "gafn_tail", "lambda_aux", "grpo_group", "logz_lr_mult",
+        "wall_clock_ceiling",
     )
 
     def __init__(
@@ -142,12 +156,58 @@ class TrainSpec:
         gafn_tail: float = 0.8,
         # --- L7b, decision 26 ---------------------------------------------
         lambda_aux: float = 0.1,
+        # --- log Z_theta, decision 30 --------------------------------------
+        # **[EVIDENCE]** both objectives this environment is built on say the
+        # partition function wants a faster learning rate than the policy.
+        # Trajectory Balance (NeurIPS 2022) §3: "we found it helpful to set a
+        # higher learning rate for Z than for the parameters of P_F and P_B."
+        # SubTB (ICML 2023) Appendix C, verbatim: "for Z, use a learning rate of
+        # 10x the learning rate for forward logits."  An earlier build put the
+        # policy, `LogZHead` and the flow head in one Adam at `lr`, which is
+        # neither paper's protocol and was not declared as a departure.
+        #
+        # It is one multiplier for every arm, so it is not per-arm tuning --
+        # decision 23's point stands.  `logz_lr_mult` rather than an absolute lr
+        # so it tracks `lr` if that ever moves.
+        #
+        # **Default 1.0, and the papers' 10x is [recommended] awaiting sign-off.**
+        # The defect the review found is that the build did something neither
+        # paper does *and declared it nowhere*; the mechanism and decision 30
+        # close that.  Which value ships is a normative ruling, and the evidence
+        # is genuinely mixed here:
+        #
+        #   - both papers prescribe a faster lr for Z  ([EVIDENCE], verbatim);
+        #   - measured on the 5-instance tuning suite, 2 seeds, 150k: 10x
+        #     improves TV both mid-curve (0.4755 -> 0.4499) and final
+        #     (0.3427 -> 0.3248), and *worsens* mean |log Z error|
+        #     (0.607 -> 0.675);
+        #   - measured on `tiny_instance()`, 10x breaks decision 25's 1%
+        #     tolerance outright (1.58% error) -- though that lattice has ONE
+        #     instance, so `instance_repr` is constant and the head never has to
+        #     discriminate, which is the entire situation the multiplier is for.
+        #
+        # Adopting 10x would move decision 25 to accommodate a change made here,
+        # which is the wrong direction.  So the shipped default reproduces every
+        # number already measured, and the ruling is the project's.
+        logz_lr_mult: float = 1.0,
+        # --- L3, architecture §3.2 ----------------------------------------
+        # GRPO's advantage is relative *within a sampled group*, and the
+        # architecture freezes ``G = 8``.  It is not the batch size: decision 23
+        # sets that to 32 for every arm, so a batch carries four groups.  An
+        # earlier build standardised over the whole batch, which made ``G = 32``
+        # silently — a lower-variance baseline than the architecture specifies,
+        # so a *stronger* L3, but not the one the plan describes.
+        grpo_group: int = 8,
         wall_clock_ceiling: float | None = None,
     ) -> None:
         if n_trajectories <= 0:
             raise ValueError("n_trajectories must be positive")
         if not 0.0 <= epsilon <= 1.0:
             raise ValueError(f"epsilon must be in [0, 1], got {epsilon}")
+        if grpo_group < 2:
+            raise ValueError(f"grpo_group must be >= 2, got {grpo_group}")
+        if logz_lr_mult <= 0.0:
+            raise ValueError(f"logz_lr_mult must be > 0, got {logz_lr_mult}")
         if not 0.0 < subtb_lambda <= 1.0:
             raise ValueError(f"subtb_lambda must be in (0, 1], got {subtb_lambda}")
         if not 0.0 < gafn_tail <= 1.0:
@@ -170,6 +230,8 @@ class TrainSpec:
         self.gafn_c0 = float(gafn_c0)
         self.gafn_tail = float(gafn_tail)
         self.lambda_aux = float(lambda_aux)
+        self.grpo_group = int(grpo_group)
+        self.logz_lr_mult = float(logz_lr_mult)
         self.wall_clock_ceiling = wall_clock_ceiling
 
     def replace(self, **overrides: Any) -> "TrainSpec":
@@ -199,6 +261,8 @@ class TrainSpec:
             "gafn_c0": self.gafn_c0,
             "gafn_tail": self.gafn_tail,
             "lambda_aux": self.lambda_aux,
+            "grpo_group": self.grpo_group,
+            "logz_lr_mult": self.logz_lr_mult,
         }
 
 
@@ -230,6 +294,28 @@ class Environment:
         # range**.  Measured on the frozen main suite it sits at 6.93–7.79,
         # stable to ~12%; the per-terminal |log R| that R2 proposed swung the
         # effective tolerance 216× inside a single instance.
+        values = self.log_reward[self.graph.terminal_ix]
+        self.log_r_range = float(values.max() - values.min()) if values.size else 0.0
+
+    def at_beta(self, beta: float) -> None:
+        """Move this environment to a new β **in place, without re-enumerating**.
+
+        Phase-2 G7: ``p*`` depends on β only through ``R = exp(β·U)`` and ``U`` is
+        independent of β, so a retarget is an ``exp`` over a cached vector rather
+        than thousands of recomputed utilities. ``Target.at_beta`` re-runs the
+        ``r_fail_margin`` assertion on the way through, which is Phase 0's
+        protection against a sweep quietly promoting ``FAIL`` into a competitive
+        terminal.
+
+        **It lives here because it is the only correct way to do it.** It was
+        stranded in ``scripts/phase3_calibrate.py``, so any other consumer — the
+        Gate-2 runner above all — had to import from ``scripts/`` or reimplement
+        three coupled updates (the target, the per-state ``log R``, and the
+        ``log R`` range decision 13 normalises by). Two of those are easy to
+        forget and neither failure is loud.
+        """
+        self.target = self.target.at_beta(beta)
+        self.log_reward[self.graph.terminal_ix] = beta * self.target.u
         values = self.log_reward[self.graph.terminal_ix]
         self.log_r_range = float(values.max() - values.min()) if values.size else 0.0
 
@@ -393,8 +479,8 @@ class TrainLog:
 
     __slots__ = (
         "arm", "seed", "trajectories", "tv_mean", "tv_per_env", "losses",
-        "capacity", "hidden", "c_t", "final_loss", "wall_clock", "protocol",
-        "fingerprints",
+        "capacity", "live_capacity", "hidden", "c_t", "final_loss", "wall_clock",
+        "protocol", "fingerprints",
     )
 
     def __init__(self, arm: str, seed: int) -> None:
@@ -406,6 +492,7 @@ class TrainLog:
         self.losses: list[float] = []
         self.c_t: list[float] = []
         self.capacity = 0
+        self.live_capacity = 0
         self.hidden = 0
         self.final_loss = float("nan")
         self.wall_clock = 0.0
@@ -433,6 +520,7 @@ class TrainLog:
             "arm": self.arm,
             "seed": self.seed,
             "capacity": self.capacity,
+            "live_capacity": self.live_capacity,
             "hidden": self.hidden,
             "trajectories": list(self.trajectories),
             "tv_mean": list(self.tv_mean),
@@ -507,12 +595,31 @@ class Trainer:
             if m is not None
         ]
         self.capacity = capacity(*self.modules)
+        self.dead_capacity = Trainer.dead_capacity_of(arm, self.hidden)
+        self.live_capacity = self.capacity - self.dead_capacity
 
         # The potential trains under its own optimiser at LED's lr (decision
         # 23a); everything else under the shared protocol (decision 23).
-        main = [m for m in (self.policy, self.logz, self.flow, self.aux) if m is not None]
+        #
+        # **`logZ_θ` gets its own param group at `logz_lr_mult × lr`** (decision
+        # 30). TB (NeurIPS 2022) and SubTB (ICML 2023) both prescribe a faster
+        # learning rate for the partition function, and this environment is the
+        # regime they had in mind: `log Z` spans 0.86 nats across the 20 main
+        # instances while their `instance_repr` vectors sit 0.05–0.23 apart in
+        # L2, so the head has to be steep on near-collinear inputs. One
+        # multiplier, identical for every arm, so decision 23's "no per-arm
+        # search" is untouched.
+        main = [m for m in (self.policy, self.flow, self.aux) if m is not None]
         self.main_params = [p for m in main for p in m.parameters()]
-        self.optimiser = torch.optim.Adam(self.main_params, lr=spec.lr)
+        self.logz_params = list(self.logz.parameters())
+        self.optimiser = torch.optim.Adam(
+            [
+                {"params": self.main_params, "lr": spec.lr},
+                {"params": self.logz_params, "lr": spec.lr * spec.logz_lr_mult},
+            ]
+        )
+        # Clipping still sees every parameter the optimiser steps.
+        self.main_params = self.main_params + self.logz_params
         self.potential_params = (
             list(self.potential.parameters()) if self.potential is not None else []
         )
@@ -546,6 +653,53 @@ class Trainer:
             mods.append(DeficitHead(hidden, N_DEFICIT, depth))
         return capacity(*mods)
 
+    @staticmethod
+    def dead_capacity_of(arm: Arm, hidden: int) -> int:
+        """Parameters that exist, are counted by ``capacity``, and can never train.
+
+        Under ``delta_d = False`` the ``Δd`` block of ``action_repr`` is *present
+        and zeroed* — for every action of every state, ``STOP`` included. The
+        weight column reading an identically-zero input has gradient
+        ``∂L/∂W[:, j] = δ·x_j = 0`` on every example forever, so it keeps its
+        initialisation and contributes nothing to the forward pass either.
+
+        Two first layers consume ``action_repr``: ``Policy.scorer`` always, and
+        ``PotentialHead.net`` when the arm carries a potential. Each therefore
+        holds ``N_DEFICIT × hidden`` dead weights.
+
+        **Why this exists rather than being a curiosity.** Decision 11 matches
+        *trainable* parameters, and a dead parameter is not one. Counted
+        nominally, L6 and L7 matched to 0.00% at equal width while L6 was
+        **1.46% smaller in live capacity** — outside the 1% tolerance *and* on
+        the wrong side of the directional clause, in the direction that flatters
+        the proposed method. ``policy.match_capacity`` already names this failure
+        mode ("a match on paper and dead capacity in fact") for GAFlowNet; this
+        is the same failure one arm over.
+
+        **``LogZHead`` carries a dead block too, in every arm.**
+        ``instance_repr`` is ``[pooled atom features | zeros(STATE_EXTRA_DIMS)]``
+        — the pad exists only so one head shape serves both it and
+        ``state_repr`` — so ``STATE_EXTRA_DIMS × hidden`` of the head's first
+        layer read zeros always. It is counted here because this function claims
+        to return parameters that can never train and would otherwise be
+        under-reporting. It does not disturb any match: both sides of a matched
+        pair carry it, and the residual difference is ``STATE_EXTRA_DIMS`` × the
+        width gap — 8 parameters between L6 at 65 and L7 at 64.
+        """
+        dead = STATE_EXTRA_DIMS * hidden          # LogZHead's zero pad
+        if arm.delta_d:
+            return dead
+        return dead + N_DEFICIT * hidden * (1 + int(arm.needs_potential))
+
+    @staticmethod
+    def live_capacity_of(
+        arm: Arm, state_dim: int, action_dim: int, hidden: int, depth: int
+    ) -> int:
+        """``capacity_of`` minus the dead block — decision 11's actual quantity."""
+        return Trainer.capacity_of(
+            arm, state_dim, action_dim, hidden, depth
+        ) - Trainer.dead_capacity_of(arm, hidden)
+
     # -- evaluation --------------------------------------------------------
 
     @torch.no_grad()
@@ -555,6 +709,37 @@ class Trainer:
             tv(policy_distribution(feat, env.graph), env.target.p_star)
             for env, feat in zip(self.envs, self.featurizers)
         ]
+
+    @torch.no_grad()
+    def evaluate_on(self, envs: Sequence[Environment]) -> list[float]:
+        """Exact TV on environments this model did **not** train on.
+
+        Criterion 23's held-out read: the probe suite is a *different* set of
+        instances, so a featurizer has to be built against them for the trained
+        policy. Nothing here touches the optimiser or the trained weights — it is
+        a read, and the only read the probe suite ever gets (decision 9).
+
+        The dimension check is not defensive politeness: ``logZ_θ`` is
+        conditioned on a pooled instance representation of a fixed width, so a
+        probe instance with a different feature width would be silently scored by
+        a head that never saw its shape.
+        """
+        out: list[float] = []
+        for env in envs:
+            dims = SyntheticFeaturizer.dims(env.instance, env.graph)
+            if dims != (self.state_dim, self.action_dim):
+                raise ValueError(
+                    f"held-out instance has feature width {dims}, trained model "
+                    f"has {(self.state_dim, self.action_dim)}; one model cannot "
+                    "span them"
+                )
+            feat = SyntheticFeaturizer(
+                env.instance, env.graph, self.policy, env.instance.cfg,
+                delta_d=self.arm.delta_d, device=self.spec.device,
+                dtype=self.spec.dtype,
+            )
+            out.append(tv(policy_distribution(feat, env.graph), env.target.p_star))
+        return out
 
     # -- training ----------------------------------------------------------
 
@@ -568,6 +753,7 @@ class Trainer:
 
         log = TrainLog(self.arm.name, self.spec.seed)
         log.capacity = self.capacity
+        log.live_capacity = self.live_capacity
         log.hidden = self.hidden
         log.protocol = self.spec.shared_protocol()
         log.fingerprints = [env.fingerprints() for env in self.envs]
@@ -603,6 +789,53 @@ class Trainer:
         log.final_loss = log.losses[-1] if log.losses else float("nan")
         log.wall_clock = time.perf_counter() - started
         return log
+
+    # -- persistence -------------------------------------------------------
+
+    def save_checkpoint(self, path: str | Path) -> Path:
+        """Write the trained weights to disk, **loadable without this class**.
+
+        Phase-3 §8 requirement 1: S5 is "sample K from the trained sampler",
+        and it consumes a checkpoint produced here. Build step 4's done-when is
+        "checkpointing round-trips". Until now neither was true — ``_checkpoint``
+        records an *exact-TV evaluation*, the two senses of the word live in the
+        same document, and ``run_matrix`` deleted every trainer it built, so no
+        weights survived a Gate-2 run at all.
+
+        Everything needed to rebuild the policy travels with the weights: an
+        ``nn.Module`` state dict is shape-bearing but not shape-declaring, so a
+        loader with no access to a ``LatticeInstance`` cannot otherwise know what
+        widths to construct. The environment fingerprints ride along too, so a
+        checkpoint can never be silently replayed against a different suite
+        (criterion 25).
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "format": CHECKPOINT_FORMAT,
+                "arm": self.arm.name,
+                "delta_d": self.arm.delta_d,
+                "state_dim": self.state_dim,
+                "action_dim": self.action_dim,
+                "hidden": self.hidden,
+                "depth": self.spec.depth,
+                "seed": self.spec.seed,
+                "capacity": self.capacity,
+                "live_capacity": self.live_capacity,
+                "protocol": self.spec.shared_protocol(),
+                "fingerprints": [env.fingerprints() for env in self.envs],
+                "policy": self.policy.state_dict(),
+                "logz": self.logz.state_dict(),
+                "flow": None if self.flow is None else self.flow.state_dict(),
+                "potential": (
+                    None if self.potential is None else self.potential.state_dict()
+                ),
+                "aux": None if self.aux is None else self.aux.state_dict(),
+            },
+            path,
+        )
+        return path
 
     def _step(
         self, env: Environment, feat: SyntheticFeaturizer, size: int, spent: int

@@ -11,6 +11,15 @@ write-up should say so rather than borrow an LLM result's authority.
     A_i = ( G_i − mean(G) ) / ( std(G) + ε )        within the sampled group
     L   = − mean_i  A_i · Σ_t log P_F(a_t | s_t)
 
+**The group is ``G = 8``, which is the architecture's number and not the batch
+size.** GRPO's advantage is relative *within a sampled group*, and architecture
+§3.2 freezes ``G = 8`` for this arm while decision 23 freezes the batch at 32
+trajectories for every arm. An earlier build standardised over the whole batch,
+which silently made ``G = 32``: four groups' worth of samples pooled into one
+baseline. The batch therefore carries four groups of eight, and
+``TrainSpec.grpo_group`` is where the number lives so it appears in the shared
+protocol block of every artefact rather than only in this file.
+
 **Two declared departures, both forced by this reward's shape.**
 
 *No KL to a reference policy.* GRPO's KL term regularises toward a pretrained
@@ -49,15 +58,32 @@ __all__ = ["grpo_loss", "group_advantage"]
 _EPS = 1e-6
 
 
-def group_advantage(returns: torch.Tensor) -> torch.Tensor:
-    """Standardise within the sampled group. Constant returns give zero, not NaN."""
-    if returns.numel() < 2:
-        return torch.zeros_like(returns)
-    centred = returns - returns.mean()
-    return centred / (returns.std(unbiased=False) + _EPS)
+def group_advantage(returns: torch.Tensor, group_size: int) -> torch.Tensor:
+    """Standardise within each consecutive group of ``group_size`` samples.
+
+    ``group_size`` is required rather than defaulted, because the default that
+    was there before was "the whole batch" — which is how ``G = 8`` became
+    ``G = 32`` without anything reading wrong.
+
+    Constant returns inside a group give zero, not NaN: a group in which every
+    trajectory earned the same reward carries no relative information, and that
+    is a statement about the group rather than an error. A trailing group of one
+    is left at zero for the same reason.
+    """
+    if group_size < 1:
+        raise ValueError(f"group_size must be >= 1, got {group_size}")
+    out = torch.zeros_like(returns)
+    for start in range(0, returns.numel(), group_size):
+        group = returns[start : start + group_size]
+        if group.numel() < 2:
+            continue
+        out[start : start + group_size] = (group - group.mean()) / (
+            group.std(unbiased=False) + _EPS
+        )
+    return out
 
 
 def grpo_loss(batch: "Batch", trainer: "Trainer", spent: int) -> torch.Tensor:
-    advantage = group_advantage(batch.log_reward).detach()
+    advantage = group_advantage(batch.log_reward, trainer.spec.grpo_group).detach()
     log_pf = (batch.log_pf * batch.valid.to(batch.log_pf.dtype)).sum(dim=1)
     return -(advantage * log_pf).mean()

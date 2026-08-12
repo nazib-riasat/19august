@@ -13,10 +13,17 @@ and you can continue without re-deriving anything.
 | **Phase 0** — scaffold, schemas, event log, ledger, config | **Built, green.** All 13 exit criteria. |
 | **Phase 1** — `H`, `U`, `R`, masks, obligations, `d(s)` | **Built, green.** All 16 exit criteria. |
 | **Phase 2** — ProofLattice + exact evaluator | **Built, green.** All 21 exit criteria. |
-| **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** Plan is at revision R5, §6 partly signed off. |
+| **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** Plan is at revision **R6**, §6 partly signed off. |
 | Phases 4–11 | Not started. |
 
-**568 tests, ~2 min 50 s, all passing. Nothing skipped, nothing xfailed.**
+**590 tests, ~2 min 20 s, all passing. Nothing skipped, nothing xfailed.**
+
+**Read `PHASE3_DECISIONS.md` §6 first if you are touching a learner.** An
+external review on 12 Aug 2026 found three defects in *controls* — GAFlowNet's
+Eq. 4, LED's Eq. 5 and its decomposition-error redistribution, and the L6/L7
+capacity match — and **all three ran in the direction that flatters the proposed
+method**. They are fixed. The convergence and capacity tables in §2.2 and §2.4
+predate the fixes and are marked stale.
 
 The suite got slower because Phase 3 added `test_setgen_convergence.py`, which
 actually trains: it is the only place a *learned* quantity is asserted, and steps
@@ -177,7 +184,7 @@ than this laptop. Someone has to say which.
 | **Gate-0 re-sign-off** for the β eligibility amendment | formally, Phase 3 | `GRAFT_PHASE2_BUILD.md` §6b, decision-rule procedure, step 2. Has not happened. |
 | **The 0.001 margin** | possibly a regeneration | one main-suite instance clears the `neither` band at β = 4 by 0.001. Both exits cost something; deliberately undecided. `PHASE2_DECISIONS.md` §4.2. |
 | **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | item 8 is a *measurement* from the Phase-2.5 spike, not something draftable. D1 and D2 have no off-the-shelf supervision. |
-| **`CLAUDE.md` §7 has two errors** | nothing, but misleads | (a) it says the dataset analysis "was never written into a document" — it is in `Research papers/INDEX.md` §7; (b) it attributes Phase 2.5 to conflict/supersession alone, while the architecture says **D1 and D2** are the two decoders with no off-the-shelf supervision. |
+| **Decision 11's tolerance moved; decision 29 is new** | signing off §6 | R13 found the 1% capacity tolerance unachievable by width (the dead block is ~half a width step at every scale), so the criterion is now minimality plus "control never smaller". Decision 29 fixes GRPO's `G = 8`. Both were changed **before** any L6/L7/GAFlowNet result was inspected, which is what §6b's second procedure is about — but neither is signed. |
 | **Three late-found baselines** | plan §5.3 | HyperMem, Chain-of-Memory, *How Memory Management Impacts LLM Agents* — in the library, not in the plan. |
 
 ---

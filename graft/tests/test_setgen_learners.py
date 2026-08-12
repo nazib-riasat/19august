@@ -159,36 +159,87 @@ def test_subtb_collapses_to_db_at_small_lambda_and_to_tb_at_the_far_end(env):
     assert torch.allclose(tb_residual(batch).detach() ** 2, tb, atol=1e-5)
 
 
-def test_the_led_decomposition_loss_is_unbiased_under_dropout(env):
-    """LED Eq. 5 uses dropout as its variance regulariser. Kept transitions are
-    rescaled by `1/(1-p)`; without that the potential learns an energy biased low
-    by exactly `p`, and terminal consistency would fail for a reason that has
-    nothing to do with the environment."""
-    trainer = _trainer(env, "l6_led")
+def test_the_led_decomposition_loss_is_equation_5(env):
+    """LED-GFN Eq. 5, evaluated independently:
+
+        ℓ_LS(τ) = E_z [ ( ℰ(x)/T − Σ_t z_t·φ_t / C )² ],   C = Σ_t z_t
+
+    The retired implementation used `(Σ z·φ/(1-p) − ℰ)²` — the *expected* keep
+    rate instead of the realised count `C`, and no `1/T` on the energy. At
+    `p = 0` the two still differ by `1/T²`, so a variable-length environment
+    weights its trajectories differently under the two formulas; the previous
+    test asserted the retired form and could not see it."""
+    trainer = _trainer(env, "l6_led", dtype=torch.float64)
     _, batch = _batch(trainer, env, n=64)
     phi = trainer.compute_potential(batch).detach()
+    valid = batch.valid.to(phi.dtype)
+    length = valid.sum(dim=1)
 
+    # λ = 1: no dropout, so z = valid and C = T. Eq. 5 collapses to (ℰ − Σφ)²/T².
+    full = (phi * valid).sum(dim=1)
+    assert float(decomposition_loss(phi, batch, 0.0, np.random.default_rng(4))) == (
+        pytest.approx(float((((batch.energy() - full) / length) ** 2).mean()), rel=1e-9)
+    )
+    # ...and that is *not* the retired form, because T varies here.
+    assert length.min() < length.max(), "a fixed-length batch cannot see the 1/T"
+    assert float(decomposition_loss(phi, batch, 0.0, np.random.default_rng(4))) != (
+        pytest.approx(float(((full - batch.energy()) ** 2).mean()), rel=1e-3)
+    )
+
+    # λ < 1: normalised by the realised C, so a draw that keeps k transitions is
+    # compared against the same per-step scale as one that keeps all of them.
     rng = np.random.default_rng(4)
-    kept = batch.valid.to(phi.dtype)
-    full = (phi * kept).sum(dim=1)
-
-    rescaled, naive = [], []
-    for _ in range(3000):
-        keep = torch.as_tensor(rng.random(tuple(phi.shape)) >= 0.10, dtype=phi.dtype)
-        rescaled.append((phi * kept * keep / 0.90).sum(dim=1))
-        naive.append((phi * kept * keep).sum(dim=1))
-
-    scale = full.abs().max().clamp(min=1.0)
-    assert torch.allclose(torch.stack(rescaled).mean(dim=0), full, atol=0.05 * scale)
-    # ...and the whole point of the rescaling: without it the estimate is short
-    # by exactly p, so the potential would learn an energy 10% too small and
-    # terminal consistency would fail for a reason unrelated to the environment.
-    assert torch.allclose(
-        torch.stack(naive).mean(dim=0), 0.90 * full, atol=0.05 * scale
+    keep = torch.as_tensor(rng.random(tuple(phi.shape)) >= 0.10, dtype=phi.dtype)
+    z = valid * keep
+    expected = (
+        batch.energy() / length - (phi * z).sum(dim=1) / z.sum(dim=1).clamp(min=1.0)
     )
-    assert float(decomposition_loss(phi, batch, 0.0, rng)) == pytest.approx(
-        float(((full - batch.energy()) ** 2).mean()), rel=1e-5
+    scored = z.sum(dim=1) > 0
+    assert float(decomposition_loss(phi, batch, 0.10, np.random.default_rng(4))) == (
+        pytest.approx(float((expected[scored] ** 2).mean()), rel=1e-9)
     )
+
+
+def test_redistribution_makes_the_led_boundary_an_identity(env):
+    """LED-GFN Appendix B.1. The paper's reported LED-GFN redistributes the
+    decomposition error `ℰ(x) − Σφ` uniformly over the trajectory's transitions;
+    the correction-term variant it plots against is named LED-GFN*. A form with
+    neither is a third thing the paper never runs, which is what decision 23b
+    used to specify.
+
+    After redistribution `Σφ̃ = ℰ(x)` exactly, so the telescoping identity LED-DB
+    is derived from holds by construction rather than approximately."""
+    from graft.setgen.learners.l6_led import redistribute
+
+    trainer = _trainer(env, "l6_led", dtype=torch.float64)
+    _, batch = _batch(trainer, env, n=64)
+    phi = trainer.compute_potential(batch).detach()
+    valid = batch.valid.to(phi.dtype)
+
+    adjusted = redistribute(phi, batch)
+    assert torch.allclose((adjusted * valid).sum(dim=1), batch.energy(), atol=1e-10)
+    # the raw potential does not satisfy that at initialisation, so the test bites
+    assert not torch.allclose((phi * valid).sum(dim=1), batch.energy(), atol=1e-6)
+    # padding is untouched, and the adjustment is one constant per trajectory
+    delta = (adjusted - phi)[valid.bool()]
+    assert torch.allclose((adjusted - phi)[~valid.bool()], torch.zeros_like(delta[:1]))
+
+
+def test_consistency_is_measured_on_the_raw_potential(env):
+    """Decision 13 measures how well Eq. 5 trained the potential. Computed on the
+    redistributed `φ̃` it would be identically 0 for every arm on every
+    trajectory — a band that always passes and measures nothing, which would
+    quietly void decision 15's hard constraint from plan §4.5.4."""
+    from graft.setgen.learners.l6_led import redistribute
+
+    trainer = _trainer(env, "l6_led", dtype=torch.float64)
+    _, batch = _batch(trainer, env, n=32)
+    phi = trainer.compute_potential(batch)
+
+    raw, _ = consistency_error(phi, batch)
+    adjusted, _ = consistency_error(redistribute(phi, batch), batch)
+    assert torch.allclose(adjusted, torch.zeros_like(adjusted), atol=1e-10)
+    assert float(raw.max()) > 1e-6
 
 
 def test_consistency_is_per_trajectory_and_fail_is_not_pooled(env):
@@ -240,31 +291,133 @@ def test_the_intrinsic_reward_pays_only_for_progress(env):
     )
 
 
+def test_augmented_tb_is_gaflownet_equation_4_not_its_own_algebra(env):
+    """GAFlowNet (ICLR 2023) Eq. 4 puts the intrinsic term **beside** `P_B`:
+
+        Z Π P_F = R(x) Π ( P_B(s_t|s_{t+1}) + r(s_t→s_{t+1})/F(s_{t+1}) )
+
+    An earlier build dropped the `P_B` divisor and subtracted `log(1 + r/F)`,
+    which implements an intrinsic reward of `P_B·r` rather than `r` — attenuated
+    by the removable-atom count, and by more of it as the set grows. Every test
+    it had checked `intrinsic_reward` or the implementation against itself, so
+    the arm looked right at every point the suite examined.
+
+    Evaluated here in float64 directly from Eq. 4, in the probability domain, so
+    the check shares no algebra with the loss it is checking."""
+    from graft.setgen.learners.gaflownet import augmented_tb_loss
+
+    trainer = _trainer(env, "gaflownet", dtype=torch.float64)
+    _, batch = _batch(trainer, env)
+    c_t = trainer.intrinsic_coefficient(0)
+    assert c_t == pytest.approx(trainer.spec.gafn_c0)
+
+    mask = batch.valid.to(batch.log_pf.dtype)
+    bracket = torch.log(
+        torch.exp(batch.log_pb)
+        + intrinsic_reward(batch, c_t) / torch.exp(batch.flow_raw[:, 1:])
+    )
+    residual = (
+        batch.log_z
+        + (batch.log_pf * mask).sum(dim=1)
+        - batch.log_reward
+        - (bracket * mask).sum(dim=1)
+    )
+    assert torch.allclose(
+        augmented_tb_loss(batch, trainer, 0), (residual**2).mean(), rtol=1e-9
+    )
+
+    # ...and the retired form is genuinely different, so this test can fail.
+    wrong = residual + (
+        (bracket - torch.log1p(intrinsic_reward(batch, c_t)
+                               / torch.exp(batch.flow_raw[:, 1:]))) * mask
+    ).sum(dim=1)
+    assert not torch.allclose(wrong, residual, rtol=1e-6)
+
+
 def test_grpo_standardises_within_the_group_and_survives_a_constant(env):
     """A group in which every trajectory earns the same return has no relative
     information; the advantage must be 0, not NaN."""
     assert torch.allclose(
-        group_advantage(torch.full((8,), 3.0)), torch.zeros(8), atol=1e-6
+        group_advantage(torch.full((8,), 3.0), 8), torch.zeros(8), atol=1e-6
     )
     values = torch.tensor([1.0, 2.0, 3.0, 4.0])
-    adv = group_advantage(values)
+    adv = group_advantage(values, 4)
     assert abs(float(adv.mean())) < 1e-5
     assert float(adv.std(unbiased=False)) == pytest.approx(1.0, abs=1e-4)
+
+
+def test_logz_trains_at_its_own_learning_rate(env):
+    """**[EVIDENCE]** Trajectory Balance (NeurIPS 2022) §3: "we found it helpful
+    to set a higher learning rate for Z than for the parameters of P_F and P_B."
+    SubTB (ICML 2023) Appendix C, verbatim: "for Z, use a learning rate of 10x
+    the learning rate for forward logits."
+
+    An earlier build put the policy, `LogZHead` and the flow head in one Adam at
+    `lr`, which is neither paper's protocol and was declared nowhere. **The
+    mechanism ships; the multiplier is decision 30's `[recommended]` value and
+    the default stays 1.0 until it is signed** — at 10x the head breaks decision
+    25's tolerance on `tiny_instance()`, and moving a normative tolerance to
+    accommodate a change made here would be the wrong direction. One multiplier
+    for every arm either way, so decision 23's "no per-arm search" holds."""
+    trainer = _trainer(env, "l5_subtb", logz_lr_mult=10.0)
+    groups = trainer.optimiser.param_groups
+    assert len(groups) == 2
+    assert groups[1]["lr"] == pytest.approx(trainer.spec.lr * 10.0)
+    assert groups[0]["lr"] == pytest.approx(trainer.spec.lr)
+
+    # the fast group is exactly logZ, and every stepped parameter is still clipped
+    logz_ids = {id(p) for p in trainer.logz.parameters()}
+    assert {id(p) for p in groups[1]["params"]} == logz_ids
+    assert logz_ids <= {id(p) for p in trainer.main_params}
+    assert not (logz_ids & {id(p) for p in groups[0]["params"]})
+
+    # the shipped default changes nothing until decision 30 is ruled
+    assert TrainSpec(n_trajectories=32).logz_lr_mult == 1.0
+    assert trainer.spec.shared_protocol()["logz_lr_mult"] == 10.0
+    with pytest.raises(ValueError, match="logz_lr_mult"):
+        TrainSpec(n_trajectories=32, logz_lr_mult=0.0)
+
+
+def test_grpo_uses_the_architectures_group_of_eight_not_the_batch(env):
+    """Architecture §3.2 freezes `G = 8` for L3; decision 23 freezes the batch at
+    32 for every arm. Standardising over the batch made `G = 32` silently — four
+    groups pooled into one baseline. It is a *stronger* L3 than the plan
+    specifies rather than a weaker one, which is exactly why nothing looked
+    wrong."""
+    trainer = _trainer(env, "l3_grpo")
+    assert trainer.spec.grpo_group == 8
+    assert trainer.spec.batch_size == 32
+    assert trainer.spec.shared_protocol()["grpo_group"] == 8
+
+    # two groups with different levels: standardising per group removes the
+    # level, standardising over the batch would not
+    values = torch.tensor([1.0, 2.0, 3.0, 4.0, 101.0, 102.0, 103.0, 104.0])
+    per_group = group_advantage(values, 4)
+    assert torch.allclose(per_group[:4], per_group[4:], atol=1e-5)
+    whole = group_advantage(values, 8)
+    assert not torch.allclose(whole[:4], whole[4:], atol=1e-2)
+
+    # a trailing partial group of one carries no relative information
+    assert float(group_advantage(torch.tensor([1.0, 2.0, 9.0]), 2)[2]) == 0.0
+    with pytest.raises(ValueError, match="grpo_group"):
+        TrainSpec(n_trajectories=32, grpo_group=1)
 
 
 # -- the comparison is fair -------------------------------------------------
 
 
 def test_l6_and_l7_differ_by_delta_d_and_nothing_else(env):
-    """Fix F11 and decision 19a. Identical loss function, identical parameter
-    shapes, one boolean apart — which is what makes their capacity match exact
-    rather than "within 1%"."""
+    """Fix F11 and decision 19a: identical loss, identical shapes, one boolean
+    apart. **At equal width that is a shape match and not a capacity match** —
+    L6's weights on the zeroed block never train, so decision 11 widens L6 and
+    matches live parameters instead (see `test_setgen_gate2.py`)."""
     l6, l7 = build_arm("l6_led"), build_arm("l7_checker_led")
     assert l6.delta_d is False and l7.delta_d is True
     assert (l6.needs_flow, l6.needs_potential) == (l7.needs_flow, l7.needs_potential)
 
     t6, t7 = _trainer(env, "l6_led"), _trainer(env, "l7_checker_led")
-    assert t6.capacity == t7.capacity
+    assert t6.capacity == t7.capacity, "same width, same shapes"
+    assert t6.live_capacity < t7.live_capacity, "...and that is exactly the problem"
     assert t6.featurizers[0].delta_d is False
     assert t7.featurizers[0].delta_d is True
 

@@ -21,12 +21,19 @@ d(s′)`` is a property of the *transition*: how much of the outstanding proof
 obligation this particular ADD discharges. That is the per-action resolution the
 policy and the potential see under L7 and not under L6.
 
-**The comparison is exact, not approximate.** L6 and L7 have identical parameter
-shapes — the ``Δd`` block of ``action_repr`` exists in both and is zeroed for L6
-— so the capacity match required by decision 11 is 0.00%, not "within 1%". Exit
-criterion 5 asserts the gating in both directions: zeroing the block must leave
-an L6 forward pass numerically unchanged and must change an L7 one. One
-direction alone proves nothing.
+**The ``Δd`` block is present in both featurisations and zeroed for L6**, so the
+two arms have identical parameter *shapes* and exit criterion 5 can assert the
+gating in both directions: zeroing the block must leave an L6 forward pass
+numerically unchanged and must change an L7 one. One direction alone proves
+nothing — without the first ``Δd`` may be leaking to the control, without the
+second L7 may be ignoring it.
+
+**Identical shapes are not a capacity match, and this docstring used to claim
+they were** ("the capacity match required by decision 11 is 0.00%, not within
+1%"). L6's weights on the zeroed block never receive a gradient, so at equal
+width the *control* carried 1.46% less trainable capacity than the arm it is
+controlling for — the direction that flatters this file. Decision 11 matches
+live parameters and widens L6; the claim retired with it.
 """
 
 from __future__ import annotations
