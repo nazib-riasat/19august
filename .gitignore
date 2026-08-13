@@ -37,6 +37,13 @@ GRAFT-[0-9]*/
 .tmp_pdf_text/
 tmp/
 
+# Phase 2.5's raw corpus download (LongMemEval-S, ~278 MB). Refetched per
+# machine from HF `xiaowu0162/longmemeval`; the pin lives in
+# scripts/phase2_5/common.py (CORPUS_SHA256) and provenance.json. The derived
+# sample, items, labels and guidelines under data/phase2_5/ stay tracked —
+# they are Gate-0 deliverables Phase 6 consumes.
+data/phase2_5/raw/
+
 __pycache__/
 *.py[cod]
 .pytest_cache/

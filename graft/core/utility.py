@@ -83,8 +83,10 @@ def sufficiency(X: ProofSet | Iterable[str], gold: ProofSet | Iterable[str]) -> 
     """Fraction of the gold proof's atoms this set covers.
 
     **[EVIDENCE]** Graph-S3 (ACL 2026) validates exactly this pattern of dense
-    supervision from offline golden subgraphs — +15.6 accuracy / +17.2 F1 over
-    sparse final-answer reward, in its own setting.
+    supervision from offline golden subgraphs — its dense-vs-sparse ablation
+    (Table 3) gains +11.8 accuracy / +17.1 F1 macro over sparse final-answer
+    reward, in its own setting.  (Its separate headline, +8.1 accuracy / +9.7 F1,
+    is measured against seven *baselines*, not against sparse reward.)
 
     A strict superset of gold still scores 1.0 and pays for the excess through
     ``size`` and ``redundancy``.  That is the intended minimality pressure: being

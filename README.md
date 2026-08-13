@@ -9,11 +9,12 @@ evidence-set learner.
 - **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md) · [`PHASE3_DECISIONS.md`](PHASE3_DECISIONS.md).
 - **Picking up a cold session:** [`chatcontext1.md`](chatcontext1.md) — current state, reading order, open items. Start there.
 
-Current state: **Phases 0, 1 and 2 complete** — scaffold and data contracts; the
-deterministic core (`H`, `U`, `R`, masks, obligations, `d(s)`); and the
-enumerable synthetic environment with its exact evaluator (ProofLattice, the
-forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen suites and the Gate-2
-audits). **590 tests, all passing.**
+Current state: **Phases 0, 1, 2 and 2.5 complete, Phase 4 Stage A complete** —
+scaffold and data contracts; the deterministic core (`H`, `U`, `R`, masks,
+obligations, `d(s)`); the enumerable synthetic environment with its exact
+evaluator (ProofLattice, the forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen
+suites and the Gate-2 audits); the annotation-feasibility spike; and the five
+Tier-1 search methods with the Gate-3 harness. **639 tests, all passing.**
 
 **Phase 3 is code complete and uncalibrated.** Steps 1–5 and 7–10 of
 [`GRAFT_PHASE3_BUILD.md`](GRAFT_PHASE3_BUILD.md) §4 are built and green: the ML
@@ -44,6 +45,14 @@ Phase 3 needs torch — see `requirements-ml.txt`, and note that the CUDA build 
 `python scripts/verify_handoff.py --preset synthetic` prints the config, log and
 **lattice** fingerprints that must match across machines before any Gate-2 number
 is compared.
+
+**Phase 4 (`graft/setgen/search/`) is built and Stage A has run.** S1–S4 are
+compared on the main suite under both relevance variants, beside the closed-form
+`E[best-of-K | p*]` ceiling; S5's row waits on a Phase-3 checkpoint, which is
+why the table is labelled **Stage A and is not Gate 3**. Read
+[`PHASE4_DECISIONS.md`](PHASE4_DECISIONS.md) §1 first — three sub-decisions of
+the ruled plan were overturned by measurement, including that `pcst_fast`'s
+Windows wheel is silently wrong and S4 therefore uses an exact solver.
 
 ---
 

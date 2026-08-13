@@ -44,8 +44,9 @@ def env():
 
 def test_the_bootstrap_is_frozen_before_any_run():
     """Decision 20. A resample count or seed chosen after seeing results is a
-    decision rule selected on the data, which Dror et al. (ACL 2018) forbids and
-    which this project cites that paper to forbid elsewhere."""
+    decision rule selected on the data — the failure the project's own
+    predeclaration discipline exists to prevent (Dror et al., ACL 2018, is its
+    test-selection authority; the predeclaration rule is the project's)."""
     assert (BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED) == (10_000, 20260814)
 
 
@@ -242,6 +243,31 @@ def _report(**tv):
     return report
 
 
+def test_a_truncated_run_routes_to_inconclusive():
+    """Criterion 11's realized half (added 13 Aug 2026): identical `N` across
+    arms is only true if every run actually **spent** N.  A truncation — the
+    shipped `wall_clock_ceiling` mechanism, or any future one — hits the ~3×
+    slower LED arms below N, which is exactly the asymmetry fix F12 exists to
+    prevent, and only the raw TrainLog revealed it.  A statement about the
+    harness, so it routes to `inconclusive`, never to a C3 verdict."""
+    from types import SimpleNamespace
+
+    arms = ["l6_led", "l7_checker_led", "gaflownet"]
+    report = _report()
+    report.spec["n_trajectories"] = 4096
+    report.logs = {
+        "l7_checker_led": {13: SimpleNamespace(trajectories=[4096])},
+        "l6_led": {13: SimpleNamespace(trajectories=[2048])},  # truncated
+    }
+    out = _verdict(report, arms)
+    assert out["outcome"] == "inconclusive"
+    assert out["contribution_3_supported"] is None
+
+    # And a report whose every run spent N keeps its verdict.
+    report.logs["l6_led"] = {13: SimpleNamespace(trajectories=[4096])}
+    assert _verdict(report, arms)["contribution_3_supported"] is True
+
+
 def test_contribution_3_needs_both_controls():
     """Exit criterion 26. Beating L6 alone is not sufficient: plan §4.5.4 makes
     GAFlowNet a required control precisely because "an intermediate signal helps"
@@ -412,6 +438,22 @@ def test_admissibility_checks_every_clause_that_defines_the_experiment(frozen_su
     assert "decision 5's rungs" in check(
         calibration={"verdict": "adopted",
                      "adopted": {"N": 4096, "beta": 4.0, "ceiling_s": 0.5}}
+    )["inadmissible_reason"]
+
+    # Decision 6 is signed at 0.10: `tv_threshold` was the one run_matrix
+    # parameter no clause checked, so a caller passing 0.5 got a full verdict
+    # with criterion 15 silently weakened (13 Aug 2026 audit).
+    assert "decision 6" in check(tv_threshold=0.5)["inadmissible_reason"]
+
+    # PHASE3_DECISIONS §6.7: the ceiling is enforced on adoption, never passed
+    # to the trainer -- a set ceiling truncates the slower LED arms below N.
+    assert "wall_clock_ceiling" in check(
+        spec=TrainSpec(n_trajectories=4096, wall_clock_ceiling=3600.0)
+    )["inadmissible_reason"]
+
+    # Criterion 23: a probe scored at a different β is quietly incomparable.
+    assert "probe environments" in check(
+        probe_envs=[_stub(i, beta=8.0) for i in probe]
     )["inadmissible_reason"]
 
 

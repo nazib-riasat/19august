@@ -452,8 +452,9 @@ def test_every_arm_shares_one_training_protocol(env):
 
 
 def test_the_seed_set_is_the_frozen_one():
-    """Exit criterion 10, `CLAUDE.md` §6. **[EVIDENCE]** the ACL 2018 protocol
-    requires multiple seeds; the set is frozen so no arm gets a different one."""
+    """Exit criterion 10, `CLAUDE.md` §6. **[ANALYSIS]** — the multi-seed rule is
+    the project's protocol discipline (its ACL 2018 test-selection authority does
+    not prescribe seed counts); the set is frozen so no arm gets a different one."""
     assert SEEDS == (13, 42, 7)
 
 

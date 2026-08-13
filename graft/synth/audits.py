@@ -188,9 +188,11 @@ def collision_audit(graph: StateGraph) -> dict[str, Any]:
     exact child-set equality and a non-zero result means the pool is malformed —
     not that a correction is needed.
 
-    **[EVIDENCE]** Symmetry-Aware GFlowNets (ICML 2025) measured a systematic bias
-    toward low-symmetry objects — 5,220 cyclohexane fragments per 5,000 sampled
-    molecules uncorrected, against 1,042 corrected — on a state space quotiented
+    **[EVIDENCE]** Symmetry-Aware GFlowNets (ICML 2025) measured a systematic,
+    paradigm-dependent sampling bias — its fragment-based setting *over*-produced
+    a highly **symmetric** fragment, 5,220 cyclohexanes per 5,000 sampled
+    molecules uncorrected against 1,042 corrected, while node-by-node generation
+    biases the opposite way, toward fewer symmetries — on a state space quotiented
     by graph **isomorphism**, with its Theorem 4.6 stated over a graph-level
     policy and ratios of automorphism-group sizes.  Ours is over *labelled* sets
     and is not quotiented, so **the correction does not apply and is not

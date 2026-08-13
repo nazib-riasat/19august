@@ -363,10 +363,17 @@ def slot_level_scores(
                     fn += 1
         precision = tp / (tp + fp) if (tp + fp) else math.nan
         recall = tp / (tp + fn) if (tp + fn) else math.nan
-        if precision + recall > 0 and not math.isnan(precision + recall):
+        if math.isnan(precision) and math.isnan(recall):
+            # Genuinely nothing to score: no prediction and no gold anywhere.
+            f1 = math.nan
+        elif precision + recall > 0:
             f1 = 2 * precision * recall / (precision + recall)
         else:
-            f1 = math.nan
+            # There WAS something to score and the parser got all of it wrong.
+            # NaN here would make a maximally-bad parser indistinguishable from
+            # an unexercised slot — the metric ambiguity §5.5 was fixed for,
+            # one row over.  The conventional value is 0.  (13 Aug 2026.)
+            f1 = 0.0
         out[f"{name}.precision"] = precision
         out[f"{name}.recall"] = recall
         out[f"{name}.f1"] = f1

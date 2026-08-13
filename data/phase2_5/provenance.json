@@ -1,0 +1,36 @@
+{
+ "corpus": {
+  "source": "HF dataset xiaowu0162/longmemeval, file longmemeval_s",
+  "sha256": "08d8dad4be43ee2049a22ff5674eb86725d0ce5ff434cde2627e5e8e7e117894",
+  "bytes": 278025796,
+  "licence": "mit (per the HF dataset card)",
+  "fetched": "2026-08-13"
+ },
+ "sample": {
+  "seed": 20260813,
+  "composition": [["knowledge-update", 6], ["multi-session", 2], ["temporal-reasoning", 1], ["single-session-user", 1]],
+  "windowing": "evidence sessions only (answer_session_ids), has_answer turns ±1, max 6 turns/session, max 3 sessions/question",
+  "n_questions": 10,
+  "n_sessions": 21,
+  "n_turns": 58
+ },
+ "extractor": {
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "dtype": "bfloat16",
+  "note": "declared deviation from the architecture's Qwen2.5-7B-Instruct 4-bit, ruled by the project owner 13 Aug 2026 for the 8 GB RTX 5050; see PHASE2_5_DECISIONS.md §1",
+  "transformers": "5.15.0",
+  "deps": "requirements-spike.txt"
+ },
+ "environment": {
+  "gpu": "NVIDIA GeForce RTX 5050 Laptop GPU, 8151 MiB",
+  "peak_vram_mb_torch_allocated": 6478,
+  "tokens_per_s": 18.4,
+  "load_seconds": 17.26
+ },
+ "bootstrap_labels": {
+  "annotator": "claude-fable-5-bootstrap",
+  "machine_assisted": true,
+  "answers_gate0_item8": false,
+  "note": "guideline-exercise and pipeline sanity pass; the human timed pass supplies the feasibility number (PHASE2_5_DECISIONS.md §5)"
+ }
+}

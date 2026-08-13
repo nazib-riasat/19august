@@ -96,9 +96,18 @@ SET_LEVEL_CHECKS: tuple[str, ...] = (
 
 
 def atom_ids(X: ProofSet | Iterable[str]) -> tuple[str, ...]:
-    """Sorted ids, so violations come out in a stable order on any machine."""
+    """Sorted, **deduplicated** ids, so violations come out in a stable order.
+
+    Dedup matters for bare iterables: the state is a *set* (plan v1.2 §3.4), so
+    ``H([a, a])`` must judge the same object as ``H([a])``.  Before 13 Aug 2026
+    a duplicated id in a raw list produced a spurious *identity* violation
+    ("atoms X and X carry identical content") — fail-closed, so never unsound,
+    but a false failure category that would pollute a Phase-2/4 tally.
+    ``ProofSet`` (frozenset) and ``IncrementalChecker`` (double-add raises)
+    were never exposed.
+    """
     atoms = X.atoms if isinstance(X, ProofSet) else X
-    return tuple(sorted(atoms))
+    return tuple(sorted(set(atoms)))
 
 
 # --------------------------------------------------------------------------

@@ -210,8 +210,9 @@ class DictGraphSnapshot:
     def invalidate_edge(
         self, edge_id: str, t_invalid: str, superseded_by: str | None = None
     ) -> None:
-        """Mark an edge invalid.  It is never removed — Zep's precedent, and it
-        is what makes a wrong supersession recoverable."""
+        """Mark an edge invalid.  It is never removed — Zep's precedent (a
+        vendor-authored preprint, flagged per CLAUDE.md §3), and it is what
+        makes a wrong supersession recoverable."""
         edge = self._edges[edge_id]
         self._edges[edge_id] = Edge(
             edge_id=edge.edge_id,

@@ -279,6 +279,13 @@ def test_fail_trajectories_are_counted_against_the_budget(bench, bench_graph):
 #: `rollout.py` takes a graph by specification. `trainer.py` enumerates and holds
 #: the environments. The **binding** rule, and the one exit criterion 6 states,
 #: is about `learners/`.
+#:
+#: **Phase 4's `search/` package is on this side, added deliberately** (P4.1).
+#: Search modules are **not** learners: S3 and S4 *must* see the pool and its
+#: `refs` to build sets directly, and fix F10 makes that legal precisely because
+#: `H` re-checks closure afterwards — which is also why they pay one terminal
+#: check per candidate while the mask-driven arms pay none. Exit criterion 6
+#: binds `learners/`, and every module under it is still scanned.
 _ADAPTER_LAYER = {
     "graft/setgen/__init__.py",
     "graft/setgen/features.py",
@@ -286,6 +293,21 @@ _ADAPTER_LAYER = {
     "graft/setgen/rollout.py",
     "graft/setgen/trainer.py",
     "graft/setgen/gate2.py",
+}
+
+#: Phase 4's package, listed separately so the top-level closed list stays a
+#: statement about *top-level* modules and the search package's membership is
+#: its own recorded decision rather than an entry lost in a set.
+_SEARCH_LAYER = {
+    "graft/setgen/search/__init__.py",
+    "graft/setgen/search/base.py",
+    "graft/setgen/search/relevance.py",
+    "graft/setgen/search/s1_greedy.py",
+    "graft/setgen/search/s2_beam.py",
+    "graft/setgen/search/s3_submodular.py",
+    "graft/setgen/search/s4_pcst.py",
+    "graft/setgen/search/s5_portfolio.py",
+    "graft/setgen/search/gate3.py",
 }
 
 #: Every top-level `setgen/` module. `policy.py` is deliberately **not** an
@@ -312,7 +334,7 @@ def test_no_learner_module_touches_the_environment():
     checked = 0
     for path in sorted(root.rglob("*.py")):
         rel = path.relative_to(root.parents[1]).as_posix()
-        if rel in _ADAPTER_LAYER:
+        if rel in _ADAPTER_LAYER or rel in _SEARCH_LAYER:
             continue
         checked += 1
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -353,6 +375,22 @@ def test_the_adapter_layer_is_a_closed_list():
     assert "graft/setgen/policy.py" not in _ADAPTER_LAYER, (
         "policy.py is the F6 interface; exempting it would exempt the boundary"
     )
+
+    # Phase 4's package is a closed list for the same reason, and for a sharper
+    # one: a *learner* smuggled in under `search/` would be exempt from exit
+    # criterion 6 by filing location alone.
+    search_root = root / "search"
+    if search_root.is_dir():
+        present_search = {
+            p.relative_to(root.parents[1]).as_posix()
+            for p in search_root.glob("*.py")
+        }
+        assert present_search == _SEARCH_LAYER, (
+            "the Phase-4 search package changed; each module either sees the "
+            "environment deliberately (P4.1) or belongs elsewhere. "
+            f"Added: {present_search - _SEARCH_LAYER}. "
+            f"Removed: {_SEARCH_LAYER - present_search}"
+        )
 
 
 def test_the_portfolio_is_one_greedy_plus_seven_sampled(bench, bench_graph):

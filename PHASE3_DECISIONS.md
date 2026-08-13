@@ -337,7 +337,7 @@ terminates with probability 1.
 |---|---|---|
 | 1 | **`N` and β are not frozen.** Step 6 has not run. | Nothing past step 7 may be quoted; §6's `[fill at step 6]` cells are still empty |
 | 2 | **§6's `[recommended]` values are not signed.** The build adopted them as written and says so here. | A value adopted by a builder is not a value signed by the project. Twelve cells: decisions 5, 6, 10, 14, 15, 19 (`c₀`), 23, 25, 26 |
-| 3 | **SubTB's λ is in no decision table.** Set to 0.9 — the value SubTB (ICML 2023) carries through its own experiments — in `TrainSpec.subtb_lambda`. | Decision 23 freezes the optimiser, lr, batch and clipping; λ is a hyperparameter of exactly that kind and the plan does not list it. **[ANALYSIS]** as applied here. It belongs in §6 before Gate 2 is read |
+| 3 | **SubTB's λ is in no decision table.** Set to 0.9 — SubTB (ICML 2023)'s *hypergrid* value (Appendix A); the paper's other tasks use 1.9 and 0.99, so there is no single paper default — in `TrainSpec.subtb_lambda`. | Decision 23 freezes the optimiser, lr, batch and clipping; λ is a hyperparameter of exactly that kind and the plan does not list it. **[ANALYSIS]** as applied here. It belongs in §6 before Gate 2 is read |
 | 4 | **The terminal convention was never written down.** Plan §4.1 line 333 says "pick one and write it down"; nobody did. The code uses the **terminating-edge** convention (`F(s) ≠ R(s)` at a state that both stops and continues), verified empirically in Phase 2. | Carried from `PHASE2_DECISIONS.md`. Phase 3 now depends on it in four objectives |
 | 5 | **Gate-0 re-sign-off for the Phase-2 β amendment** is still outstanding. | Recorded in the Phase-2 handoff |
 | 6 | **The 0.001 `neither`-margin.** One main-suite instance clears the 0.5 band by 0.001 at β = 4. | A weight change, a feature change or a NumPy `default_rng` stream change forces a regeneration. `PHASE2_DECISIONS.md` §4.2 |
@@ -498,9 +498,15 @@ a strictly larger control.
 
 | Arm | Hidden | Nominal | Dead | Live | vs L7 |
 |---|---|---|---|---|---|
-| L7 | 64 | 52,484 | 0 | 52,484 | — |
-| L6 (matched) | 65 | 54,019 | 780 | 53,239 | **+1.44%** |
-| GAFlowNet (matched) | 83 | 54,119 | 498 | 53,621 | **+2.17%** |
+| L7 | 64 | 52,484 | 512 | 51,972 | — |
+| L6 (matched) | 65 | 54,019 | 1,300 | 52,719 | **+1.44%** |
+| GAFlowNet (matched) | 83 | 54,119 | 1,162 | 52,957 | **+1.90%** |
+
+*(Re-measured 13 Aug 2026 with the post-§6.10 `dead_capacity_of`, which counts
+`LogZHead`'s `STATE_EXTRA_DIMS·hidden` pad in **every** arm — including L7,
+whose dead count is no longer 0. Widths and the +1.44% are unchanged;
+GAFlowNet's excess moved +2.17% → +1.90% because its dead block grew more than
+L7's. The earlier row counted only the zeroed-`Δd` blocks.)*
 
 ### 6.5 Gate 2 could return a verdict from a run that was not Gate 2
 

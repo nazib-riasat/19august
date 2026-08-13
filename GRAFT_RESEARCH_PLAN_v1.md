@@ -54,7 +54,7 @@ A scalar potential *built from* the deficit vector can qualify — but only if i
 
 **Earlier (wrong):** pairing FL-GFN theory with Graph-S3 results as "theory + same-domain empirics" for the proposed method.
 
-**The error [EVIDENCE]:** [Graph-S3 (ACL 2026)](https://aclanthology.org/2026.acl-long.1169/) trains an **LLM-based** retriever with synthetic stepwise supervision against offline-extracted golden subgraphs. It uses no GFlowNet, no FL-DB, no learned energy, and no terminal-distribution target. Its reported **+15.6% accuracy / +17.2% F1 over seven baselines** supports one thing: *dense stepwise supervision beats sparse final-answer reward for agentic graph retrieval, in its own setting.*
+**The error [EVIDENCE]:** [Graph-S3 (ACL 2026)](https://aclanthology.org/2026.acl-long.1169/) trains an **LLM-based** retriever with synthetic stepwise supervision against offline-extracted golden subgraphs. It uses no GFlowNet, no FL-DB, no learned energy, and no terminal-distribution target. Its reported **+8.1% accuracy / +9.7% F1 over seven baselines** supports one thing: *dense stepwise supervision beats sparse final-answer reward for agentic graph retrieval, in its own setting.*
 
 That makes Graph-S3 a **strong supervised baseline this project must run**. It does not validate any GFlowNet construction.
 
@@ -520,7 +520,7 @@ Three separate comparisons answering three different questions. Never merged int
 
 | Method | Include | Basis / caveat |
 |---|:--:|---|
-| Supervised next-action / subgraph training | ✔ | **[EVIDENCE]** [Graph-S3 (ACL 2026)](https://aclanthology.org/2026.acl-long.1169/) makes stepwise supervised graph retrieval a strong baseline: +15.6% acc, +17.2% F1 over 7 baselines in its own setting |
+| Supervised next-action / subgraph training | ✔ | **[EVIDENCE]** [Graph-S3 (ACL 2026)](https://aclanthology.org/2026.acl-long.1169/) makes stepwise supervised graph retrieval a strong baseline: +8.1% acc, +9.7% F1 over 7 baselines in its own setting |
 | Canonical set imitation | ✔ | Tests whether distribution training adds anything over imitating one gold set |
 | PPO | ✔ | Reward-maximizing baseline. Use the **same graph-action policy**, not an LLM agent from another paper |
 | GRPO | ✔ | Same matched-policy requirement. *Search-R1 is arXiv-only and trains an LLM search agent — implementation inspiration, not venue-backed evidence for this task* |

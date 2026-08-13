@@ -11,8 +11,9 @@ length:
 
     ℓ(i, j) = ( log F(s_i) + Σ_{i≤k<j} log P_F  −  log F(s_j) − Σ log P_B )²
 
-which the paper frames as interpolating between DB (``λ → 0``, every adjacent
-pair) and TB (``λ → 1``, the whole trajectory) — the two ends of a bias-variance
+which the paper frames as interpolating between DB (``λ → 0⁺``, every adjacent
+pair) and TB (``λ → +∞``, the whole trajectory), with ``λ = 1`` the *uniform*
+weighting (its Eq. 11) — the two ends of a bias-variance
 tradeoff. In this module's coordinates ``ℓ(i, j) = (g[i] − g[j])²``.
 
 **Boundaries.** ``log F(s_0) = log Z_θ`` and ``log F(s_L) = log R(x)``, both
@@ -26,7 +27,9 @@ losses — and cites SubTB as one of the two published responses to exactly that
 If L5 does not beat L4 on this environment, the reward landscape is milder than
 the risk register assumes, and that is worth knowing before Gate 2 is read.
 
-``λ`` is **not in §6**. See ``TrainSpec.subtb_lambda``.
+``λ`` is §6's decision 28 — added by the build, **not signed** — held in
+``TrainSpec.subtb_lambda``. 0.9 is SubTB's *hypergrid* value (Appendix A); the
+paper's other tasks use 0.99–1.9, so it is not a single paper default.
 """
 
 from __future__ import annotations

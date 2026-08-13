@@ -1,0 +1,26 @@
+# Phase 2.5 spike dependencies — the Stage-A extraction slice only.
+#
+# Deliberately separate from requirements.txt (Phases 0-2, no ML) and
+# requirements-ml.txt (Phase 3, torch only): the boring-stack rule says
+# anything beyond the core needs a written justification, and this file is it.
+# The spike loads Qwen2.5-3B-Instruct through transformers to run ~58 turns of
+# extraction; nothing in graft/ imports any of these (exit criterion 10 —
+# asserted by the existing per-package import tests, which these do not touch).
+#
+# Install on top of requirements-ml.txt (torch comes from there, cu128 on this
+# machine — the Blackwell note in requirements-ml.txt applies).
+#
+# Pinned from the environment that ran the spike, 13 Aug 2026.
+#
+# `pcst_fast` is deliberately NOT pinned anywhere. Phase-4 decision 8 pinned it
+# and the build withdrew that ruling: its cp311-win_amd64 wheel returns the
+# wrong optimum on 59 of 60 random graphs (PHASE4_DECISIONS.md 1.1), so S4 uses
+# an exact solver instead. The library survives only as the evidence for that
+# finding -- `pip install pcst_fast` if you want to re-run
+# test_pcst_fast_is_wrong_on_this_platform..., which skips when it is absent.
+transformers==5.15.0
+accelerate==1.14.0
+huggingface_hub==1.27.0
+tokenizers==0.22.2
+safetensors==0.8.0
+hf-xet==1.6.0

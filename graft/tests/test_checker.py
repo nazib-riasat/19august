@@ -144,6 +144,21 @@ def test_identity_negative_same_content_two_ids():
     assert CHECK_IDENTITY in categories(H(["a", "b"], Obligations(), graph, pool, CFG))
 
 
+def test_a_duplicated_id_in_a_raw_iterable_judges_the_set_not_the_list(inst):
+    """The state is a *set* (plan v1.2 §3.4), so ``H([a, a, ...])`` must agree
+    with ``H([a, ...])``.  Before 13 Aug 2026 a duplicated id in a raw list
+    produced a spurious identity violation ("atoms X and X carry identical
+    content") — fail-closed, never unsound, but a false failure category that
+    would pollute a Phase-2/4 tally.  ``ProofSet`` and ``IncrementalChecker``
+    were never exposed; the direct-call path (Phase 4's S3/S4) is."""
+    gold = sorted(inst.gold.atoms)
+    doubled = [gold[0], *gold]
+    deduped = H(gold, inst.obligations, inst.graph, inst.pool, CFG)
+    raw = H(doubled, inst.obligations, inst.graph, inst.pool, CFG)
+    assert deduped.ok and raw.ok
+    assert deduped.violations == raw.violations
+
+
 # -- 9 binding --------------------------------------------------------------
 
 

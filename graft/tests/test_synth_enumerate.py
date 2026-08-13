@@ -187,15 +187,26 @@ def test_the_environment_fingerprint_is_deterministic(tiny, tiny_graph):
     )
 
 
-def test_the_suites_are_deterministic(main_suite):
-    """Criterion 20: same seed -> identical ``environment_fingerprint``."""
-    from graft.synth.lattice import benchmark_suite
+def test_the_suites_are_deterministic(main_suite, probe, tuning):
+    """Criterion 20: same seed -> identical ``environment_fingerprint``.
 
-    rebuilt = benchmark_suite()
-    for a, b in zip(main_suite, rebuilt):
-        ga = reachable_states(a, a.cfg)
-        gb = reachable_states(b, b.cfg)
-        assert environment_fingerprint(a, ga) == environment_fingerprint(b, gb)
+    "All three suites are deterministic" — until 13 Aug 2026 only the main
+    suite was rebuilt in-repo, with probe/tuning determinism covered
+    operationally by ``verify_handoff.py`` alone.  All three now rebuild.
+    """
+    from graft.synth.lattice import benchmark_suite, probe_suite, tuning_suite
+
+    for suite, rebuild in (
+        (main_suite, benchmark_suite),
+        (probe, probe_suite),
+        (tuning, tuning_suite),
+    ):
+        rebuilt = rebuild()
+        assert len(rebuilt) == len(suite)
+        for a, b in zip(suite, rebuilt):
+            ga = reachable_states(a, a.cfg)
+            gb = reachable_states(b, b.cfg)
+            assert environment_fingerprint(a, ga) == environment_fingerprint(b, gb)
 
 
 def _mutated(instance, **atom_changes):

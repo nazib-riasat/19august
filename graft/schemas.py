@@ -335,6 +335,15 @@ class CandidateAtom:
     edges" a construction order that always works, which in turn is what proves
     the unconstructible-valid-terminal rate to be 0.
 
+    **One coupling is convention, not checked** (recorded 13 Aug 2026): nothing
+    verifies that an edge atom's ``refs`` denote *its target edge's endpoints* —
+    ``AtomPool.validate()`` checks refs resolve in-pool, and checker sub-check 8
+    checks they are selected, but neither compares them against
+    ``G.edge(target).src/.dst``.  Project-built pools (fixtures, lattice) wire
+    them correctly by construction; **Phase 7's real pool builder is the
+    untrusted site and must enforce the correspondence**, or "closure" stops
+    meaning "endpoints present" with no check anywhere to notice.
+
     ``target`` is *graph-external*: the ``node_id`` or ``edge_id`` of the object
     this atom denotes in the pinned snapshot.  Without it the checker holds an
     atom and still cannot reach the edge's ``t_invalid``, the claim's backing
@@ -915,7 +924,9 @@ class Edge:
 
     **Nothing is ever deleted.**  Supersession sets ``t_invalid`` and
     ``superseded_by``; the edge stays in the log, so a wrong supersession is
-    recoverable.  This follows Zep's bi-temporal edge-invalidation model.
+    recoverable.  This follows Zep's bi-temporal edge-invalidation model
+    (vendor-authored preprint — flagged per CLAUDE.md §3, as everywhere it
+    appears).
 
     ``provenance`` is non-empty by construction: a schema that permits an
     unsourced edge permits an unsourced proof.  If Phase 6 finds a purely

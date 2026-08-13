@@ -1,0 +1,50 @@
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0000", "label": "SUPERSEDES", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0001", "label": "CONFLICT", "machine_assisted": true, "note": "timestamps place the smaller count LATER (22:16 four times vs 17:45 six times) — no coherent update reading", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0002", "label": "SUPERSEDES", "machine_assisted": true, "note": "paused → finished; A is itself a weak extraction (G7 audit item 14)", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0003", "label": "CONFLICT", "machine_assisted": true, "note": "same count regression as d2_0001", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0004", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0005", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0006", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0007", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0008", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0009", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0010", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0011", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0012", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0013", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0014", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0015", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0016", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0017", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0018", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0019", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0020", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0021", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0022", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0023", "label": "CONFLICT", "machine_assisted": true, "note": "conditional estimates decontextualised by extraction — different reading-speed scenarios", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0024", "label": "CONFLICT", "machine_assisted": true, "note": "same decontextualisation as d2_0023", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0025", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0026", "label": "DUPLICATE", "machine_assisted": true, "note": "B repeats A's count claim; A carries an extra event", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0027", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0028", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0029", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0030", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0031", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0032", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0033", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0034", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0035", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0036", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0037", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0038", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0039", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0040", "label": "DUPLICATE", "machine_assisted": true, "note": "subsumption: caffeine/nicotine ARE sleep-disrupting substances — same advice at different granularity", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0041", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0042", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0043", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0044", "label": "DUPLICATE", "machine_assisted": true, "note": "paraphrase: Nagano reachable from Tokyo by public transport", "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0045", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0046", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0047", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0048", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}
+{"annotator": "claude-fable-5-bootstrap", "item_id": "d2_0049", "label": "INDEPENDENT", "machine_assisted": true, "note": null, "pass": 1, "seconds": null, "ts": "2026-08-12T23:22:48+00:00"}

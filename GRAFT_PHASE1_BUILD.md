@@ -555,7 +555,7 @@ one public function per term.
 
 | Term | Definition | Range | Character |
 |---|---|---|---|
-| `sufficiency` | `\|X ∩ gold\| / \|gold\|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+15.6 acc / +17.2 F1 over sparse terminal reward) |
+| `sufficiency` | `\|X ∩ gold\| / \|gold\|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+11.8 acc / +17.1 F1 macro over sparse terminal reward, its Table 3 ablation) |
 | `coverage` | `1 − mean(d₁..d₄)` over active slots; 1.0 when no slots are active | [0,1] | deterministic; shares `slot_status` with `d(s)` (G4) |
 | `source_quality` | mean tier over selected atoms, from `config.source_tiers` (G7) | [0,1] | metadata-derived |
 | `temporal_correctness` | `\|constraint ∩ ⋃ evidence intervals\| / \|constraint\|`; 1.0 when unbounded (G5) | [0,1] | deterministic interval arithmetic |
@@ -590,9 +590,16 @@ gold (fix F1); inference ranks with the distilled head (Phase 9) and never calls
 this function. Failing loudly is what stops a silent `sufficiency = 0` from
 looking like a legitimately weak proof.
 
-**Gotcha.** If any selected atom has a zero-length `feat`, `redundancy` is 0 and a
-diagnostic counter increments. A misconfigured featurizer must be visible, not
-silently worth 0.25 of the reward.
+**Gotcha.** Featureless atoms must be visible, not silently worth 0.25 of the
+reward. *(Amended 13 Aug 2026 to what the code implements, found by the P0/P1
+audit: the build made featureless atoms **invisible to the term** — they
+contribute nothing to `F` — with the `_featureless_atoms` diagnostic firing per
+occurrence, and zeroes the whole term only in the all-featureless /
+zero-denominator case. The letter of the original gotcha — "if **any** selected
+atom has a zero-length `feat`, `redundancy` is 0" — would let one bad atom erase
+the redundancy signal of every good one. Both readings are no-ops on project
+pools, which never emit featureless atoms; the implemented one is kept and now
+pinned by a mixed-case test.)*
 
 ### P1.5 `graft/core/reward.py`
 

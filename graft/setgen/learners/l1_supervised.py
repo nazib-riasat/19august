@@ -1,7 +1,7 @@
 """L1 — supervised stepwise construction.
 
 **[EVIDENCE]** *Graph-S3* (ACL 2026) makes stepwise supervised graph retrieval a
-strong baseline: +15.6% accuracy and +17.2% F1 over seven baselines in its own
+strong baseline: +8.1% accuracy and +9.7% F1 over seven baselines in its own
 setting. ``CLAUDE.md`` §5 records the correction that matters here — Graph-S3
 trains an **LLM** retriever with supervised stepwise supervision, with no
 GFlowNet and no energy, so it validates nothing about the flow family. It is a

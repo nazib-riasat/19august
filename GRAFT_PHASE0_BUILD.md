@@ -96,7 +96,7 @@ Eight units. Each lists responsibility, public surface (signatures as specificat
 **Design notes.**
 - Hash over the **canonical serialization of the resolved config** (sorted keys, normalized floats), never the YAML text — comments and whitespace must not change identity.
 - Frozen dataclasses, `__setattr__` blocked. A config mutated mid-run silently invalidates the hash.
-- Validation at load: `0 < beta`, `0 < r_fail`, all `u_weights ≥ 0`, `1 ≤ K ≤ checker_budget`, `max_atoms ≤ pool_cap`, `len(seeds) ≥ 3` (**[EVIDENCE]** Dror et al., ACL 2018 — multiple seeds are part of the predeclared protocol, so the config should refuse fewer), `support_policy ∈ {strict}`.
+- Validation at load: `0 < beta`, `0 < r_fail`, all `u_weights ≥ 0`, `1 ≤ K ≤ checker_budget`, `max_atoms ≤ pool_cap`, `len(seeds) ≥ 3` (**[ANALYSIS]** — the multi-seed, fixed-in-advance rule is this project's own protocol discipline, so the config should refuse fewer; Dror et al., ACL 2018, is its significance-testing authority for *test selection* and does not itself prescribe seed counts — corrected 13 Aug 2026), `support_policy ∈ {strict}`.
 - Config carries `schema_version` and `frozen_at_gate0: bool`.
 
 **Gotcha.** Defaults live in code; YAML overrides only. Otherwise a missing YAML key silently changes an experiment.
@@ -124,7 +124,7 @@ Eight units. Each lists responsibility, public surface (signatures as specificat
 **Surface.** `span_id(turn_id, start, end)` · `atom_id(kind, refs)` · `canon_set_hash(atoms: frozenset[str]) -> str` · `edge_id(...)`.
 
 **Design notes.**
-- `canon_set_hash = sha256(sorted(atom_ids))` is **load-bearing in three places**: policy state identity (two orders reaching the same atoms are the same state — v1.2 §3.4), beam-search dedup (Phase 4 S2), and the equivalent-action collision audit (Phase 2). **[EVIDENCE]** the collision audit exists because uncorrected equivalent actions bias sampling — Symmetry-Aware GFlowNets, ICML 2025, which measured a systematic bias toward low-symmetry objects — 5,220 cyclohexane fragments per 5,000 sampled molecules uncorrected against 1,042 corrected. That audit is meaningless without a canonical hash, so it belongs here, not in Phase 2.
+- `canon_set_hash = sha256(sorted(atom_ids))` is **load-bearing in three places**: policy state identity (two orders reaching the same atoms are the same state — v1.2 §3.4), beam-search dedup (Phase 4 S2), and the equivalent-action collision audit (Phase 2). **[EVIDENCE]** the collision audit exists because uncorrected equivalent actions bias sampling — Symmetry-Aware GFlowNets, ICML 2025, which measured a systematic, paradigm-dependent bias — its fragment-based setting over-produced a highly *symmetric* fragment, 5,220 cyclohexanes per 5,000 sampled molecules uncorrected against 1,042 corrected. That audit is meaningless without a canonical hash, so it belongs here, not in Phase 2.
 - All IDs are truncated SHA-256 hex (16 chars). No counters, no UUIDs — both break rerun determinism.
 
 **Gotcha.** If `canon_set_hash` lands in Phase 2 or 3 instead, each phase invents its own and the audit silently measures nothing.
@@ -188,7 +188,7 @@ Eight units. Each lists responsibility, public surface (signatures as specificat
 
 **Design notes.**
 - `set_seed` covers `random`, `numpy`, `torch`, `torch.cuda`; enables deterministic algorithms where available. (Imports torch lazily so Phase 0's test suite stays ML-free.)
-- Manifest: `config_hash`, git SHA + dirty flag, seed, UTC timestamp, pinned package versions, hostname/GPU. **[EVIDENCE-adjacent]** Dror et al. (ACL 2018) require a predeclared protocol; a manifest is what makes "predeclared" checkable after the fact rather than asserted.
+- Manifest: `config_hash`, git SHA + dirty flag, seed, UTC timestamp, pinned package versions, hostname/GPU. **[ANALYSIS]** a manifest is what makes the project's predeclared protocol checkable after the fact rather than asserted; the predeclaration discipline is the project's own (Dror et al., ACL 2018, covers test selection, not predeclaration — corrected 13 Aug 2026).
 - Layout `runs/{utc}_{config_hash[:8]}_{seed}/` containing `manifest.json`, `events.jsonl`, `metrics.jsonl`. This is what the exit criterion "config-hash equality across two runs" actually tests.
 - `requirements.txt` with exact pins; versions recorded in the manifest.
 

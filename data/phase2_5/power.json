@@ -1,0 +1,39 @@
+{
+ "d1": {
+  "primary_metric": "end-to-end mention-resolution score (action AND id, v1.2 \u00a76.4)",
+  "test": "McNemar paired proportions, alpha=0.05 two-sided, power=0.8",
+  "n_test_grid": {
+   "delta=0.05,psi=0.10": 312,
+   "delta=0.05,psi=0.20": 625,
+   "delta=0.05,psi=0.30": 939,
+   "delta=0.08,psi=0.10": 121,
+   "delta=0.08,psi=0.20": 243,
+   "delta=0.08,psi=0.30": 366
+  },
+  "n_test_range": [
+   121,
+   939
+  ],
+  "n_train_assumption": {
+   "value": 1500,
+   "basis": "[ANALYSIS] ConEL-2-scale conversational EL fine-tunes candidate-ranking heads at 1-2k labelled mentions; the encoder is pretrained and only heads are learned"
+  }
+ },
+ "d2": {
+  "primary_metric": "four-way macro-F1 (v1.2 \u00a76.4)",
+  "test": "rare-class floor: >= 30 items in the rarest class",
+  "n_test_grid": {
+   "rare_share=0.10, floor=30": 300,
+   "rare_share=0.05, floor=30": 600
+  },
+  "n_test_range": [
+   300,
+   600
+  ],
+  "n_train_assumption": {
+   "value": 1200,
+   "basis": "[ANALYSIS] DialogRE supplies ~300-3,000 examples per frequent relation; four mutually exclusive classes at ~300 each is the same order"
+  }
+ },
+ "note": "n_test is per decoder and per split; the go/no-go compares (items/hour x hours/week x weeks) against n_test + n_train."
+}

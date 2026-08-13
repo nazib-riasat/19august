@@ -95,9 +95,10 @@ __all__ = [
     "CHECKPOINT_FORMAT",
 ]
 
-#: The frozen seed set (``CLAUDE.md`` §6, exit criterion 10).  **[EVIDENCE]** the
-#: ACL 2018 significance protocol requires multiple seeds; the *set* is frozen so
-#: no arm is ever replicated over a different one.
+#: The frozen seed set (``CLAUDE.md`` §6, exit criterion 10).  **[ANALYSIS]** —
+#: the multi-seed rule is the project's own protocol discipline (Dror et al.,
+#: ACL 2018, its test-selection authority, does not prescribe seed counts); the
+#: *set* is frozen so no arm is ever replicated over a different one.
 SEEDS: tuple[int, ...] = (13, 42, 7)
 
 #: Decision 5's ladder, in seconds: ``c₀ = 1 h``, rungs 1 → 2 → 4, at most two

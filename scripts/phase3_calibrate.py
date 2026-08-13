@@ -199,7 +199,7 @@ def budget_for(
 
     .. code-block:: text
 
-        N = floor_to_batch( (ceiling − (checkpoints + 1)·eval_cost) · rate )
+        N = floor_to_batch( (ceiling − (checkpoints + 2)·eval_cost) · rate )
 
     The docstring here used to promise the batch rounding and the code did not
     do it, and the evaluation term was missing entirely. Both matter for the same
@@ -207,15 +207,19 @@ def budget_for(
     (criterion 11), so it should be a number the trainer can spend exactly rather
     than one it approaches with a short final batch.
 
-    ``checkpoints + 1`` because the trainer evaluates once at trajectory 0 — the
-    random-initialisation baseline — and then at each of the ``C`` checkpoints.
+    ``checkpoints + 2`` because the trainer evaluates once at trajectory 0 — the
+    random-initialisation baseline — then at each of the ``C`` checkpoints, and
+    once more at the end whenever the last checkpoint did not land exactly on
+    ``N`` (decision 2's own arithmetic: up to 52 evaluations at ``C = 50``; this
+    line billed 51 until 13 Aug 2026 — one ``eval_cost`` of slack, sub-second,
+    but the budget should match what the code does).
 
     **Throughput only.** Exit criterion 12 requires the write-up to say ``N`` was
     set by a bounded adaptive rule reading L4/L5 — this half of it reads no TV at
     all; the adaptivity is the ladder, which escalates on decision 6's threshold
     and is bounded at two doublings.
     """
-    usable = ceiling_s - (checkpoints + 1) * eval_cost
+    usable = ceiling_s - (checkpoints + 2) * eval_cost
     if usable <= 0.0:
         raise ValueError(
             f"a ceiling of {ceiling_s:.0f}s cannot pay for {checkpoints + 1} "

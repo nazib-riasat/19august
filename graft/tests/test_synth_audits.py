@@ -37,8 +37,8 @@ from graft.synth.exact import target_distribution
 # -- criterion 12 -----------------------------------------------------------
 
 
-def test_no_valid_terminal_is_unconstructible(main_suite):
-    """Exit criterion 12 — fix F10 as a regression test.
+def test_no_valid_terminal_is_unconstructible(main_suite, probe, tuning):
+    """Exit criterion 12 — fix F10 as a regression test, on **every** instance.
 
     The closure rule was chosen over the alternatives partly because it **proves**
     the unconstructible-valid-terminal rate to 0: nodes-first construction always
@@ -47,8 +47,12 @@ def test_no_valid_terminal_is_unconstructible(main_suite):
     The audit enumerates closed subsets from the pool's ``refs`` directly, in
     topological order, and calls batch ``H`` — it never touches ``legal_adds``,
     so it is not agreeing with the thing it audits.
+
+    Criterion 12 says "on every instance"; until 13 Aug 2026 this ran on the
+    main suite only, leaving the probe and tuning suites closure-unaudited
+    anywhere in the build.  All 30 instances now run.
     """
-    for instance in main_suite:
+    for instance in (*main_suite, *probe, *tuning):
         graph = reachable_states(instance, instance.cfg)
         report = closure_audit(instance, graph, instance.cfg)
         assert report["unconstructible_valid_terminals"] == 0, report["examples"]
@@ -217,11 +221,20 @@ def test_target_mass_is_reported_per_bucket(main_suite):
         assert 0.0 <= profile["top10_mass"] <= 1.0
         assert profile["zero_sufficiency_mass"] >= 0.0
         alt_shares.append(mass["B"])
-    # The diagnostic.  Reported either way; it changes what the write-up may
-    # claim, not whether the build passes.
+    # The >= 1% figure is a **diagnostic** (G10, decision 14): on a regenerated
+    # suite that falls below it, the build must not block — the write-up narrows
+    # to "effectively unimodal" instead.  What IS asserted here is a regression
+    # pin on the *frozen* instrument: the frozen main suite measured mode-B mass
+    # 0.079–0.101 (PHASE2_DECISIONS.md §4.3), so a value below 1% in this test
+    # means the environment changed underneath its fingerprint.  On a deliberate
+    # §6b regeneration this pin moves with the instrument.  (Corrected 13 Aug
+    # 2026 — the previous message read as the diagnostic acting as a gate,
+    # which is exactly the conflation decision 14 forbids.)
     assert min(alt_shares) >= 0.01, (
-        "the alternative proof mode holds under 1% of target mass, so the Gate-2 "
-        "environment is effectively unimodal and the write-up must say so"
+        "mode-B mass fell below the frozen suite's measured 0.079-0.101: the "
+        "instrument changed — regenerate deliberately under §6b and move this "
+        "pin. As a *diagnostic*, sub-1% narrows the write-up to 'effectively "
+        "unimodal'; it never blocks a build by itself"
     )
 
 

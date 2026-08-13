@@ -161,8 +161,11 @@ class Config:
     default_tier: str = "unknown"
 
     # --- protocol ---------------------------------------------------------
-    # Three seeds for every trained method (Dror et al., ACL 2018 — a
-    # predeclared protocol).  The config refuses fewer.
+    # Three seeds for every trained method.  [ANALYSIS] — the multi-seed,
+    # fixed-in-advance rule is this project's own protocol discipline; its
+    # significance-testing authority (Dror et al., ACL 2018) covers *test
+    # selection* and does not itself prescribe seed counts or predeclaration.
+    # The config refuses fewer.
     seeds: tuple[int, ...] = (13, 42, 7)
 
     # --- runtime ----------------------------------------------------------

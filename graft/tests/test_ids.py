@@ -40,7 +40,11 @@ def test_canon_set_hash_accepts_any_iterable_form():
 
 
 def test_no_id_collisions_across_a_million_atoms():
-    """Build step 4: 10^6 generated atoms, no collisions."""
+    """Build step 4: 10^6 generated atoms, no collisions.
+
+    The third positional argument is ``target`` (post-G2 signature), held
+    constant here so the collision test exercises the ``refs`` dimension.
+    """
     seen = set()
     for i in range(1_000_000):
         seen.add(ids.atom_id("edge", (f"n{i}", f"n{i + 1}"), "has_value"))
@@ -52,8 +56,11 @@ def test_atom_id_reference_order_is_significant():
     assert ids.atom_id("edge", ("a", "b")) != ids.atom_id("edge", ("b", "a"))
 
 
-def test_atom_label_disambiguates_parallel_atoms():
-    """Without the label, two differently-typed edges over one pair collide."""
+def test_atom_target_disambiguates_parallel_atoms():
+    """Without target in the key, two atoms denoting different graph edges over
+    one ref pair collide.  (Renamed 13 Aug 2026: the third positional argument
+    has been ``target`` since the Phase-1 G2 amendment; label disambiguation is
+    covered by ``test_pool.test_atom_id_is_keyed_on_target``.)"""
     same_refs = ("a", "b")
     assert ids.atom_id("edge", same_refs, "has_value") != ids.atom_id(
         "edge", same_refs, "valid_during"

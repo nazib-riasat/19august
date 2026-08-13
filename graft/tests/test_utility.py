@@ -212,6 +212,30 @@ def test_featureless_atoms_are_reported_not_silently_zeroed(inst):
     assert terms["_featureless_atoms"] == 2.0
 
 
+def test_a_mixed_featureless_set_ignores_the_bare_atom_and_reports_it():
+    """Pins the implemented semantics the 13 Aug 2026 audit found undocumented:
+    a featureless atom in an otherwise-featured set is **invisible to the
+    redundancy term** (it contributes nothing to F) while the diagnostic still
+    fires.  The Phase-1 plan's original letter — any bare atom zeroes the whole
+    term — would let one bad atom erase every good atom's redundancy signal,
+    and is amended in the plan (P1.4 gotcha) rather than implemented."""
+    featured = _pool_of([[1.0, 0.0], [1.0, 0.0]])
+    mixed = AtomPool(
+        list(featured)
+        + [CandidateAtom(atom_id="bare", kind="node", target="n9")]
+    )
+    with_bare = redundancy(["a0", "a1", "bare"], mixed)
+    without = redundancy(["a0", "a1"], mixed)
+    assert with_bare == pytest.approx(without)
+    graph = DictGraphSnapshot()
+    terms = u_terms(
+        ["a0", "a1", "bare"], Obligations(), graph, mixed,
+        ProofSet(frozenset({"a0"})), CFG,
+    )
+    assert terms["_featureless_atoms"] == 1.0
+    assert terms["redundancy"] > 0.0
+
+
 # -- individual terms -------------------------------------------------------
 
 

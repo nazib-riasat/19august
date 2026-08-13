@@ -439,7 +439,7 @@ Main suite, 20 instances, seed `20260808`, β = 4:
 | pool size | 20–30 | 20–26 |
 | zero-`Δd`, structural | ≤ 0.6 | 0.471–0.504 |
 | zero-`Δd`, visitation-weighted | ≤ 0.6 | 0.443–0.467 |
-| distinct `d` values | ≥ 10 | 32–40 |
+| distinct `d` values | ≥ 10 | 32 on all 20 instances *(the "32–40" this row carried until 13 Aug 2026 pooled the probe suite — which reaches 40 and is reported separately — into a main-suite row)* |
 | sizes at which `d` varies | ≥ 3 | 8 |
 | dead-end early share | ≤ 0.05 | 0.0 |
 | `neither` mass | ≤ 0.5 | 0.463–**0.499** — one instance clears by 0.001; see §4.2 |

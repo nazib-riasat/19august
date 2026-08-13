@@ -74,6 +74,7 @@ __all__ = [
     "CONSISTENCY_P95_BAND",
     "NON_INFERIORITY_MARGIN",
     "CAPACITY_SANITY_CEILING",
+    "DECISION6_TV_THRESHOLD",
     "BEST_OF_K_SEED",
     "paired_bootstrap",
     "capacity_matched_arm",
@@ -176,6 +177,14 @@ def paired_bootstrap(
 #: the control 50% more capacity in silence.  It is deliberately far above the
 #: measured 1.4–2.2% so that it never becomes a number anyone tunes.
 CAPACITY_SANITY_CEILING = 0.05
+
+#: Decision 6's signed sanity threshold (mean exact TV for L4 **and** L5).
+#: Criterion 15's bar is read from ``run_matrix``'s ``tv_threshold`` parameter,
+#: which made it "an input that defines the experiment … with a default"
+#: (§6.8's own words) that no admissibility clause checked — a caller passing
+#: 0.5 would have received a full verdict with criterion 15 silently weakened.
+#: Pinned 13 Aug 2026; admissibility refuses any other value.
+DECISION6_TV_THRESHOLD = 0.10
 
 
 def capacity_matched_arm(
@@ -587,6 +596,7 @@ def _admissibility(
     spec: TrainSpec,
     probe_envs: Sequence[Environment] | None,
     calibration: Mapping[str, Any] | None,
+    tv_threshold: float = DECISION6_TV_THRESHOLD,
 ) -> dict[str, Any]:
     """Whether this run may produce a scientific verdict at all.
 
@@ -632,6 +642,19 @@ def _admissibility(
         reasons.append(f"arms missing from the decision-1 roster: {missing}")
     if tuple(seeds) != SEEDS:
         reasons.append(f"seeds {list(seeds)} are not the frozen {list(SEEDS)}")
+    if float(tv_threshold) != DECISION6_TV_THRESHOLD:
+        reasons.append(
+            f"tv_threshold={tv_threshold} is not decision 6's signed "
+            f"{DECISION6_TV_THRESHOLD} — criterion 15's bar is part of the "
+            "experiment's identity, not a knob"
+        )
+    if spec.wall_clock_ceiling is not None:
+        reasons.append(
+            "spec.wall_clock_ceiling is set: a truncated run spends fewer than "
+            "N trajectories, breaking criterion 11's identical-N requirement — "
+            "the ceiling is enforced on adoption, never passed to the trainer "
+            "(PHASE3_DECISIONS §6.7)"
+        )
 
     # Only pay for suite generation once the cheap clauses have passed; a wiring
     # run fails above and never reaches it.
@@ -680,6 +703,14 @@ def _admissibility(
                     f"environments are at beta={sorted(betas)}, not the adopted "
                     f"{adopted.get('beta')}"
                 )
+            if probe_envs is not None:
+                probe_betas = {float(e.target.beta) for e in probe_envs}
+                if probe_betas != {float(adopted.get("beta"))}:
+                    reasons.append(
+                        f"probe environments are at beta={sorted(probe_betas)}, "
+                        f"not the adopted {adopted.get('beta')} — the held-out "
+                        "TV would be quietly incomparable (criterion 23)"
+                    )
 
     return {
         "admissible": not reasons,
@@ -693,7 +724,7 @@ def run_matrix(
     *,
     arms: Iterable[str] = FLOW_FAMILY + SUPERVISED_FAMILY,
     seeds: Sequence[int] = SEEDS,
-    tv_threshold: float = 0.10,
+    tv_threshold: float = DECISION6_TV_THRESHOLD,
     probe_envs: Sequence[Environment] | None = None,
     calibration: Mapping[str, Any] | None = None,
     checkpoint_dir: str | Path | None = None,
@@ -730,7 +761,10 @@ def run_matrix(
         "instances": len(envs),
         "tv_threshold": tv_threshold,
         **spec.shared_protocol(),
-        **_admissibility(arms, seeds, envs, spec, probe_envs, calibration),
+        **_admissibility(
+            arms, seeds, envs, spec, probe_envs, calibration,
+            tv_threshold=tv_threshold,
+        ),
     }
     report.audits = audit_block(envs)
     # Criterion 23 and §6b's density row: the probe result is only interpretable
@@ -867,13 +901,29 @@ def _verdict(report: Gate2Report, arms: Sequence[str]) -> dict[str, Any]:
     # the matrix runs 20 main instances through one conditional `logZ` head, and
     # passing the first does not imply the second. Without it a matrix in which
     # the machinery failed on the scored suite still emitted a verdict.
-    threshold = report.comparisons.get("tv_threshold", 0.10)
+    threshold = report.comparisons.get("tv_threshold", DECISION6_TV_THRESHOLD)
     machinery = {
         arm: report.comparisons.get(arm, {}).get("final_tv_mean")
         for arm in ("l4_tb", "l5_subtb")
     }
     machinery_ok = bool(machinery) and all(
         v is not None and np.isfinite(v) and v <= threshold for v in machinery.values()
+    )
+
+    # **Criterion 11's realized half** (13 Aug 2026): `N` identical across arms
+    # is only true if every run actually *spent* N — a truncation (the shipped
+    # `wall_clock_ceiling` mechanism, or any future one) hits the ~3x slower LED
+    # arms at fewer trajectories than L4/L5, exactly the asymmetry fix F12
+    # exists to prevent, with only the raw TrainLog revealing it.  Admissibility
+    # already refuses a set ceiling; this clause checks what actually happened.
+    # Vacuously true on a log-less report: a real matrix always carries logs,
+    # and the stub reports the verdict tests build do not — their runs are
+    # judged by the other clauses.
+    expected_n = report.spec.get("n_trajectories")
+    spent_ok = all(
+        bool(log.trajectories) and log.trajectories[-1] == expected_n
+        for rows in report.logs.values()
+        for log in rows.values()
     )
 
     # **Three outcomes, not two.** `inconclusive` is not a polite word for `False`:
@@ -888,6 +938,7 @@ def _verdict(report: Gate2Report, arms: Sequence[str]) -> dict[str, Any]:
         "l6_consistency_band": l6_band_ok,
         "gaflownet_intrinsic_reached_zero": gafn_ok,
         "fail_coverage_complete": fail_ok,
+        "every_run_spent_n": spent_ok,
     }
     instrument_ok = all(instrument.values())
 
@@ -937,8 +988,8 @@ def _verdict(report: Gate2Report, arms: Sequence[str]) -> dict[str, Any]:
             "the one-sided 95% upper bound sits close to the worst seed's mean. "
             "10,000 resamples is the inner resolution, not the outer: with three "
             "seeds the test is close to 'wins on all three'. That is the "
-            "conservative direction and it is what the ACL 2018 protocol's "
-            "three-seed requirement buys; it is stated here so no reader infers "
+            "conservative direction and it is what the project's own three-seed "
+            "protocol discipline buys; it is stated here so no reader infers "
             "more resolution than three clusters carry."
         ),
         "partial_discharge": (

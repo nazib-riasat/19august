@@ -253,6 +253,19 @@ def test_a_slot_nobody_uses_is_nan_not_a_flattering_one():
     assert math.isnan(scores["scope.recall"])
 
 
+def test_an_all_wrong_parser_scores_f1_zero_not_nan():
+    """An all-wrong parser had F1 = NaN — indistinguishable from an unexercised
+    slot, the same metric ambiguity §5.5 was fixed for.  There WAS something to
+    score here: precision and recall are both defined and both 0, so F1 is 0.
+    (Found by the 13 Aug 2026 audit.)"""
+    gold = [Obligations(entity_anchor="A"), Obligations(entity_anchor="B")]
+    predicted = [Obligations(entity_anchor="X"), Obligations(entity_anchor="Y")]
+    scores = slot_level_scores(predicted, gold)
+    assert scores["entity_anchor.precision"] == 0.0
+    assert scores["entity_anchor.recall"] == 0.0
+    assert scores["entity_anchor.f1"] == 0.0
+
+
 def test_boolean_slots_are_scored_by_accuracy_including_aggregate():
     """``False`` is a prediction, not an absence, so precision does not fit —
     and ``aggregate`` was omitted from the metric entirely."""

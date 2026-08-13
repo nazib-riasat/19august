@@ -38,14 +38,16 @@ def test_the_budget_is_a_whole_number_of_batches():
 
 def test_the_ceiling_pays_for_the_evaluations_before_it_buys_trajectories():
     """The trainer evaluates once at trajectory 0 — the random-init baseline —
-    and then at each of the C checkpoints, so a rung owes `C + 1` evaluations
-    before any training time. Ignoring them is what made the pilot's rate, which
-    amortises 2 evaluations, over-predict a run that pays for 51."""
+    then at each of the C checkpoints, and once more at the end whenever the
+    last checkpoint did not land exactly on N, so a rung owes up to `C + 2`
+    evaluations before any training time (decision 2's arithmetic; this billed
+    51 until 13 Aug 2026). Ignoring them is what made the pilot's rate, which
+    amortises 2 evaluations, over-predict a run that pays for 52."""
     free = calib.budget_for(1000.0, 100.0, batch=10, eval_cost=0.0, checkpoints=50)
     charged = calib.budget_for(1000.0, 100.0, batch=10, eval_cost=1.0, checkpoints=50)
     assert free == 100_000
-    # 51 evaluations at 1 s leaves 949 s of training
-    assert charged == 94_900
+    # 52 evaluations at 1 s leaves 948 s of training
+    assert charged == 94_800
     assert charged < free
 
 

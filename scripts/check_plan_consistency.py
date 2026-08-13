@@ -45,10 +45,13 @@ LIVE_DOCS = (
     # the rules themselves exist to catch.
     "GRAFT_PHASE3_BUILD.md",
     "GRAFT_PHASE4_BUILD.md",
+    "GRAFT_PHASE5_BUILD.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
     "PHASE2_DECISIONS.md",
+    "PHASE2_5_DECISIONS.md",
     "PHASE3_DECISIONS.md",
+    "PHASE4_DECISIONS.md",
     "CLAUDE.md",
     "README.md",
 )
@@ -187,6 +190,55 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "the count is capped at K=8, beam saturates it and the p* ceiling is 7.78, so a strictly-more rule cannot pass", "R16", None),
     ("8 genuinely different sets **deterministically**",
      "forced-distinct openers measured 2.45 distinct; the count is reported, not guaranteed (decision 3)", "R16", None),
+    # R17 — the independent citation re-read of 13 Aug 2026, against the PDFs in
+    # the library rather than against any document that summarises them. Two
+    # figures had survived every earlier round: Graph-S3's headline gains (the
+    # paper's abstract reports +8.1% accuracy / +9.7% F1; the quoted pair was
+    # nearly double, and one round had already corrected its *interpretation*
+    # without checking the numbers), and SubTB's λ = 0.9 being called the
+    # paper's own default (it is the hypergrid value from Appendix A; the
+    # paper's other tasks use 0.99–1.9).
+    ("+15.6% accuracy / +17.2% F1",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("+15.6% acc, +17.2% F1",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("(+15.6/+17.2)",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("+15.6 acc / +17.2 F1",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("+15.6 accuracy / +17.2 F1",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("+15.6% accuracy and +17.2% F1",
+     "Graph-S3's abstract reports +8.1% accuracy / +9.7% F1 (corrected 13 Aug 2026)", "R17", None),
+    ("the value SubTB (ICML 2023) carries through its own experiments",
+     "0.9 is SubTB's hypergrid value (Appendix A); other tasks use 0.99–1.9 — no single paper default (decision 28)", "R17", None),
+    ("SubTB (ICML 2023)'s own default",
+     "0.9 is SubTB's hypergrid value only, not a paper-wide default (decision 28)", "R17", None),
+    # Also R17: the SA-GFN bias direction. The 5,220/1,042 cyclohexane figure is
+    # the paper's FRAGMENT-BASED result — over-production of a highly symmetric
+    # fragment — while "toward low-symmetry objects" is its node-by-node
+    # direction. Four documents and two docstrings paired the number with the
+    # wrong direction; the non-applicability argument itself was unaffected.
+    ("bias toward low-symmetry objects",
+     "paradigm-dependent: fragment-based over-produces symmetric fragments (the 5,220/1,042 figure); node-by-node biases toward fewer symmetries", "R17", None),
+    # R18 — the Phase-4 build, 13 Aug 2026. Three sub-decisions of the ruled §6
+    # table that measurement overturned: pcst_fast's Windows wheel returns
+    # corrupted arrays (59/60 wrong optima), C_e's "median without exceeding"
+    # admits a median AT the cap with a 0.500 breach rate, and decision 5's one
+    # live condition is size-confounded. None read a learner result.
+    ("**`pcst_fast`, pinned.** The platform risk an earlier draft raised is not real",
+     "the wheel exists and is WRONG (59/60 wrong optima); an exact solver is adopted (PHASE4_DECISIONS.md 1.1)", "R18", None),
+    ("selected by median **post**-completion output size closest to `max_atoms`",
+     "selection is on the post-completion BREACH RATE; a median AT the cap straddles it at 0.500 (PHASE4_DECISIONS.md 1.2)", "R18", None),
+    ("median POST-completion output size is closest to",
+     "the post-completion breach rate, ties to the larger median (PHASE4_DECISIONS.md 1.2)", "R18", None),
+    # Also R18, from the post-fix audit (13 Aug 2026): two restatements the fix
+    # round corrected at their source and missed in the plan's build-order and
+    # exit-criteria rows.
+    ("recorded as **provably inert on the lattice**",
+     "measured inert at the frozen cap — the theorem's premise is false for the forced-opener path (PHASE4_DECISIONS.md 1.4 F2)", "R18", None),
+    ("selected on median **post**-completion output size",
+     "the post-completion breach rate, ties to the larger median (PHASE4_DECISIONS.md 1.2)", "R18", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

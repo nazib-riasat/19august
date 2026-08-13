@@ -7,8 +7,9 @@ The manifest is split into two blocks, and the split is the point.
     versions.  Two runs of the same condition must produce an identical block —
     **including on two different machines**.  That is what makes a teammate's
     result comparable to yours rather than merely similar, and it is the
-    checkable form of the "predeclared protocol" that Dror et al. (ACL 2018)
-    require.
+    checkable form of the project's predeclared protocol ([ANALYSIS] — the
+    predeclaration discipline is the project's own; Dror et al., ACL 2018, is
+    its test-selection authority and does not prescribe it).
 
 ``environment``
     hostname, OS, CPU, GPU, start time.  Expected to differ, recorded so that a

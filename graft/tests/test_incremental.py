@@ -120,6 +120,35 @@ def test_construction_spends_no_terminal_checks():
     assert counts["incremental_ops"] == len(instance.gold.atoms)
 
 
+def test_a_sixteen_atom_construction_meters_sixteen_incremental_ops():
+    """Criterion 14's letter: "a full **16-atom** incremental construction
+    increments [terminal_checks] by 0 and incremental_ops by 16."  The gold-set
+    variant above runs at 8 atoms; this one builds to the default profile's
+    ``max_atoms = 16`` — nodes first, so closure never blocks — and asserts the
+    letter, not just the shape.  (Added 13 Aug 2026 — the audit found the
+    criterion tested at half its stated size.)"""
+    rng = random.Random(42)
+    # A bigger universe than the default fixture so 16 node atoms exist; the
+    # fixture pool then exceeds the real-data pool_cap, which is irrelevant to
+    # what this test meters, so the cap is lifted.
+    instance = build_instance(rng, n_entities=8, n_claims=10, pool_cap=None)
+    assert CFG.max_atoms == 16
+    node_atoms = sorted(
+        a.atom_id for a in instance.pool if a.kind == "node"
+    )[: CFG.max_atoms]
+    assert len(node_atoms) == 16
+    ledger = Ledger.from_config(CFG)
+    with ledger.query_scope("q16"):
+        inc = IncrementalChecker(
+            instance.pool, instance.obligations, instance.graph, CFG, ledger=ledger
+        )
+        for atom_id in node_atoms:
+            inc.add(atom_id)
+        counts = ledger.snapshot()["query"]
+    assert counts["terminal_checks"] == 0
+    assert counts["incremental_ops"] == 16
+
+
 def test_a_full_construction_would_blow_the_budget_if_it_metered():
     """The regression that motivates the whole class: batch H at every step."""
     instance = build_instance(random.Random(13))

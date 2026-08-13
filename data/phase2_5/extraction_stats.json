@@ -1,0 +1,15 @@
+{
+ "model": "Qwen/Qwen2.5-3B-Instruct",
+ "dtype": "bfloat16",
+ "device": "cuda",
+ "load_seconds": 17.26,
+ "turns": 58,
+ "turns_with_parse_failure": 9,
+ "mentions": 34,
+ "assertions": 78,
+ "grounding_failures": 11,
+ "generated_tokens": 10176,
+ "generation_seconds": 552.066517299987,
+ "peak_vram_mb": 6478,
+ "tokens_per_s": 18.4
+}

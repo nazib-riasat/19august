@@ -214,11 +214,15 @@ discharged, not a test that failed to fire. Amended in place rather than left as
 two live documents disagreeing.
 
 **What this changes in the write-up.** **[EVIDENCE]** Symmetry-Aware GFlowNets
-(ICML 2025) measured a systematic bias toward low-symmetry objects — 5,220
-cyclohexane fragments per 5,000 sampled molecules uncorrected, against 1,042
-corrected — on a state space quotiented by graph **isomorphism**, with its
+(ICML 2025) measured a systematic, paradigm-dependent sampling bias — its
+fragment-based setting *over*-produced a highly **symmetric** fragment, 5,220
+cyclohexanes per 5,000 sampled molecules uncorrected against 1,042 corrected,
+while node-by-node generation biases the opposite way, toward fewer
+symmetries — on a state space quotiented by graph **isomorphism**, with its
 Theorem 4.6 stated over a graph-level policy and ratios of automorphism-group
-sizes. Ours is over *labelled* sets and is not quotiented, so the correction does
+sizes. *(Corrected 13 Aug 2026: this paragraph previously attached "toward
+low-symmetry objects" — the node-by-node direction — to the fragment-based
+cyclohexane numbers, which show the opposite.)* Ours is over *labelled* sets and is not quotiented, so the correction does
 not apply. (The paper reports no set-generation task at all.) The honest sentence is "our action
 space admits no equivalent actions by construction; we verify this" — **not** a
 citation implying the correction was applied. Citing a correction one did not

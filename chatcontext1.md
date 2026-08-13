@@ -1,8 +1,9 @@
-# Session handoff — GRAFT, Phases 0–3
+# Session handoff — GRAFT, Phases 0–3 (+2.5)
 
-**Rewritten 11 Aug 2026.** This replaces the earlier handoff, which described a
-state two commits and one whole phase out of date. Read this plus `CLAUDE.md`
-and you can continue without re-deriving anything.
+**Rewritten 11 Aug 2026; amended 13 Aug 2026** after a four-way external audit
+(Phases 0–3 code, Phase 2.5 + Phase 4 plans), an independent citation re-read,
+and the Phase-2.5 spike build. Read this plus `CLAUDE.md` and you can continue
+without re-deriving anything.
 
 ---
 
@@ -13,10 +14,31 @@ and you can continue without re-deriving anything.
 | **Phase 0** — scaffold, schemas, event log, ledger, config | **Built, green.** All 13 exit criteria. |
 | **Phase 1** — `H`, `U`, `R`, masks, obligations, `d(s)` | **Built, green.** All 16 exit criteria. |
 | **Phase 2** — ProofLattice + exact evaluator | **Built, green.** All 21 exit criteria. |
-| **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** Plan is at revision **R6**, §6 partly signed off. |
-| Phases 4–11 | Not started. |
+| **Phase 2.5** — annotation feasibility spike | **Tooling built and run 13 Aug 2026** (`scripts/phase2_5/`, `data/phase2_5/`): corpus pinned, 58 turns extracted with Qwen2.5-**3B** (ruled deviation from the 7B), G7 span floor passed at 0.85, items + guidelines + machine-assisted bootstrap labels exist. **The Gate-0 item-8 number still needs the human timed pass** — `PHASE2_5_DECISIONS.md` §5. |
+| **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** A 13 Aug audit added five harness guards (tv_threshold pinned, truncation refused, realized-spend instrument clause, probe-β check, `budget_for` 52 evals) — all latent-hazard fixes, no result invalidated. |
+| **Phase 4** — five Tier-1 search methods + Gate-3 harness | **Stage A built, green and RUN (13 Aug 2026);** Stage B waits on Phase 3's matrix, as G7's two-stage exit requires. `graft/setgen/search/`. **Three sub-decisions of the ruled §6 table were overturned by measurement** — `PHASE4_DECISIONS.md` §1. |
+| **Phase 5** — Stage A ingestion | **Planned 13 Aug 2026** (`GRAFT_PHASE5_BUILD.md`, G1–G11, §6 unsigned); no code. Step 0 is the Gate-0 contract draft. The extractor bakeoff (G2) and the corpus sizing memo (G8) are the two measurements that gate everything else. |
+| Phases 6–11 | Not started. |
 
-**590 tests, ~2 min 20 s, all passing. Nothing skipped, nothing xfailed.**
+**639 tests, ~2 min 40 s, all passing. Nothing skipped, nothing xfailed.**
+The 13 Aug audit round is recorded in the R17/R18 retirements of
+`scripts/check_plan_consistency.py` and in each phase's DECISIONS file.
+
+**Three things to know before touching Phase 4** (all in `PHASE4_DECISIONS.md` §1,
+all measured, none reading a learner result):
+
+1. **`pcst_fast` is installed and must not be used.** Its `cp311-win_amd64`
+   wheel returned the wrong optimum on **59 of 60** random graphs — every output
+   array the right length with every element equal to its first. S4 uses an exact
+   solver; the library survives only in the regression test that documents the bug.
+2. **`C_e`'s selection moved to the breach rate.** "Median closest to `max_atoms`
+   without exceeding it" admits a median *equal* to the cap: at `C_e = 0.5` the
+   median is 8.0 = `max_atoms` and **half** the outputs are rejected on size.
+3. **Decision 5's one live Gate-3 condition is size-confounded.** Mean pairwise
+   Jaccard distance falls monotonically with set size even for *random*
+   portfolios, and S4-informed already scores 0.483 against `p*`'s own 0.4506
+   (pinned duplicates-included convention) — so S5 cannot beat it whatever it
+   learned. The ruled metric ships; a size control ships beside it.
 
 **Read `PHASE3_DECISIONS.md` §6 first if you are touching a learner.** An
 external review on 12 Aug 2026 found three defects in *controls* — GAFlowNet's
@@ -188,7 +210,7 @@ than this laptop. Someone has to say which.
 |---|---|---|
 | **The terminal convention was never written down** | nothing now; it should still be recorded | plan §4.1 says "pick one and write it down"; nobody did. The code *has* picked one — measured on `tiny_instance()`, a state that is both a valid stop and has children gives `F(s) = 181.49` vs `R(s) = 14.88`, so `R` is the flow on the terminating `STOP` edge, **not** the terminal state flow. Phase 3 now depends on it in four objectives and honours it: the terminating transition is a first-class step with its own `log P_F(STOP \| x)`, `log P_B = 0` and `φ` slot, so no loss assumes `F(X) = R(X)`. **Three lines to record; still not done.** |
 | **Phase-3 §6 not fully signed off** | quoting any Gate-2 number | ε, lr, batch, the 1 h ceiling, the 0.10 sanity threshold, `c₀`, the 0.05 consistency band, `λ_aux` are all `[recommended]`; **the build adopted them as written and says so** (`PHASE3_DECISIONS.md` §4 item 2). `N` and β come from step 6. `23a` is filled from LED-GFN Appendix C. |
-| **SubTB's λ is in no decision table** | L5, and therefore β and `N` | set to 0.9 in `TrainSpec.subtb_lambda` — SubTB (ICML 2023)'s own default, so at least not invented here, but **[ANALYSIS]** as applied to this environment. Added to §6 as decision 28 by the build; **not signed.** L5 is the arm that selects β *and* sizes `N`, so it is the worst arm to have an unlisted hyperparameter. |
+| **SubTB's λ is in no decision table** | L5, and therefore β and `N` | set to 0.9 in `TrainSpec.subtb_lambda` — SubTB (ICML 2023)'s *hypergrid* value (its other tasks use 0.99–1.9, so it is not a single paper default), and **[ANALYSIS]** as applied to this environment. Added to §6 as decision 28 by the build; **not signed.** L5 is the arm that selects β *and* sizes `N`, so it is the worst arm to have an unlisted hyperparameter. |
 | **L7 is the slowest flow arm to converge** | the calibration gate | measured on `tiny_instance()`, one seed: 0.167 at 20k against GAFlowNet's 0.097. If `N` lands where L7 has not converged, criterion 26 records C3 unsupported for a budget reason. `PHASE3_DECISIONS.md` §2.3 has the three options; option 2 must be ruled **before** step 6 runs. |
 | **Gate-0 re-sign-off** for the β eligibility amendment | formally, Phase 3 | `GRAFT_PHASE2_BUILD.md` §6b, decision-rule procedure, step 2. Has not happened. |
 | **The 0.001 margin** | possibly a regeneration | one main-suite instance clears the `neither` band at β = 4 by 0.001. Both exits cost something; deliberately undecided. `PHASE2_DECISIONS.md` §4.2. |
