@@ -14,6 +14,20 @@ Phase 5, 6 and 10 respectively.  Each carries that note in its docstring so that
 nobody designs around a guess.  The event log records ``schema_version`` per
 line, so an amendment is a migration rather than a catastrophe.
 
+**``Turn``, ``SourceSpan`` and ``Assertion`` are FROZEN as of 13 Aug 2026**
+(`GRAFT_PHASE5_BUILD.md` G9, decision 9).  Phase 5 is their consumer phase and
+it built the whole write path against them; the amendments taken were **none**.
+Two shapes were checked specifically because the plan promises them and nothing
+had exercised them: an ``Assertion`` carrying **multi-span, cross-turn**
+provenance (plan §3.1 — "a claim assembled across turns records every supporting
+span, not one"), and ``eligibility`` being written by a component other than the
+one that created the record.  Both held without change.  What Phase 5 *did* add
+is an op, not a field: ``assertion.set_flags`` in ``graphstore.GRAPH_OPS``, so
+the NLI verifier can write ``entailed_by_span`` without the support gate's
+``assertion.set_eligibility`` also carrying it.  A later gap that forces a field
+here moves ``SCHEMA_VERSION`` *and* needs a log migration — which is the friction
+the freeze exists to create.
+
 Serialisation is hand-written rather than delegated to a validation library.
 The event log persists to disk permanently and append-only, so the on-disk
 format has to be explicit and version-migratable; ten lines per class makes
@@ -48,6 +62,8 @@ __all__ = [
     "OutputRecord",
     "NODE_TYPES",
     "EDGE_TYPES",
+    "ENDPOINT_TABLE",
+    "SELF_LOOP_FORBIDDEN",
     "ATOM_KINDS",
     "ELIGIBILITY",
     "OUTCOMES",
@@ -55,6 +71,7 @@ __all__ = [
     "PAYLOAD_ASSERTION_ID",
     "PAYLOAD_NAME",
     "PAYLOAD_ALIASES",
+    "PAYLOAD_CONV_ID",
     "PAYLOAD_VALUE_TYPE",
     "PAYLOAD_TIER",
 ]
@@ -67,6 +84,20 @@ __all__ = [
 # things and are expected to diverge.
 SCHEMA_VERSION = "0.3.0"
 
+#: **Ten types, and the tenth-versus-eleventh discrepancy is recorded, not
+#: silently resolved** (Phase-6 gap G3).  Research plan §3.2 lists **eleven**
+#: node types; this tuple has ten.  The missing one is ``Certificate``, and it
+#: appears nowhere else — not in the built code, not in any DECISIONS file, not
+#: in any other plan section.  Phase 1 produced ``CheckResult``, not a
+#: certificate node, and no component writes or reads one.
+#:
+#: The plan wins conflicts (`CLAUDE.md` §2), so this could not be closed by
+#: silence in either direction.  **Phase-6 decision 2 drops it deliberately**: a
+#: node type nothing writes is a schema promise the graph cannot keep, and
+#: adding an unwritten type to a *frozen* vocabulary would make the freeze
+#: meaningless.  If a later phase finds a use — a persisted checker certificate
+#: is the obvious one — that is a deliberate amendment with a ``SCHEMA_VERSION``
+#: bump, which is exactly the friction the freeze exists to create.
 NODE_TYPES = (
     "Entity",
     "Claim",
@@ -80,6 +111,7 @@ NODE_TYPES = (
     "Conflict",
 )
 
+#: Eleven relations, matching plan §3.2 verbatim.
 EDGE_TYPES = (
     "mentioned_in",
     "asserted_by",
@@ -93,6 +125,62 @@ EDGE_TYPES = (
     "derived_from",
     "retired_by",
 )
+
+#: **Which node types each edge type may connect** (Phase-6 gap G3, decision 3).
+#:
+#: Nothing anywhere said this, and without it "schema-validate" (architecture
+#: §6.3) had nothing formal to check — a decoder could have proposed
+#: ``valid_during: Entity → Turn`` and the commit pipeline would have had no
+#: ground to refuse it on.  **[ANALYSIS]** derived from plan §3.2's prose; any
+#: relation the build finds it needs outside this table is a *recorded
+#: amendment*, never a silent extension.
+#:
+#: A new constant rather than a field change, so ``SCHEMA_VERSION`` does not
+#: move: the on-disk shape of an ``Edge`` is unchanged, and what is added is a
+#: constraint on which edges may be written.
+ENDPOINT_TABLE: Mapping[str, tuple[tuple[str, ...], tuple[str, ...]]] = MappingProxyType(
+    {
+        "mentioned_in": (("Mention",), ("Turn",)),
+        "asserted_by": (("Claim", "Value", "Event"), ("Source",)),
+        "about_entity": (("Claim", "Value", "Event"), ("Entity",)),
+        "has_value": (("Entity",), ("Value",)),
+        "valid_during": (("Claim", "Value", "Event"), ("TimeInterval",)),
+        "supported_by": (
+            ("Claim", "Value", "Event", "Entity", "Conflict"),
+            ("SourceSpan",),
+        ),
+        "same_as": (("Entity",), ("Entity",)),
+        # **Widened to all assertion-backed types, 14 Aug 2026 — a decision-3
+        # amendment, by measurement.**  As originally derived, both relations
+        # were Claim -> Claim, but D2 decides over *assertion pairs of every
+        # kind* (the pair proposer walks Claim/Value/Event anchors, and plan
+        # §3.2's "claim pair" uses claim in the assertion sense) — and the
+        # canonical knowledge update the corpus actually contains ("my weight is
+        # 70kg" -> "68kg") is a **Value** pair.  Measured on the live pilot:
+        # 20 of 151 eligible assertions (13.2%) are value/event-kind, and under
+        # the narrow rows every supersession or conflict among them was refused
+        # on endpoint typing — C1's own update case structurally
+        # unrepresentable.  PHASE6_DECISIONS.md §7 has the reproduction.
+        "contradicts": (
+            ("Claim", "Value", "Event"),
+            ("Claim", "Value", "Event"),
+        ),
+        "supersedes": (
+            ("Claim", "Value", "Event"),
+            ("Claim", "Value", "Event"),
+        ),
+        "derived_from": (("Conflict",), ("Claim",)),
+        "retired_by": (("Claim",), ("Turn",)),
+    }
+)
+
+#: Edge types whose two endpoints are the same node type, and where a self-loop
+#: is therefore expressible and meaningless: an entity is not ``same_as``
+#: itself, a claim does not contradict or supersede itself.  Enumerated here
+#: rather than derived from :data:`ENDPOINT_TABLE`, because "src and dst share a
+#: type" is not the same statement as "a self-loop is nonsense" — a future
+#: reflexive relation would satisfy the first and not the second.
+SELF_LOOP_FORBIDDEN: tuple[str, ...] = ("same_as", "contradicts", "supersedes")
 
 ATOM_KINDS = ("node", "edge", "binding")
 ASSERTION_KINDS = ("claim", "value", "event", "time")
@@ -117,6 +205,7 @@ ASSERTION_BACKED_NTYPES = ("Claim", "Value", "Event")
 PAYLOAD_ASSERTION_ID = "assertion_id"   # Claim/Value/Event -> the assertion behind it
 PAYLOAD_NAME = "name"                   # Entity -> canonical surface name
 PAYLOAD_ALIASES = "aliases"             # Entity -> other surface forms
+PAYLOAD_CONV_ID = "conv_id"             # Entity -> the conversation that scopes it
 PAYLOAD_VALUE_TYPE = "value_type"       # Value -> the type of value it holds
 PAYLOAD_TIER = "tier"                   # Source -> key into config.source_tiers
 
@@ -729,7 +818,13 @@ PASS = CheckResult(ok=True)
 
 @dataclass(frozen=True)
 class Turn:
-    """One conversational turn, immutable.  Amendable until Phase 5."""
+    """One conversational turn, immutable.  **Frozen at Phase 5** (G9).
+
+    ``ts`` is ISO-8601 and human-auditable; ``conv_id`` is the unit `H`'s scope
+    sub-check is defined over, which on LongMemEval-S is the ``question_id``
+    (`graft.ingest.corpus`).  The corpus carries no timezone, so Stage A reads
+    its timestamps as UTC by declared convention rather than by discovery.
+    """
 
     turn_id: str
     conv_id: str
@@ -755,7 +850,15 @@ class Turn:
 
 @dataclass(frozen=True)
 class SourceSpan:
-    """Character offsets into a turn, immutable.  Amendable until Phase 5."""
+    """Character offsets into a turn, immutable.  **Frozen at Phase 5** (G9).
+
+    It stores *where*, never *how*: the grounding rung that produced these
+    offsets — exact, normalised or fuzzy — is a property of the extraction run
+    and lives in the pilot report, not in the permanent record.  A consequence
+    worth knowing before relying on it: a span re-read from the log alone cannot
+    say which rung found it, which is why ``IngestPipeline`` reports resumed
+    drafts separately instead of claiming the cleanest rung.
+    """
 
     span_id: str
     turn_id: str
@@ -831,7 +934,7 @@ class AssertionFlags:
 
 @dataclass(frozen=True)
 class Assertion:
-    """An extracted assertion with its provenance.  Amendable until Phase 5.
+    """An extracted assertion with its provenance.  **Frozen at Phase 5** (G9).
 
     ``eligibility`` is set by the Phase-5 support gate (architecture fix F9).
     Quarantined assertions stay in the event log — that is what makes extraction
@@ -899,7 +1002,17 @@ class Assertion:
 
 @dataclass(frozen=True)
 class Node:
-    """A typed graph node.  Amendable until Phase 6."""
+    """A typed graph node.  **Frozen at Phase 6** (G3).
+
+    The vocabulary is :data:`NODE_TYPES` — ten types, with plan §3.2's eleventh
+    (``Certificate``) deliberately dropped and the drop recorded there.  Which
+    *edges* may attach to which of these is :data:`ENDPOINT_TABLE`, enforced by
+    ``graft.graphbuild.validate``.
+
+    ``payload`` is free-form by design and its read keys are the ``PAYLOAD_*``
+    constants above; a node of an :data:`ASSERTION_BACKED_NTYPES` type without
+    ``PAYLOAD_ASSERTION_ID`` is a checker violation, never a silent pass.
+    """
 
     node_id: str
     ntype: str
@@ -920,7 +1033,15 @@ class Node:
 
 @dataclass(frozen=True)
 class Edge:
-    """A typed, versioned graph edge.  Amendable until Phase 6.
+    """A typed, versioned graph edge.  **Frozen at Phase 6** (G3).
+
+    Its endpoint typing is :data:`ENDPOINT_TABLE` and is checked at commit, not
+    here: this class enforces what is true of *every* edge (a type in the
+    vocabulary, non-empty provenance, supersession implying invalidation), while
+    "may a ``valid_during`` edge point at a ``Turn``" is a question about the
+    schema's shape that the commit validator owns.  The split matters because
+    Phase-2's synthetic lattice builds edges that never pass through a commit
+    pipeline and must stay constructible.
 
     **Nothing is ever deleted.**  Supersession sets ``t_invalid`` and
     ``superseded_by``; the edge stays in the log, so a wrong supersession is

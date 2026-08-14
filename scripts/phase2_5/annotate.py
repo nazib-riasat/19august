@@ -31,9 +31,17 @@ from common import DATA, LABELS, append_jsonl, read_jsonl
 D2_KEYS = {"I": "INDEPENDENT", "U": "DUPLICATE", "C": "CONFLICT", "S": "SUPERSEDES"}
 
 
-def _labels_path(decoder: str, annotator: str, pass2: bool) -> str:
+def _labels_path(decoder: str, annotator: str, pass2: bool, items: str = "") -> str:
+    """Label file for one (decoder, annotator, pass) — and one *item set*.
+
+    ``items`` names the batch when it is not the spike's default.  Without it a
+    run over a different item set would write into the same file as the spike's,
+    and two batches' labels would be indistinguishable afterwards — the kind of
+    silent mixing that makes an annotation record unusable months later.
+    """
     suffix = "_pass2" if pass2 else ""
-    return LABELS / f"{decoder}_labels_{annotator}{suffix}.jsonl"
+    tag = f"_{items}" if items else ""
+    return LABELS / f"{decoder}_labels_{annotator}{tag}{suffix}.jsonl"
 
 
 def _show_d1(item: dict) -> None:
@@ -88,13 +96,14 @@ def _read_answer(decoder: str, item: dict) -> tuple[str, str | None, float]:
         print("  unrecognised — see the key legend above")
 
 
-def annotate(decoder: str, annotator: str, pass2: bool, subset: int) -> None:
-    items = read_jsonl(DATA / f"{decoder}_items.jsonl")
-    out_path = _labels_path(decoder, annotator, pass2)
+def annotate(decoder: str, annotator: str, pass2: bool, subset: int, items_tag: str = "") -> None:
+    name = f"{decoder}_items_{items_tag}.jsonl" if items_tag else f"{decoder}_items.jsonl"
+    items = read_jsonl(DATA / name)
+    out_path = _labels_path(decoder, annotator, pass2, items_tag)
     done = {r["item_id"] for r in read_jsonl(out_path)} if out_path.exists() else set()
 
     if pass2:
-        first_pass = read_jsonl(_labels_path(decoder, annotator, False))
+        first_pass = read_jsonl(_labels_path(decoder, annotator, False, items_tag))
         chosen_ids = [r["item_id"] for r in first_pass[:subset]]
         items = [i for i in items if i["item_id"] in chosen_ids]
         random.Random(20260817).shuffle(items)
@@ -127,9 +136,9 @@ def _coarse(label: str) -> str:
     return "LINK_EXISTING" if label.startswith("LINK_EXISTING") else label
 
 
-def kappa(decoder: str, annotator: str) -> None:
-    p1 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, False))}
-    p2 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, True))}
+def kappa(decoder: str, annotator: str, items_tag: str = "") -> None:
+    p1 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, False, items_tag))}
+    p2 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, True, items_tag))}
     shared = sorted(set(p1) & set(p2))
     if not shared:
         raise SystemExit("no overlapping items between pass 1 and pass 2")
@@ -163,13 +172,19 @@ def main() -> None:
     ap.add_argument("--annotator", required=True)
     ap.add_argument("--pass-2", action="store_true", dest="pass2")
     ap.add_argument("--subset", type=int, default=20)
+    ap.add_argument(
+        "--items",
+        default="",
+        help="item-set tag, e.g. 'pilot' reads d1_items_pilot.jsonl and writes "
+        "labels tagged with it; omit for the spike's original batch",
+    )
     args = ap.parse_args()
     if args.mode == "kappa":
         if not args.decoder:
             raise SystemExit("kappa needs a decoder: kappa d1|d2")
-        kappa(args.decoder, args.annotator)
+        kappa(args.decoder, args.annotator, args.items)
     else:
-        annotate(args.mode, args.annotator, args.pass2, args.subset)
+        annotate(args.mode, args.annotator, args.pass2, args.subset, args.items)
 
 
 if __name__ == "__main__":

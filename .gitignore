@@ -56,3 +56,11 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Phase 6 external datasets: pinned by SHA, licences recorded, re-fetched per
+# machine. DialogRE is non-commercial research use only, so it must not be
+# redistributed through this repo.
+data/phase6/raw/
+
+# Working backups (e.g. a label file snapshotted before an edit).
+*.bak

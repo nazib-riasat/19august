@@ -24,6 +24,29 @@ compare the output with a teammate's::
   so a fingerprint containing it would change after the suites were frozen.  The
   β-dependent layer is ``target_fingerprint``, printed separately.
 
+* **ingestion fingerprint** (Phase-5 gap G11) — a hash of Stage A's
+  *configuration*: extractor model id, revision and decoding config, the NLI pin,
+  the context recipe, the grounding ladder and the prompt-registry SHA.
+  **This one binds the config, not the output, and the difference is the point.**
+  A bf16 LLM forward pass is not bit-stable across GPU architectures, so the
+  "identical log digest on any machine" promise above holds for Phases 0–4 and
+  **is explicitly not made for Stage A**.  What two machines must agree on is
+  this hash; if they do and their ingestion logs still differ, that is expected
+  and is recorded as a limitation rather than chased as a bug.
+
+  Printing it here costs nothing: ``graft.ingest.pins`` imports no ML library,
+  which a structural test enforces precisely so this script keeps running on a
+  bare interpreter.
+
+* **Stage-B fingerprint** (Phase-6 exit criterion 16) — the same idea for graph
+  construction: embedder id and revision, the candidate/pair constants, the
+  training budget, the commit floors, and a hash of the **endpoint table**.  The
+  last one belongs in configuration identity in the strongest sense: it decides
+  *which graphs are constructible*, so two machines agreeing on the embedder and
+  disagreeing here would build different graphs from the same log and never
+  notice.  Encoder *weights* are not bit-identical across machines and are not
+  promised to be; the setup that produced them is.
+
 If any of these disagree between two machines running the same commit, that is a
 real bug and worth chasing before it contaminates a result.
 
@@ -42,6 +65,8 @@ from graft.canonical import digest_of
 from graft.config import config_hash, load_config
 from graft.eventlog import EventLog
 from graft.graphstore import ReplayGraphStore
+from graft.graphbuild.pins import endpoint_table_hash, stage_b_fingerprint
+from graft.ingest.pins import EXTRACTOR, ingestion_fingerprint
 from graft.ledger import Ledger
 from graft.runtime import REPRO_KEY, run_manifest, set_seed
 from graft.schemas import Edge, Node
@@ -141,6 +166,10 @@ def main() -> int:
     print(f"log digest       {log_digest}")
     print(f"graph digest     {graph_digest}")
     print(f"manifest print   {digest_of(repro)}")
+    print(f"stage-B print    {stage_b_fingerprint()}"
+          f"   (endpoints {endpoint_table_hash()})")
+    print(f"ingestion print  {ingestion_fingerprint()}"
+          + ("" if EXTRACTOR is not None else "   (no extractor frozen yet - G2 bakeoff)"))
     print()
     print(f"terminal_checks  {ledger.snapshot()['totals']['terminal_checks']} "
           f"(cap {cfg.checker_budget})")

@@ -21,6 +21,7 @@ not reproducible and should be visibly marked rather than quietly logged.
 
 from __future__ import annotations
 
+import math
 import os
 import platform
 import random
@@ -34,7 +35,15 @@ from typing import Any
 from graft.config import Config, config_hash
 from graft.schemas import SCHEMA_VERSION
 
-__all__ = ["set_seed", "git_info", "run_manifest", "new_run_dir", "REPRO_KEY", "ENV_KEY"]
+__all__ = [
+    "set_seed",
+    "git_info",
+    "run_manifest",
+    "new_run_dir",
+    "json_sanitize",
+    "REPRO_KEY",
+    "ENV_KEY",
+]
 
 REPRO_KEY = "reproducibility"
 ENV_KEY = "environment"
@@ -43,6 +52,28 @@ ENV_KEY = "environment"
 #: than a full freeze, so the block stays stable across machines that happen to
 #: have different unrelated packages installed.
 TRACKED_PACKAGES = ("PyYAML", "numpy", "pytest", "torch")
+
+
+def json_sanitize(obj: Any) -> Any:
+    """``NaN``/``±inf`` → ``None``, recursively, before an artefact is written.
+
+    Python's ``json.dumps`` default (``allow_nan=True``) emits bare ``NaN``
+    tokens, which are **not JSON** (RFC 8259) — ``jq``, JavaScript's
+    ``JSON.parse`` and strict parsers all reject the file.  The empty-denominator
+    rates this project deliberately reports as ``nan`` rather than a flattering
+    ``0`` (a bakeoff candidate that errored, an empty pilot re-run) therefore
+    made whole artefacts unreadable (found by the 13 Aug 2026 audit).  ``null``
+    is the honest JSON spelling of "no measurement".  Scripts should pass the
+    sanitized object to ``json.dumps(..., allow_nan=False)`` so any unsanitized
+    path fails loudly instead of shipping an invalid artefact.
+    """
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [json_sanitize(v) for v in obj]
+    return obj
 
 
 def set_seed(seed: int) -> None:

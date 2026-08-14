@@ -1,0 +1,42 @@
+{
+ "dialogre/train.json": {
+  "sha256": "4ddee624c9f241451c455a4c1eb1d7a97f916c8bec9cd10444c97c09f5902236",
+  "bytes": 2331101,
+  "url": "https://raw.githubusercontent.com/nlpdata/dialogre/master/data/train.json"
+ },
+ "dialogre/dev.json": {
+  "sha256": "12f783d1cecd3646a542709898eb8b7af4d14bbfe676cd402dadebb870718f5c",
+  "bytes": 754825,
+  "url": "https://raw.githubusercontent.com/nlpdata/dialogre/master/data/dev.json"
+ },
+ "dialogre/test.json": {
+  "sha256": "198402e8a6d2f4c7d05e41a41231a97ec0381aa7f7fceb1b3a42e786336eab89",
+  "bytes": 724638,
+  "url": "https://raw.githubusercontent.com/nlpdata/dialogre/master/data/test.json"
+ },
+ "redocred/train_revised.json": {
+  "sha256": "c40a137a1c57f3e2daaf5ebf511eaa1518f9305ffaa3052d46271921a91826f2",
+  "bytes": 18602933,
+  "url": "https://raw.githubusercontent.com/tonytan48/Re-DocRED/main/data/train_revised.json"
+ },
+ "redocred/dev_revised.json": {
+  "sha256": "051ee1d057204a5d08ef5502beacdadf191245b5eaf0e29ec2c607cf002c016f",
+  "bytes": 3245588,
+  "url": "https://raw.githubusercontent.com/tonytan48/Re-DocRED/main/data/dev_revised.json"
+ },
+ "redocred/test_revised.json": {
+  "sha256": "ea673b7ef91e16510d7eb88863d3903e47318dc5653ef361266f27ae3b84723c",
+  "bytes": 3207228,
+  "url": "https://raw.githubusercontent.com/tonytan48/Re-DocRED/main/data/test_revised.json"
+ },
+ "torque/train.json": {
+  "sha256": "ad939c59ea81ad1efdc0d0d4b66f78737293bcf15d77ae00191247a33ca2923d",
+  "bytes": 16320336,
+  "url": "https://raw.githubusercontent.com/qiangning/TORQUE-dataset/main/data/train.json"
+ },
+ "torque/dev.json": {
+  "sha256": "7a8dd84c984f28a5284bdfda57b447218e1269cd2eaf05b5e173394fc1522434",
+  "bytes": 2250044,
+  "url": "https://raw.githubusercontent.com/qiangning/TORQUE-dataset/main/data/dev.json"
+ }
+}

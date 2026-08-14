@@ -46,12 +46,24 @@ LIVE_DOCS = (
     "GRAFT_PHASE3_BUILD.md",
     "GRAFT_PHASE4_BUILD.md",
     "GRAFT_PHASE5_BUILD.md",
+    # Added 14 Aug 2026 with the Phase-6 plan.
+    "GRAFT_PHASE6_BUILD.md",
+    # Added 14 Aug 2026 with the Phase-7 plan.
+    "GRAFT_PHASE7_BUILD.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
     "PHASE2_DECISIONS.md",
     "PHASE2_5_DECISIONS.md",
     "PHASE3_DECISIONS.md",
     "PHASE4_DECISIONS.md",
+    # Added 13 Aug 2026 with the Phase-5 build.  The Gate-0 contract restates
+    # decisions from the plan, the architecture and three DECISIONS files, which
+    # makes it precisely the kind of document this checker exists for: a
+    # four-or-five-place edit whose fifth place is the one that gets missed.
+    "GATE0_CONTRACT.md",
+    "PHASE5_DECISIONS.md",
+    "GRAFT_PHASE6_BUILD.md",
+    "PHASE6_DECISIONS.md",
     "CLAUDE.md",
     "README.md",
 )
@@ -239,6 +251,11 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "measured inert at the frozen cap — the theorem's premise is false for the forced-opener path (PHASE4_DECISIONS.md 1.4 F2)", "R18", None),
     ("selected on median **post**-completion output size",
      "the post-completion breach rate, ties to the larger median (PHASE4_DECISIONS.md 1.2)", "R18", None),
+    # R19 — the Phase-5 build audit, 13-14 Aug 2026. Candidate B's grammar
+    # guarantees a valid JSON *prefix*, not that the object closes within
+    # max_new_tokens; B's own 3-turn check produced a truncation parse failure.
+    ("parse failure → 0 by construction",
+     "never malformed — prefix validity, not completion within the token budget (PHASE5_DECISIONS.md 1.6)", "R19", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

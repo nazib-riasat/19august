@@ -1,0 +1,63 @@
+# Phase 5 (Stage A ingestion) dependencies.
+#
+# Install on top of requirements.txt and requirements-ml.txt:
+#
+#     pip install -r requirements.txt -r requirements-ml.txt -r requirements-ingest.txt
+#
+# **Phases 0-4 never need this file, and neither does importing `graft.ingest`.**
+# The extractor and the NLI cross-encoder are imported lazily inside function
+# bodies, so `graft.ingest.pins` (every frozen value), `graft.ingest.grounding`
+# (the four-rung ladder), `graft.ingest.timeexpr` and `scripts/verify_handoff.py`
+# all run on a bare interpreter.  `test_the_ingest_package_does_not_import_ml_
+# eagerly` enforces exactly that, and the write-path tests run without any of
+# these installed by driving a ReplayExtractor and a StubVerifier.
+#
+# ---------------------------------------------------------------------------
+# The boring-stack rule (architecture 0.4) requires a written justification for
+# anything beyond the core.  Here it is, one line per package.
+# ---------------------------------------------------------------------------
+#
+# transformers / tokenizers / accelerate / huggingface_hub / safetensors / hf-xet
+#   The extractor (Qwen2.5-Instruct) and the NLI verifier
+#   (cross-encoder/nli-deberta-v3-base) are both plain Hugging Face models.
+#   *Deliberately NOT sentence-transformers*: the architecture names the verifier
+#   "an off-the-shelf NLI cross-encoder", and a cross-encoder checkpoint is a
+#   sequence-classification model that `transformers` loads directly -- adding a
+#   second library to call the same weights would be a dependency bought for a
+#   convenience wrapper.
+#
+#   Pinned to the versions the Phase-2.5 spike measured on, so the manifest's
+#   package block does not move for reasons nobody chose.
+#
+# bitsandbytes
+#   Bakeoff candidate C only: the architecture's Qwen2.5-7B-Instruct 4-bit
+#   extractor.  If C does not win decision 2, nothing in the shipped pipeline
+#   needs it and it can be uninstalled.
+#
+# xgrammar
+#   Bakeoff candidate B only: grammar-constrained decoding, whose entire claim is
+#   *parse failure is 0 by construction* -- which cannot be approximated by
+#   prompting harder, and which the spike's measured 15.5% parse-failure rate is
+#   the reason to test at all.  Same conditional status as bitsandbytes.
+#
+#   **Known, deliberate conflict.** xgrammar 0.2.4 declares `transformers<5`;
+#   this project pins transformers 5.15.0 and `pip` prints a dependency-conflict
+#   warning.  Verified on this machine (13 Aug 2026): xgrammar imports,
+#   `xgrammar.contrib.hf.LogitsProcessor` resolves, and
+#   `GrammarCompiler.compile_json_schema` compiles the Phase-5 extraction schema
+#   against a Qwen2.5 tokenizer.  Letting pip downgrade transformers instead
+#   would silently change the environment *the other two candidates run in*, and
+#   a bakeoff whose harness differs per candidate measures the harness.
+#
+# ---------------------------------------------------------------------------
+
+transformers==5.15.0
+tokenizers==0.22.2
+huggingface_hub==1.27.0
+accelerate==1.14.0
+safetensors==0.8.0
+hf-xet==1.6.0
+
+# candidate-conditional, see above
+bitsandbytes==0.50.0
+xgrammar==0.2.4

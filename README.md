@@ -4,17 +4,30 @@ Provenance-preserving temporal graph memory with a checker-conditioned
 evidence-set learner.
 
 - **The science:** [`GRAFT_RESEARCH_PLAN_v1.md`](GRAFT_RESEARCH_PLAN_v1.md) (v1.2). Wins any conflict.
-- **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases.
+- **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases. Per-phase specs: [Phase 5](GRAFT_PHASE5_BUILD.md) (built and run) · [Phase 6](GRAFT_PHASE6_BUILD.md) (code complete, twice audited) · [Phase 7](GRAFT_PHASE7_BUILD.md) (planned, §6 unsigned).
 - **Why things are the way they are:** [`CLAUDE.md`](CLAUDE.md) — decisions, what was rejected, and the cost of changing your mind.
-- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md) · [`PHASE3_DECISIONS.md`](PHASE3_DECISIONS.md).
+- **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md) · [`PHASE2_5_DECISIONS.md`](PHASE2_5_DECISIONS.md) · [`PHASE3_DECISIONS.md`](PHASE3_DECISIONS.md) · [`PHASE4_DECISIONS.md`](PHASE4_DECISIONS.md) · [`PHASE5_DECISIONS.md`](PHASE5_DECISIONS.md).
+- **The data contract:** [`GATE0_CONTRACT.md`](GATE0_CONTRACT.md) — nine of ten items drafted, unsigned; Gate 1 is blocked on it.
 - **Picking up a cold session:** [`chatcontext1.md`](chatcontext1.md) — current state, reading order, open items. Start there.
 
-Current state: **Phases 0, 1, 2 and 2.5 complete, Phase 4 Stage A complete** —
-scaffold and data contracts; the deterministic core (`H`, `U`, `R`, masks,
+Current state: **Phases 0, 1, 2, 2.5 and 5 complete, Phase 4 Stage A complete**
+— scaffold and data contracts; the deterministic core (`H`, `U`, `R`, masks,
 obligations, `d(s)`); the enumerable synthetic environment with its exact
 evaluator (ProofLattice, the forward DP for `p_θ`, TV/JS/KL/FCS, the three frozen
-suites and the Gate-2 audits); the annotation-feasibility spike; and the five
-Tier-1 search methods with the Gate-3 harness. **639 tests, all passing.**
+suites and the Gate-2 audits); the annotation-feasibility spike; the five
+Tier-1 search methods with the Gate-3 harness; and Stage A ingestion
+(`graft/ingest/` — extraction, grounding, NLI verification, the support gate,
+the learned obligation parser, and the Gate-0 contract draft). **958 tests, all
+passing.**
+
+**Phase 5's GPU runs are done and its machine-measurable exit criteria are
+met.** The G2 bakeoff froze the extractor on **candidate B** (grammar-
+constrained; 1.7% parse failure against A's 23.3%) and the live pilot ran 248
+turns end to end — `PHASE5_DECISIONS.md` §2. What remains is human: four audit
+worksheets under `artefacts/phase5_pilot/` (span support, NLI agreement,
+rung-3 boundaries, obligation slots) and Gate-0 item 8. Read
+`PHASE5_DECISIONS.md` §7 for the audit record and §1.6/§2.1a for the two
+instrument corrections before touching `graft/ingest/`.
 
 **Phase 3 is code complete and uncalibrated.** Steps 1–5 and 7–10 of
 [`GRAFT_PHASE3_BUILD.md`](GRAFT_PHASE3_BUILD.md) §4 are built and green: the ML

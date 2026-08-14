@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Iterator, Mapping, Protocol
 
-from graft.schemas import Assertion, Edge, Node, SourceSpan, Turn
+from graft.schemas import Assertion, AssertionFlags, Edge, Node, SourceSpan, Turn
 
 __all__ = [
     "GraphSnapshot",
@@ -35,11 +35,25 @@ __all__ = [
 #: Event-log operations that mutate graph state.  Anything else in the log is
 #: ignored by replay, which lets the ledger and other subsystems share the
 #: stream without the graph store knowing about them.
+#: ``assertion.set_flags`` was added in Phase 5 (gap G4: "the assertion write
+#: path — assertion record + four flags + eligibility — must be audited/extended
+#: where missing... the op vocabulary is completed here, not invented").  It is a
+#: separate op from ``assertion.set_eligibility`` on purpose: architecture fix F9
+#: is explicit that the NLI verifier **never blocks storage** and the *support
+#: gate* decides eligibility, and one combined event would erase that authority
+#: boundary in the one place it is permanently recorded.
+#:
+#: ``mention.add`` (Phase 5) is **deliberately not** a graph op: a mention is a
+#: Stage-A observation, and no ``Mention`` node exists until Phase 6's D1
+#: decides LINK/CREATE/NON_ENTITY/DEFER.  Phase 6 reads mention events from the
+#: log (``graft.ingest.pipeline.mentions_of``); replay ignores them here, which
+#: is the documented behaviour for non-graph ops.
 GRAPH_OPS = (
     "node.add",
     "edge.add",
     "edge.invalidate",
     "assertion.add",
+    "assertion.set_flags",
     "assertion.set_eligibility",
     "turn.add",
     "span.add",
@@ -237,6 +251,34 @@ class DictGraphSnapshot:
             eligibility=eligibility,
         )
 
+    def set_flags(self, assertion_id: str, **changes: Any) -> None:
+        """Update named flags on a stored assertion, leaving the rest alone.
+
+        Phase 5's NLI verifier writes ``entailed_by_span`` and ``entailed_score``
+        here.  Named changes rather than a whole ``AssertionFlags``: the four
+        flags are independent by design (plan §3.1) and are written by different
+        components at different times, so a whole-object write would let one
+        component silently reset another's.
+        """
+        current = self._assertions[assertion_id]
+        payload = current.flags.to_dict()
+        unknown = sorted(set(changes) - set(payload))
+        if unknown:
+            raise ValueError(
+                f"unknown assertion flags {unknown}; the four flags of plan §3.1 are "
+                f"{sorted(payload)}"
+            )
+        payload.update(changes)
+        self._assertions[assertion_id] = Assertion(
+            assertion_id=current.assertion_id,
+            kind=current.kind,
+            text_norm=current.text_norm,
+            spans=current.spans,
+            flags=AssertionFlags.from_dict(payload),
+            t_created=current.t_created,
+            eligibility=current.eligibility,
+        )
+
     # -- diagnostics -------------------------------------------------------
 
     def counts(self) -> dict[str, int]:
@@ -306,6 +348,16 @@ class ReplayGraphStore:
             )
         elif op == "assertion.add":
             snapshot.add_assertion(Assertion.from_dict(payload))
+        elif op == "assertion.set_flags":
+            snapshot.set_flags(
+                payload["assertion_id"],
+                **{
+                    k: v
+                    for k, v in payload.items()
+                    if k in ("entailed_by_span", "entailed_score", "externally_verified",
+                             "current_under_update_policy", "asserted_by")
+                },
+            )
         elif op == "assertion.set_eligibility":
             snapshot.set_eligibility(payload["assertion_id"], payload["eligibility"])
         elif op == "turn.add":

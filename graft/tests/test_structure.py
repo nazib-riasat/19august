@@ -36,7 +36,23 @@ REPO_ROOT = PACKAGE_ROOT.parent
 #: ``graft.synth``, where the rule still matters: Phase-2 exit criterion 21
 #: requires the exact evaluator to run without a GPU stack, and Phase 1's whole
 #: prohibition is that nothing learned may reach ``H``.
-ML_ALLOWED_PACKAGES = ("graft.setgen",)
+#:
+#: **Phase 5 widened this by one package, deliberately** (`GRAFT_PHASE5_BUILD.md`
+#: decision 13): ``graft.ingest`` runs an extractor LLM and an NLI cross-encoder.
+#: Two guards go with the widening rather than after it —
+#: ``test_the_ingest_package_does_not_import_ml_eagerly`` keeps the *import* of
+#: ``graft.ingest`` free of torch and transformers, so ``verify_handoff.py``
+#: still runs on a bare interpreter, and the per-package rules on ``graft.core``
+#: and ``graft.synth`` are untouched.
+#:
+#: **Phase 6 widened it again by one** (`GRAFT_PHASE6_BUILD.md` decision 1):
+#: ``graft.graphbuild`` runs the encoders, and E2/E3 need ``torch_geometric`` —
+#: which is *already* on ``ML_LIBRARIES`` below, so admitting the package was a
+#: deliberate one-line edit against a failing test, exactly the intended shape.
+#: The same containment applies: importing ``graft.graphbuild`` pulls in no ML
+#: library, so the Stage-B fingerprint and the commit validator stay usable on a
+#: bare interpreter.
+ML_ALLOWED_PACKAGES = ("graft.setgen", "graft.ingest", "graft.graphbuild")
 
 
 def _source_files(subdir: str | None = None, *, ml_allowed: bool = False) -> list[Path]:
@@ -100,15 +116,101 @@ def test_the_phase_0_to_2_surface_imports_no_ml_library():
 
 
 def test_the_ml_boundary_is_a_narrowing_not_a_hole():
-    """The allowance is one package, and it is the one Phase 3 owns.
+    """The allowance is three packages, and each was opened by a named decision.
 
     A future phase widening this list is making a decision; a future phase
     widening it *silently* is removing the guard that keeps ``H`` free of
-    anything learned (v1.2 §4.4).
+    anything learned (v1.2 §4.4).  Phase 3 opened ``graft.setgen`` (P3.0),
+    Phase 5 opened ``graft.ingest`` (decision 13) and Phase 6 opened
+    ``graft.graphbuild`` (decision 1); a fourth entry needs a fourth written
+    decision.
     """
-    assert ML_ALLOWED_PACKAGES == ("graft.setgen",)
+    assert ML_ALLOWED_PACKAGES == ("graft.setgen", "graft.ingest", "graft.graphbuild")
     for pkg in ML_ALLOWED_PACKAGES:
         importlib.import_module(pkg)
+
+
+def test_the_ingest_package_does_not_import_ml_eagerly():
+    """Phase-5 decision 13's other half.
+
+    ``graft.ingest`` *may* import torch and transformers; importing the package
+    must not *do* it.  ``scripts/verify_handoff.py`` prints the ingestion
+    fingerprint, ``graft.ingest.pins`` carries every frozen value, and the
+    grounding ladder and the time resolver are pure Python — all of which have to
+    stay usable on a bare interpreter and inside a Kaggle notebook before any
+    heavy install.  The model wrappers therefore import lazily, inside function
+    bodies, and this is the test that says so.
+
+    A subprocess again, for the same reason as the Phase-0-to-2 check: asking
+    ``sys.modules`` inside a process that has already imported torch for some
+    other test proves nothing.
+    """
+    import subprocess
+
+    modules = [
+        "graft.ingest",
+        "graft.ingest.pins",
+        "graft.ingest.prompts",
+        "graft.ingest.records",
+        "graft.ingest.corpus",
+        "graft.ingest.grounding",
+        "graft.ingest.timeexpr",
+        "graft.ingest.summary",
+        "graft.ingest.support",
+        "graft.ingest.nli",
+        "graft.ingest.extractor",
+        "graft.ingest.oblparse",
+        "graft.ingest.pipeline",
+        "graft.ingest.bakeoff",
+    ]
+    program = (
+        "import importlib, sys, json\n"
+        f"for n in {modules!r}:\n"
+        "    importlib.import_module(n)\n"
+        "import graft.ingest as I\n"
+        "I.ingestion_fingerprint()\n"
+        f"print(json.dumps(sorted(l for l in {list(ML_LIBRARIES)!r} if l in sys.modules)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
+    assert not leaked, f"importing graft.ingest pulled in ML libraries: {leaked}"
+
+
+def test_ingest_defines_no_cross_module_dataclass():
+    """Criterion 12 held over the newly ML-allowed package.
+
+    ``_source_files()`` skips ML-allowed packages, so widening the allowance
+    would otherwise have quietly exempted ``graft.ingest`` from the rule that
+    ``schemas.py`` is the single home of the data model.  Phase 5's transient
+    shapes are ``__slots__`` classes for exactly this reason (see
+    ``graft/ingest/records.py``), and Tier B is frozen, so there is no reason for
+    a dataclass to appear here.
+    """
+    offenders: list[str] = []
+    for path in sorted((PACKAGE_ROOT / "ingest").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for decorator in node.decorator_list:
+                target = decorator.func if isinstance(decorator, ast.Call) else decorator
+                name = getattr(target, "id", None) or getattr(target, "attr", None)
+                if name == "dataclass":
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}::{node.name}")
+    assert not offenders, "dataclasses defined in graft.ingest: " + ", ".join(offenders)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((PACKAGE_ROOT / "ingest").rglob("*.py")),
+    ids=lambda p: p.name,
+)
+def test_every_ingest_module_has_a_docstring(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"
 
 
 def test_torch_is_only_referenced_lazily():
@@ -330,5 +432,73 @@ def test_the_live_plans_do_not_contradict_themselves():
 
 @pytest.mark.parametrize("path", _source_files(), ids=lambda p: p.name)
 def test_every_module_has_a_docstring(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"
+
+
+def test_the_graphbuild_package_does_not_import_ml_eagerly():
+    """Phase-6 decision 1's containment half, mirroring the Phase-5 guard.
+
+    ``graft.graphbuild`` *may* import torch and torch_geometric; importing the
+    package must not *do* it.  ``verify_handoff.py`` prints the Stage-B
+    fingerprint, ``graphbuild.pins`` carries every frozen value, and the commit
+    validator decides what may enter the active graph — all of which have to stay
+    usable on a bare interpreter, and the last of which sits on the same side of
+    the line as ``H``.
+    """
+    import subprocess
+
+    modules = [
+        "graft.graphbuild",
+        "graft.graphbuild.pins",
+        "graft.graphbuild.validate",
+        "graft.graphbuild.items",
+        "graft.graphbuild.candidates",
+        "graft.graphbuild.commit",
+        "graft.graphbuild.loaders",
+        "graft.graphbuild.gate1",
+        "graft.graphbuild.llmlink",
+    ]
+    program = (
+        "import importlib, sys, json\n"
+        f"for n in {modules!r}:\n"
+        "    importlib.import_module(n)\n"
+        "from graft.graphbuild.pins import stage_b_fingerprint\n"
+        "stage_b_fingerprint()\n"
+        f"print(json.dumps(sorted(l for l in {list(ML_LIBRARIES)!r} if l in sys.modules)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
+    assert not leaked, f"importing graft.graphbuild pulled in ML libraries: {leaked}"
+
+
+def test_graphbuild_defines_no_cross_module_dataclass():
+    """Criterion 12 held over the third ML-allowed package, for the same reason it
+    was held over the second: widening the allowance must not quietly exempt a
+    package from the rule that ``schemas.py`` is the single home of the data
+    model."""
+    offenders: list[str] = []
+    for path in sorted((PACKAGE_ROOT / "graphbuild").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for decorator in node.decorator_list:
+                target = decorator.func if isinstance(decorator, ast.Call) else decorator
+                name = getattr(target, "id", None) or getattr(target, "attr", None)
+                if name == "dataclass":
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}::{node.name}")
+    assert not offenders, "dataclasses defined in graft.graphbuild: " + ", ".join(offenders)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((PACKAGE_ROOT / "graphbuild").rglob("*.py")),
+    ids=lambda p: p.name,
+)
+def test_every_graphbuild_module_has_a_docstring(path):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"

@@ -40,6 +40,8 @@ __all__ = [
     "coverage",
     "covered_fraction",
     "parse",
+    "set_learned_parser",
+    "learned_parser",
     "slot_level_scores",
     "OPTIONAL_SLOTS",
     "BOOLEAN_SLOTS",
@@ -264,6 +266,34 @@ def coverage(status: Mapping[str, float], q: Obligations) -> float:
 # --------------------------------------------------------------------------
 
 
+#: The learned parser, installed by ``graft.ingest.oblparse.register`` (Phase 5).
+#:
+#: **A slot, not an import.**  ``graft.core`` may not import anything that could
+#: reach a model — that prohibition is v1.2 §4.4 expressed as a property of the
+#: import graph, and it is what keeps ``H`` a predicate.  So the dependency
+#: points the other way: the core owns the *routing table* of §4.4 and Phase 5
+#: owns the *implementation*, and the boundary stays checkable.
+_LEARNED_PARSER: Any = None
+
+
+def set_learned_parser(parser: Any) -> None:
+    """Install (or, with ``None``, remove) the learned obligation parser.
+
+    Callable-or-``None`` is the whole contract; the core deliberately knows
+    nothing about what is behind it.  Removing it restores the Phase-1 refusal,
+    which is what a test needs in order to assert that the refusal still exists.
+    """
+    global _LEARNED_PARSER
+    if parser is not None and not callable(parser):
+        raise TypeError(f"learned parser must be callable, got {type(parser).__name__}")
+    _LEARNED_PARSER = parser
+
+
+def learned_parser() -> Any:
+    """The installed learned parser, or ``None``."""
+    return _LEARNED_PARSER
+
+
 def parse(question: Any, mode: str = "exact") -> Obligations:
     """Question → typed obligation slots.
 
@@ -272,10 +302,11 @@ def parse(question: Any, mode: str = "exact") -> Obligations:
         zero error.  Thin by design, not by shortcut: the parser only becomes a
         component when there is text to parse.
     ``mode="learned"``
-        Phase 5's extractor fills the slots.  Raises until then, so a caller
+        Phase 5's extractor fills the slots, through the parser installed by
+        :func:`set_learned_parser`.  Raises when none is installed, so a caller
         cannot silently get exact-mode behaviour on real questions.  Its
         slot-level quality must be audited with :func:`slot_level_scores` before
-        any downstream use.
+        any downstream use, and reported wherever coverage is reported (fix F2).
     """
     if mode == "exact":
         if isinstance(question, Obligations):
@@ -289,11 +320,21 @@ def parse(question: Any, mode: str = "exact") -> Obligations:
             "instance rather than recovered from its text."
         )
     if mode == "learned":
-        raise NotImplementedError(
-            "learned obligation parsing arrives with the Phase-5 extractor. Its "
-            "slot-level precision must be audited on a labelled pilot before any "
-            "downstream use, and reported wherever coverage is reported."
-        )
+        if _LEARNED_PARSER is None:
+            raise NotImplementedError(
+                "no learned obligation parser is installed. Phase 5 provides one: "
+                "graft.ingest.oblparse.register(ObligationParser(...)). Its "
+                "slot-level precision must be audited on a labelled pilot before "
+                "any downstream use, and reported wherever coverage is reported."
+            )
+        result = _LEARNED_PARSER(question)
+        if not isinstance(result, Obligations):
+            raise TypeError(
+                f"the learned parser returned {type(result).__name__}, not "
+                "Obligations; the core's routing contract is typed slots in and "
+                "typed slots out"
+            )
+        return result
     raise ValueError(f"mode must be 'exact' or 'learned', got {mode!r}")
 
 

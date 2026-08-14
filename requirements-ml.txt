@@ -28,3 +28,34 @@
 # there.
 
 torch==2.11.0
+
+# ---------------------------------------------------------------------------
+# Phase 6 (Stage B) — added 14 Aug 2026.
+#
+# `torch_geometric` supplies E2's HGTConv (Phase-6 decision 1, gap G2).  The
+# boring-stack rule (architecture 0.4) wants a written justification and this
+# is it: HGT's node- and edge-type-dependent attention with relative temporal
+# encoding is the *point of comparison* E2 exists to provide (HGT, WWW 2020),
+# and hand-rolling typed attention is a correctness risk in exactly the place a
+# subtle bug masquerades as "the baseline is weak" -- the failure mode Phase 3's
+# capacity-match defect already demonstrated in this project.
+#
+# **Installed pure-Python, and that is a condition rather than an accident**:
+# no `pyg_lib`, no `torch_scatter`.  Since PyG 2.3 the core message-passing
+# classes run on plain torch, and the compiled extensions have no reliable
+# Windows wheels.  Verified on this machine, 14 Aug 2026:
+#
+#     HGTConv forward AND backward execute; WITH_PYG_LIB=False,
+#     WITH_TORCH_SCATTER=False
+#
+# `graft.graphbuild.encoders.hgt_available()` re-runs that check at import time,
+# and E2 falls back to CompGCN (ICLR 2020, the architecture's named alternate)
+# on plain torch if it ever fails -- recorded as a departure, never silent.
+#
+# E1 (the mandatory GraphMixer-style baseline) imports none of this, so the
+# baseline survives any PyG breakage.
+#
+# `xxhash` is torch_geometric 2.8's own hard import (`hash_tensor`), not a
+# GRAFT choice; pinned so the manifest does not move for a reason nobody picked.
+torch_geometric==2.8.0.post1
+xxhash==4.0.0

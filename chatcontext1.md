@@ -1,9 +1,10 @@
-# Session handoff — GRAFT, Phases 0–3 (+2.5)
+# Session handoff — GRAFT, Phases 0–5 (+2.5)
 
-**Rewritten 11 Aug 2026; amended 13 Aug 2026** after a four-way external audit
-(Phases 0–3 code, Phase 2.5 + Phase 4 plans), an independent citation re-read,
-and the Phase-2.5 spike build. Read this plus `CLAUDE.md` and you can continue
-without re-deriving anything.
+**Rewritten 11 Aug 2026; amended 13–14 Aug 2026** after a four-way external
+audit (Phases 0–3 code, Phase 2.5 + Phase 4 plans), an independent citation
+re-read, the Phase-2.5 spike build, the Phase-4 Stage-A build, and the Phase-5
+build with its own two-source audit (`PHASE5_DECISIONS.md` §7). Read this plus
+`CLAUDE.md` and you can continue without re-deriving anything.
 
 ---
 
@@ -17,12 +18,15 @@ without re-deriving anything.
 | **Phase 2.5** — annotation feasibility spike | **Tooling built and run 13 Aug 2026** (`scripts/phase2_5/`, `data/phase2_5/`): corpus pinned, 58 turns extracted with Qwen2.5-**3B** (ruled deviation from the 7B), G7 span floor passed at 0.85, items + guidelines + machine-assisted bootstrap labels exist. **The Gate-0 item-8 number still needs the human timed pass** — `PHASE2_5_DECISIONS.md` §5. |
 | **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** A 13 Aug audit added five harness guards (tv_threshold pinned, truncation refused, realized-spend instrument clause, probe-β check, `budget_for` 52 evals) — all latent-hazard fixes, no result invalidated. |
 | **Phase 4** — five Tier-1 search methods + Gate-3 harness | **Stage A built, green and RUN (13 Aug 2026);** Stage B waits on Phase 3's matrix, as G7's two-stage exit requires. `graft/setgen/search/`. **Three sub-decisions of the ruled §6 table were overturned by measurement** — `PHASE4_DECISIONS.md` §1. |
-| **Phase 5** — Stage A ingestion | **Planned 13 Aug 2026** (`GRAFT_PHASE5_BUILD.md`, G1–G11, §6 unsigned); no code. Step 0 is the Gate-0 contract draft. The extractor bakeoff (G2) and the corpus sizing memo (G8) are the two measurements that gate everything else. |
-| Phases 6–11 | Not started. |
+| **Phase 5** — Stage A ingestion | **Built, green, and run (14 Aug 2026)** — `graft/ingest/`, Gate-0 contract drafted 9/10, **G2 bakeoff frozen on candidate B** (1.7% parse failure vs A's 23.3%), **live pilot 248 turns end to end**. Every machine-measurable exit criterion met. A two-source audit confirmed 19 defects + 1 found in-house — two of them blockers in the bakeoff harness itself — all fixed and regression-tested (`PHASE5_DECISIONS.md` §7); the bakeoff's first run was aborted and its instrument corrected before anything froze (§1.6), and the token cap was raised once more under a written-down prediction after a `no_survivor` verdict (§2.1a/b). **Remaining: four human audit worksheets + Gate-0 item 8.** Two findings to carry forward: **a third of extracted assertions fail to ground** (108/333) and the **quarantine rate is 32%** — the NLI audit is the instrument that separates "extractor overreaches" from "0.8 is strict". |
+| **Phase 6** — Stage B graph construction | **Built, audited, green (14 Aug 2026)** — `graft/graphbuild/` (validate, items, candidates, embed, features, encoders, decoders, loaders, llmlink, commit, standin, gate1). A two-source audit confirmed **21 defects (2 blockers)**, refuted 8; all fixed and regression-tested (`PHASE6_DECISIONS.md` §7). Smoke run rebuilt: 187 D1 items (177 with construction-time candidates), 120 D2 items, 130 edges, corruption audit green over real commits. **The trainer (P6.11) is now built** and the decisive path exists; a review of it found 9 more defects (2 blockers — gold labels joined by a non-durable id, and every LINK label naming the spike's entity namespace), all fixed (`PHASE6_DECISIONS.md` §8). Gate 1 waits on the Gate-0 signature + D2 labels; **D1's link labels need re-annotating against the current batch**. |
+| **Phase 7** — Stage C retrieval | **Planned 14 Aug 2026** (`GRAFT_PHASE7_BUILD.md`, G1–G10, §6 unsigned); no code. Five training-free channels + fusion first (no GPU), the ≤8M GNN scorer last; the two-tier recall instrument (Tier A runs today, Tier B waits on the Gate-0 signature); `pool_cap = 64` inherited frozen. |
+| Phases 8–11 | Not started. |
 
-**639 tests, ~2 min 40 s, all passing. Nothing skipped, nothing xfailed.**
+**958 tests, ~3 min, all passing. Nothing skipped, nothing xfailed.**
 The 13 Aug audit round is recorded in the R17/R18 retirements of
-`scripts/check_plan_consistency.py` and in each phase's DECISIONS file.
+`scripts/check_plan_consistency.py`; the Phase-5 audit added R19. Each phase's
+DECISIONS file carries its own record.
 
 **Three things to know before touching Phase 4** (all in `PHASE4_DECISIONS.md` §1,
 all measured, none reading a learner result):
@@ -120,6 +124,19 @@ written in, and none of the learner files makes sense without it.
 ---
 
 ## 3. What to do next
+
+**Four tracks, three of them independent** (updated 14 Aug 2026):
+
+| Track | Next action | Blocks |
+|---|---|---|
+| **A — Phase 3** | the calibration gate below (~12 GPU-h at rung 0) | Gate 2, Phase 4 Stage B (S5's row), Phase 9 |
+| **B — Phase 5 GPU** | **done** — bakeoff frozen (candidate B), live pilot run. Only a scope-scale re-ingestion remains, and that waits on item 9 | — |
+| **C — human** | the Phase-2.5 timed pass + repass (Gate-0 item 8); the four Phase-5 audit worksheets in `artefacts/phase5_pilot/` | **signing `GATE0_CONTRACT.md`**, and therefore Gate 1 |
+| **D — Phase 6** | **code complete + twice audited.** Next: nothing in code — Gate 1 needs the Gate-0 signature, D2 labels, and D1 link labels re-annotated against the current 187-item batch | a decisive Gate 1 |
+
+A and D contend for the same 8 GB GPU and cannot run simultaneously; C is human
+time and contends with nothing. Track D's build is mostly CPU work until its
+step 4.
 
 **Step 6, the calibration gate. It is a hard stop and it is the only thing
 standing between here and a Gate-2 result.**

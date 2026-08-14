@@ -5,7 +5,7 @@
 Date: 13 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 5, fixes F2/F7/F9) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2 §3.1, §4.4, Gate 0) · `PHASE0_DECISIONS.md` §2.5/§2.10 · `PHASE1_DECISIONS.md` §3.2/§5.4 · `PHASE2_5_DECISIONS.md` (the spike's measurements)
 Effort: ~1.5–2 weeks solo **[ANALYSIS]** — an estimate; the extractor bakeoff (G2) and the pilot run are the schedule risks.
-Status: **§6 unsigned. Nothing here has run.** The Phase-2.5 human timed pass (Gate-0 item 8) is *parallel* work, not a blocker for building — but it is a blocker for **Gate 1**, and §0 says where that dependency bites.
+Status: **built, green and run (14 Aug 2026) — `PHASE5_DECISIONS.md` is the record and wins any conflict with this file.** §6 is **adopted**, with decision 2 frozen by measurement on **candidate B** and decisions 3/4 amended by measurement (rows below carry the amendments). The bakeoff's first run was aborted and its instrument corrected before anything froze (§G2, decisions §1.6); the re-run froze B at 1.7% parse failure, and the live pilot ran 248 turns end to end. **Every machine-measurable exit criterion is met.** What remains is human: the four audit worksheets (§5 of the decisions file) and the Phase-2.5 timed pass (Gate-0 item 8) — *parallel* work, not a blocker for building, but a blocker for **Gate 1**, and §0 says where that dependency bites.
 
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 
@@ -97,13 +97,16 @@ configurations, none free:
 | Candidate | For | Against |
 |---|---|---|
 | **A: 3B + bounded repair-retry** (greedy parse → on failure, one reprompt with the parse error + "JSON only", then count) | no new dependency; measured stack | retries cost throughput; failure floor unknown |
-| **B: 3B + grammar-constrained decoding** | parse failure → 0 by construction | a new dependency (boring-stack rule: written justification required); constrained decoding can degrade content quality |
+| **B: 3B + grammar-constrained decoding** | never *malformed*: every step is a valid JSON prefix. *(Corrected 13 Aug 2026, by measurement: the original cell claimed the parse-failure rate is zero by construction, which is false under a finite token budget — nothing makes the object **close** within `max_new_tokens`, and a truncated object does not parse. B's 3-turn check produced exactly that failure, cause `truncated_at_token_cap`. The guarantee is prefix validity, not completion, and the truncation failure mode is shared with A.)* | a new dependency (boring-stack rule: written justification required); constrained decoding can degrade content quality |
 | **C: 7B-4bit + repair-retry** | the architecture's own pick; larger models emit valid JSON more reliably | unmeasured on this GPU (F7's original question); ~2× slower |
 
 **Decision — a predeclared bakeoff, run once, then frozen.** On a fixed
 60-turn calibration slice (the spike's 58-turn sample + 2 held-back turns,
-disjoint from the pilot's audit sample), all three candidates run with the same
-prompt and the pick is made by a rule declared **before** the run:
+disjoint from the pilot's audit sample — enforced in code: the slice definition
+lives in `graft.ingest.bakeoff.calibration_slice` and the pilot's span/NLI
+audit draws exclude any assertion touching a slice turn), all three candidates
+run with the same prompt and the pick is made by a rule declared **before** the
+run:
 
 1. parse-failure rate **< 2%** (hard filter);
 2. among survivors, highest **grounded assertions per minute**;
@@ -115,6 +118,25 @@ testing authority, Dror et al. ACL 2018, covers test selection; fixing the rule
 in advance is the project's own **[ANALYSIS]** rule). The winner's model id,
 revision hash, quantization, prompt SHA and decoding config are frozen in §6
 and stamped into every run manifest (G11).
+
+**The first run (13 Aug 2026) was aborted and the instrument corrected before
+anything froze** (`pins.EXTRACTOR` was still `None`; the aborted artefact is
+preserved as `artefacts/phase5_bakeoff_AB.json`). Four corrections, all
+measured, recorded in `PHASE5_DECISIONS.md` §1.6: the harness windowed one flat
+60-turn list across ten different users' conversations (71% of context turns
+were foreign) — the slice is now grouped per conversation with the production
+context recipe, rolling summary included; the unclipped *m* = 10 window over
+essay-length turns measured 5,017 input tokens/turn and overflowed the 8 GB
+card — context turns are now head-clipped (`CONTEXT_CLIP_CHARS`, decision 4's
+declared adaptation); `max_new_tokens` 600 was inferred to be truncating every
+failing generation and was raised to 1,024, then — after the run at 1,024
+returned `no_survivor` — to **2,048**, under a prediction written down *before*
+the re-run and confirmed by it (decisions §2.1a/§2.1b); and truncations are now
+counted per generation, because a repaired first-attempt truncation vanished
+from the per-turn count. **The inference about the cap was itself falsified**:
+candidate A's failures turned out to be 14 malformed against 0–1 truncated, so
+the raise was right for the stated reason (a cap is a runaway guard, never a
+content limit) and wrong about A. The rule itself is unchanged throughout.
 
 ### G3 — "Asynchronously refreshed" summary vs. the boring stack [ANALYSIS]
 
@@ -479,14 +501,21 @@ on, and it must not wait on GPU work.
 
 ---
 
-## 6. Decisions to lock before writing code — **UNSIGNED**
+## 6. Decisions to lock before writing code — **ADOPTED 14 Aug 2026**
+
+*The build adopted all fourteen rows as recommended. Four carry amendments made
+**by measurement**, each recorded in `PHASE5_DECISIONS.md` with what was
+measured and when — rows 2, 3 and 4 below, plus the ruling that withdrew
+candidate C before the run (§1.1). Every amendment landed while
+`pins.EXTRACTOR` was still `None`, i.e. before the value it influences was
+frozen.*
 
 | # | Decision | Recommended | Cost if changed later |
 |---|---|---|---|
 | 1 | Gate-0 threshold (item in the contract) | manual span-support precision ≥ **0.90** / 50-assertion audit, protocol as G1 declares | Phase-6 training data quality floor moves; ceiling 1 reads differently |
-| 2 | Extractor config | **the G2 bakeoff winner**, by the predeclared rule (< 2% parse failure → grounded assertions/min → span sub-audit); candidates A/B/C as tabled | re-run the pilot; every downstream extraction artefact regenerates |
-| 3 | Summary cadence | synchronous, `s = 10` turns, ≤ 512 tokens, cached not logged (G3) | context recipe changes → extraction outputs change → re-pilot |
-| 4 | Context window | `m = 10` previous turns + summary (Mem0's recipe, qualified evidence) | same as 3 |
+| 2 | Extractor config | **FROZEN 14 Aug 2026 on candidate B** — Qwen2.5-3B-Instruct @ `aa8e7253`, bf16, greedy, grammar-constrained, no repair policy. The predeclared rule decided it at stage 1: B 1.7% parse failure against A's 23.3%, sole survivor of the < 2% filter. **Candidate C was withdrawn by ruling before the run** (the extractor is 3B, §1.1 of the decisions), and stays in the declared table carrying a `withdrawn` field so the candidate set reads as the one that was declared | re-run the pilot; every downstream extraction artefact regenerates |
+| 3 | Summary cadence | synchronous, `s = 10` turns, ≤ 512 tokens **enforced at generation** (`max_new_tokens=SUMMARY_MAX_TOKENS`; the word-count backstop alone admits ~725 tokens — words ≤ tokens, measured 13 Aug 2026), cached write-through, not logged (G3) | context recipe changes → extraction outputs change → re-pilot |
+| 4 | Context window | `m = 10` previous turns + summary (Mem0's recipe, qualified evidence), **window turns head-clipped to `CONTEXT_CLIP_CHARS = 600` chars** — a declared adaptation, 13 Aug 2026: Mem0's *m* = 10 is over short chat messages, and unclipped LongMemEval essay turns measured 5,017 input tokens/turn, overflowing the 8 GB card (9,515 MB peak, 12× throughput collapse). The current turn is never clipped; grounding resolves against full text | same as 3 |
 | 5 | Grounding ladder | exact → normalised-exact → fuzzy ≥ 0.85 with word-boundary snapping → drop-and-count; rung reported per span (G5) | offsets shift under any change → Phase-6 features and D1 items move |
 | 6 | NLI pin | one DeBERTa-v3-class cross-encoder, id + revision frozen; premise = grounded spans only; audit-not-retune at `tau_nli = 0.8` (G6) | eligibility flips across the corpus; Phase 6 input changes |
 | 7 | Support policy | `strict` (frozen since Phase 0); quarantine causes broken out (F9) | the active graph's contents change — Phase 6 onward re-runs |
@@ -514,6 +543,13 @@ reads, one implementation, same as every other shared quantity in this project.
 
 * The event log with **eligible** assertions carrying resolved multi-span
   provenance, four flags and eligibility verdicts — Stage B's entire input.
+* **Mentions, as `mention.add` log events** (`span_id`, `turn_id`, grounded
+  text, rung), read back with `graft.ingest.pipeline.mentions_of`. Not graph
+  state — no `Mention` node exists until D1 decides — and deliberately outside
+  `GRAPH_OPS`, so replay ignores them. *(Added 14 Aug 2026: before this, a
+  mention survived only as a bare `span.add` plus a per-turn count,
+  indistinguishable from a quote span, and D1's items were unrecoverable from
+  the permanent record.)*
 * `GATE0_CONTRACT.md` signed (item 8 filled from the human pass) — Gate 1's
   entry condition.
 * The D1/D2 item-derivation path (the 2.5 tooling, upgraded to read Phase-5

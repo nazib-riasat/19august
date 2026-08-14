@@ -205,8 +205,21 @@ def test_exact_mode_refuses_something_that_carries_no_obligations():
         parse("who did Alice work for in 2019?", mode="exact")
 
 
-def test_learned_mode_raises_until_phase_five():
-    with pytest.raises(NotImplementedError, match="Phase-5 extractor"):
+def test_learned_mode_raises_until_a_parser_is_registered():
+    """Phase 5 turned "raises until the extractor exists" into "raises until one
+    is installed" (`GRAFT_PHASE5_BUILD.md` P5.7).
+
+    The refusal is the load-bearing half and it survives: ``graft.core`` may not
+    import anything that could reach a model, so the learned parser arrives
+    through a registration slot rather than an import, and an unregistered slot
+    must still refuse rather than quietly giving a caller exact-mode behaviour on
+    a real question.  ``graft/tests/test_ingest_oblparse.py`` covers the
+    registered path.
+    """
+    from graft.core.obligations import set_learned_parser
+
+    set_learned_parser(None)
+    with pytest.raises(NotImplementedError, match="no learned obligation parser"):
         parse("anything", mode="learned")
 
 
