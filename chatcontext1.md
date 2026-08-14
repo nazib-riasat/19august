@@ -1,6 +1,6 @@
 # Session handoff — GRAFT, Phases 0–5 (+2.5)
 
-**Rewritten 11 Aug 2026; amended 13–14 Aug 2026 (last: the annotation pass, §3a)** after a four-way external
+**Rewritten 11 Aug 2026; amended 13–15 Aug 2026 (last: Gate-0 item 8 closed, §3a)** after a four-way external
 audit (Phases 0–3 code, Phase 2.5 + Phase 4 plans), an independent citation
 re-read, the Phase-2.5 spike build, the Phase-4 Stage-A build, and the Phase-5
 build with its own two-source audit (`PHASE5_DECISIONS.md` §7). Read this plus
@@ -15,7 +15,7 @@ build with its own two-source audit (`PHASE5_DECISIONS.md` §7). Read this plus
 | **Phase 0** — scaffold, schemas, event log, ledger, config | **Built, green.** All 13 exit criteria. |
 | **Phase 1** — `H`, `U`, `R`, masks, obligations, `d(s)` | **Built, green.** All 16 exit criteria. |
 | **Phase 2** — ProofLattice + exact evaluator | **Built, green.** All 21 exit criteria. |
-| **Phase 2.5** — annotation feasibility spike | **Tooling built and run 13 Aug 2026** (`scripts/phase2_5/`, `data/phase2_5/`): corpus pinned, 58 turns extracted with Qwen2.5-**3B** (ruled deviation from the 7B), G7 span floor passed at 0.85, items + guidelines + machine-assisted bootstrap labels exist. **The Gate-0 item-8 number still needs the human timed pass** — `PHASE2_5_DECISIONS.md` §5. |
+| **Phase 2.5** — annotation feasibility spike | **Tooling built and run 13 Aug 2026** (`scripts/phase2_5/`, `data/phase2_5/`): corpus pinned, 58 turns extracted with Qwen2.5-**3B** (ruled deviation from the 7B), G7 span floor passed at 0.85, items + guidelines + machine-assisted bootstrap labels exist. **Item 8 answered 15 Aug 2026 — GO** (§3a): 16.7 h for 3,625 items, D1 κ 0.829 / D2 κ 0.813, both real inter-annotator agreement. Guidelines v1 supersede v0; the spike's own batches are archived, their candidate ids having resolved to nothing in the real graph. |
 | **Phase 3** — 9 learner arms + Gate-2 harness | **Code complete, uncalibrated.** Steps 1–5 and 7–10 built and green; **step 6, the calibration gate, has not run.** A 13 Aug audit added five harness guards (tv_threshold pinned, truncation refused, realized-spend instrument clause, probe-β check, `budget_for` 52 evals) — all latent-hazard fixes, no result invalidated. |
 | **Phase 4** — five Tier-1 search methods + Gate-3 harness | **Stage A built, green and RUN (13 Aug 2026);** Stage B waits on Phase 3's matrix, as G7's two-stage exit requires. `graft/setgen/search/`. **Three sub-decisions of the ruled §6 table were overturned by measurement** — `PHASE4_DECISIONS.md` §1. |
 | **Phase 5** — Stage A ingestion | **Built, green, and run (14 Aug 2026)** — `graft/ingest/`, Gate-0 contract drafted 9/10, **G2 bakeoff frozen on candidate B** (1.7% parse failure vs A's 23.3%), **live pilot 248 turns end to end**. Every machine-measurable exit criterion met. A two-source audit confirmed 19 defects + 1 found in-house — two of them blockers in the bakeoff harness itself — all fixed and regression-tested (`PHASE5_DECISIONS.md` §7); the bakeoff's first run was aborted and its instrument corrected before anything froze (§1.6), and the token cap was raised once more under a written-down prediction after a `no_survivor` verdict (§2.1a/b). **Remaining: four human audit worksheets + Gate-0 item 8.** Two findings to carry forward: **a third of extracted assertions fail to ground** (108/333) and the **quarantine rate is 32%** — the NLI audit is the instrument that separates "extractor overreaches" from "0.8 is strict". |
@@ -131,70 +131,86 @@ written in, and none of the learner files makes sense without it.
 |---|---|---|
 | **A — Phase 3** | the calibration gate below (~12 GPU-h at rung 0) | Gate 2, Phase 4 Stage B (S5's row), Phase 9 |
 | **B — Phase 5 GPU** | **done** — bakeoff frozen (candidate B), live pilot run. Only a scope-scale re-ingestion remains, and that waits on item 9 | — |
-| **C — human** | **pass 1 is DONE (14 Aug 2026, annotator Sabbir) — see §3a.** Next: the *second annotator's* re-pass, then κ + go/no-go. Also still open: the four Phase-5 audit worksheets in `artefacts/phase5_pilot/` | **signing `GATE0_CONTRACT.md`**, and therefore Gate 1 |
+| **C — human** | **Gate-0 item 8 is DONE — GO (§3a).** Remaining: **item 9's corpus scope** (a decision, not a measurement), then signature; plus the four Phase-5 audit worksheets in `artefacts/phase5_pilot/` | **signing `GATE0_CONTRACT.md`**, and therefore Gate 1 |
 | **D — Phase 6** | **code complete + twice audited.** Next: nothing in code — Gate 1 needs the Gate-0 signature, D2 labels, and D1 link labels re-annotated against the current 187-item batch | a decisive Gate 1 |
 
 A and D contend for the same 8 GB GPU and cannot run simultaneously; C is human
 time and contends with nothing. Track D's build is mostly CPU work until its
 step 4.
 
-### 3a. The annotation pass — where it stands (14 Aug 2026)
+### 3a. The annotation pass — DONE, Gate-0 item 8 is GO (15 Aug 2026)
 
-**Pass 1 is complete on live batches.** Both decoders, annotator `Sabbir`:
+**Item 8 is measured and the stop condition does not fire.** Four annotators:
+Sabbir and Nazib on D1, Meherin and Sakib on D2.
 
-| | Items | Labels | Rate | Notes |
-|---|---|---|---|---|
-| **D1** | 40/40 (`d1_items_pilot.jsonl`) | 22 C · 9 L · 8 N · 1 D | 180 items/h | 0 |
-| **D2** | 49/49 (`d2_items_pilot.jsonl`) | 43 I · 4 U · 2 S · **0 C** | 99 items/h | 11 |
+| | Required | Measured rate | Hours (slower annotator) |
+|---|---|---|---|
+| **D1** | 625 test + 1,500 train = 2,125 | 228-735 items/h | **9.3 h** |
+| **D2** | 300 test + 1,200 train = 1,500 | 203-352 items/h | **7.4 h** |
+| | | | **16.7 h; 8.4 h each split two ways** |
 
-**Both rates are UPPER BOUNDS and must be reported as such.** Each batch
-included items re-annotated after discussion (3 on D1, then 3 + 7 on D2), and
-D1 was the annotator's third sitting with the task. The unbiased figure comes
-from the second annotator's fresh-eyes pass.
+Costed at the *slower* annotator on each decoder, not the mean. 18.1 h at the
+pessimistic end of the power grid. **No scope reduction is required on
+feasibility grounds.**
 
-**The spike's original batches are retired** to
-`data/phase2_5/labels/superseded/`, with the reason in its README: their
-candidate lists carry *synthetic* ids (`e_08e075c7_000` for D1, `a_…` for D2)
-and **0 of 19 / 0 of 42 exist as real graph objects**. Every LINK label against
-them pointed at a dead namespace. The live batches replace them: D1's
-candidates are real content-derived entity ids accumulated **incrementally**
-(each mention sees only entities created before it — G12), and D2's pairs carry
-real `assertion_id`s from the pilot log.
+**Agreement — item 7, and it took three attempts.**
 
-**Two tooling flags were added to `scripts/phase2_5/annotate.py`:**
+| Attempt | D1 | D2 | What it established |
+|---|---|---|---|
+| v0 guidelines | κ 0.262 | κ 0.179 | **failed.** Five of ten D1 disagreements shared one cause: a rule v0 never stated |
+| v1 guidelines | **κ 0.829** | κ 0.517 | D1 passes; D2's batch was contaminated (16/20 pairs seen by one annotator only) |
+| v1, fresh pair | — | **κ 0.813** | D2 settled, class-varied batch, neither annotator had seen any of it |
 
-* `--items <tag>` reads `d{1,2}_items_<tag>.jsonl` and writes labels tagged with
-  it, so two batches' labels can never be silently mixed. *(It was added, then
-  found not wired into `main()` — one annotation run was wasted on the old batch
-  before that was caught. Fixed.)*
-* `--second-annotator <name>` — a **different person** doing the re-pass. Their
-  labels land under their own name (not as the first annotator's `_pass2`), the
-  report says **inter-annotator agreement** rather than self-agreement, and the
-  2-day calendar gap is **not required and not checked**: independence comes
-  from being two people. This upgrades `GATE0_CONTRACT.md` item 7, whose caveat
-  ("with one person, κ measures self-consistency… say self-agreement and never
-  IAA") no longer applies.
+Both finals are **real inter-annotator agreement between two people**, so
+`GATE0_CONTRACT.md` item 7's old caveat ("say self-agreement, never IAA") no
+longer binds.
 
-**Next, and it is one command each:**
+**A fourth D2 measurement exists on disk and must NOT be quoted.** The
+`*_clean` batch gave raw agreement 0.850 with **κ exactly 0**: one annotator
+used a single label on all 20 items, so chance agreement equalled observed and
+κ collapsed. That is the kappa paradox — zero class variance, not disagreement.
+It is why the decisive D2 run used the class-varied batch instead.
 
-```bash
-python scripts/phase2_5/annotate.py d1 --annotator Sabbir --items pilot     --pass-2 --subset 20 --second-annotator <them>
-python scripts/phase2_5/annotate.py d2 --annotator Sabbir --items pilot     --pass-2 --subset 20 --second-annotator <them>
-python scripts/phase2_5/annotate.py kappa d1 --annotator Sabbir --items pilot     --second-annotator <them>
-```
+**Guidelines v1** (`GUIDELINES_D{1,2}_v1.md`) supersede v0 and carry five rules,
+each followed by the disagreement that produced it. The load-bearing one, which
+v0 never stated: *the candidate list is the graph's memory, not the annotator's*
+— if the entity is in the list, link, regardless of whether you saw it created.
 
-Then compute the go/no-go against `data/phase2_5/power.json`. **Do not compute
-it before the re-pass**: on inflated rates it would over-promise capacity, which
-is the one thing item 8 exists to prevent.
+**Gold sets:** `labels/d{1,2}_labels_adjudicated_*.jsonl`,each row carrying its own
+provenance (`both_agreed` / `adjudicated`). **Caveat recorded in every
+adjudicated row and both guideline docs: the adjudications were
+assistant-derived and human-accepted, not resolved item-by-item by both
+annotators.** Weaker than item 7 specifies.
 
-**A finding that is not about the annotator and should not be filed as one:**
-**zero `CONFLICT` labels in 49 D2 items**, 34 of which were drawn from
-knowledge-update questions *because* that is where conflicts live. The class
-Contribution 1 rests on did not appear once. That is a property of the **pair
-proposer's output**, not of the labelling, and it belongs in the go/no-go and in
-the guidelines-v1 revision. D2's rare classes are the binding constraint on C1
-(`CLAUDE.md` §7), so a pool that does not surface them is a Gate-1 problem
-arriving early — which is what this phase is for.
+**The first attempt is archived, not deleted** —
+`data/phase2_5/archive_pass1_v0/` and `labels/superseded/`, each with a README.
+Its labels are **not** carried into gold: v1 changes the answer to whole classes
+of item (rule 1 alone flips 10 of the original 40 D1 labels), and mixing two
+labelling standards behind one gold column would be worse than having fewer
+labels.
+
+**Two tooling flags on `scripts/phase2_5/annotate.py`:** `--items <tag>` selects
+a named batch so two batches' labels cannot be mixed; `--second-annotator
+<name>` records a different person's pass under their own name, reports
+inter-annotator rather than self-agreement, and drops the 2-day gap check
+(independence comes from being two people). A markdown form
+(`D2_ANNOTATION_FORM.md`) exists for annotators without the CLI — it produces
+labels but **no timing**.
+
+**Two findings that are not about the annotators**, both for Phase 6:
+
+1. **The pair proposer surfaced zero `CONFLICT` across 49 items**, 34 of them
+   knowledge-update by design. D2's rare classes are the binding constraint on
+   C1, so a pool that does not surface them is a Gate-1 problem arriving early.
+2. **A question is stored as an assertion** — *"Can you provide more information
+   on social identity theory?"* appears as claim text in a D2 pair. A question
+   asserts nothing; this is a Stage-A extraction defect polluting the pair pool.
+
+**Item 9's corpus scope is now the only thing between here and signing the
+Gate-0 contract**, and it is a decision, not a measurement: full corpus 1,820
+GPU-h · evidence sessions only 80.8 h · 100 questions 16.2 h · 200 questions
+32.3 h. One constraint already fixed: the knowledge-update evidence sessions are
+in every candidate scope.
 
 ---
 
@@ -291,8 +307,9 @@ than this laptop. Someone has to say which.
 | **L7 is the slowest flow arm to converge** | the calibration gate | measured on `tiny_instance()`, one seed: 0.167 at 20k against GAFlowNet's 0.097. If `N` lands where L7 has not converged, criterion 26 records C3 unsupported for a budget reason. `PHASE3_DECISIONS.md` §2.3 has the three options; option 2 must be ruled **before** step 6 runs. |
 | **Gate-0 re-sign-off** for the β eligibility amendment | formally, Phase 3 | `GRAFT_PHASE2_BUILD.md` §6b, decision-rule procedure, step 2. Has not happened. |
 | **The 0.001 margin** | possibly a regeneration | one main-suite instance clears the `neither` band at β = 4 by 0.001. Both exits cost something; deliberately undecided. `PHASE2_DECISIONS.md` §4.2. |
-| **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | drafted 9/10 (`GATE0_CONTRACT.md`). Item 8's **pass 1 is done** (§3a) and it awaits the second annotator's re-pass, κ, and the go/no-go. Item 9's corpus scope waits on item 8 plus the sizing memo. D1 and D2 still have no off-the-shelf supervision. |
-| **The D2 pair pool surfaced no CONFLICT at all** | D2's rare classes, and therefore C1 | 0 of 49 items, with 34 drawn from knowledge-update questions. A proposer property, not a labelling one (§3a). Feeds the go/no-go and the guidelines-v1 revision. |
+| **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | **all ten items filled; UNSIGNED.** Item 8 measured 15 Aug 2026 — **GO**, 16.7 h, D1 κ 0.829 / D2 κ 0.813 (§3a). **Item 9's corpus scope is the only open item**, and it is a decision, not a measurement. D1 and D2 still have no off-the-shelf supervision. |
+| **The D2 pair pool surfaced no CONFLICT at all** | D2's rare classes, and therefore C1 | 0 of 49 items, with 34 drawn from knowledge-update questions. A proposer property, not a labelling one (§3a) — Phase 6's pair proposer, not Phase 2.5's annotation. |
+| **A question is stored as an assertion** | D2's pair pool, and ceiling 1 | "Can you provide more information on…" appears as claim text in a D2 pair. A question asserts nothing and should not enter a memory graph — a Stage-A extraction defect (§3a). |
 | **Decision 11's tolerance moved; decision 29 is new** | signing off §6 | R13 found the 1% capacity tolerance unachievable by width (the dead block is ~half a width step at every scale), so the criterion is now minimality plus "control never smaller". Decision 29 fixes GRPO's `G = 8`. Both were changed **before** any L6/L7/GAFlowNet result was inspected, which is what §6b's second procedure is about — but neither is signed. |
 | **Three late-found baselines** | plan §5.3 | HyperMem, Chain-of-Memory, *How Memory Management Impacts LLM Agents* — in the library, not in the plan. |
 
