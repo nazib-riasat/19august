@@ -1,0 +1,20 @@
+{"annotator": "Nazib", "item_id": "d2f_0000", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 43.1, "ts": "2026-08-14T20:22:07+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0001", "label": "DUPLICATE", "machine_assisted": false, "note": "Slight chance of being a S", "pass": 1, "seconds": 39.0, "ts": "2026-08-14T20:22:46+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0002", "label": "DUPLICATE", "machine_assisted": false, "note": null, "pass": 1, "seconds": 19.1, "ts": "2026-08-14T20:23:05+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0003", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 13.2, "ts": "2026-08-14T20:23:18+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0004", "label": "INDEPENDENT", "machine_assisted": false, "note": "can be U if different user thing is ignored", "pass": 1, "seconds": 85.0, "ts": "2026-08-14T20:24:43+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0005", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 7.2, "ts": "2026-08-14T20:24:50+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0006", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 6.7, "ts": "2026-08-14T20:24:57+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0007", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 6.7, "ts": "2026-08-14T20:25:04+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0008", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 4.9, "ts": "2026-08-14T20:25:09+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0009", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 6.1, "ts": "2026-08-14T20:25:15+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0010", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 16.9, "ts": "2026-08-14T20:25:32+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0011", "label": "DUPLICATE", "machine_assisted": false, "note": "can be a S too", "pass": 1, "seconds": 29.4, "ts": "2026-08-14T20:26:01+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0012", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 7.5, "ts": "2026-08-14T20:26:09+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0013", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 5.0, "ts": "2026-08-14T20:26:14+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0014", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 5.6, "ts": "2026-08-14T20:26:19+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0015", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 7.1, "ts": "2026-08-14T20:26:26+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0016", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 9.0, "ts": "2026-08-14T20:26:35+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0017", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 14.9, "ts": "2026-08-14T20:26:50+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0018", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 4.3, "ts": "2026-08-14T20:26:54+00:00"}
+{"annotator": "Nazib", "item_id": "d2f_0019", "label": "SUPERSEDES", "machine_assisted": false, "note": "might be a U too", "pass": 1, "seconds": 18.8, "ts": "2026-08-14T20:27:13+00:00"}

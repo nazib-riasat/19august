@@ -1,0 +1,96 @@
+﻿decoder,item_id,sabbir,nazib,AGREED_LABEL,REASON,RULE_FOR_GUIDELINES,detail,candidates,context
+d1,d1p_0004,CREATE_NEW_ENTITY,LINK_EXISTING(903c2612de788a5b),LINK_EXISTING,Its own entity is in the candidate list; the batch is a sample so it was created by an earlier mention you never saw.,"If the mention's entity is in the candidate list and is the same thing, LINK -- regardless of whether you personally saw it created.",mention=Japanese Alps Visitor Center || self_in_candidates=True,0:japanese alps visitor center | 1:japanese alps | 2:nagano | 3:hakuba valley | 4:gitzo | 5:matsumoto | 6:manfrotto mt057cxpro4 | 7:yoga apps | 8:nikon z6 | 9:shoe rack,"I'm planning to visit the Japanese Alps Visitor Center and then head to Matsumoto Castle, followed by a stroll along Nawate Street. I'll also try to squeeze in a visit to the Matsumoto Folkcraft Museum and Zenko-ji Temple if time permits. Do you think I should prioritize the castle or the temple, considering my interest in traditional Japanese culture and history?"
+d1,d1p_0010,CREATE_NEW_ENTITY,LINK_EXISTING(0f8a0338e4bdbf92),LINK_EXISTING,Same rule: 'peace lily' is already in its candidate list.,,mention=peace lily || self_in_candidates=True,0:peace lily | 1:cedar shoe tree | 2:massage roller | 3:really right stuff | 4:occasion | 5:tripod | 6:yoga mat | 7:color | 8:a mixture of water and fertilizer | 9:minato mirai 21,"I'm also wondering, how often should I mist my peace lily? I've been misting my fern every other day, but I'm not sure if that's suitable for my peace lily as well."
+d1,d1p_0012,CREATE_NEW_ENTITY,LINK_EXISTING(99654fe5ade64278),LINK_EXISTING,Same rule: the bag is already in its candidate list.,,mention=Lowepro ProTactic 450 AW || self_in_candidates=True,0:lowepro protactic 450 aw | 1:think tank urban disguise 40l,"Great choices! Both the Lowepro ProTactic 450 AW and the Think Tank Urban Disguise 40L are high-quality camera bags that are popular among photographers. Here's a breakdown of their pros and cons to help you make a more informed decision:
+
+**Lowepro ProTactic 450 AW:**
+
+Pros:
+
+1. **Durability**: The ProTactic 450 AW is built like a tank, with a rugged, weather-resistant design that can withstand harsh environments.
+2. **Customizable compartments**: The bag features adjustable dividers and modular compartments, allowing you to tailor the layout to your specific gear needs.
+3. **Comfortable carrying**: The bag has a comfortable, padded shoulder harness and waist belt, making it suitable for long hikes or extended shoots.
+4. **Weather protection**: The bag features a built-in rain cover and weather-resistant zippers to keep your gear dry in wet conditions.
+5. **Large capacity**: The 450 AW can fit a lot of gear, including a 15-inch laptop and a tablet.
+
+Cons:
+
+1. **Bulkier design**: The ProTactic 450 AW is a larger, more rugged bag, which may not be ideal for urban or travel photography where a more discreet bag is preferred.
+2. **Heavier weight**: The bag's rugged design and weather-resistant materials make it heavier than some other options.
+3. **Limited style options**: The ProTactic 450 AW has a more utilitarian design, which may not appeal to photographers who want a more stylish or fashionable bag.
+
+**Think Tank Urban Disguise 40L:**
+
+Pros:
+
+1. **Urban design**: The Urban Disguise 40L has a sleek, urban design that blends in with city environments, making it ideal for travel, street, or documentary photography.
+2. **Lightweight and compact**: The bag is designed to be lightweight and compact, making it easy to carry around all day.
+3. **Multiple compartments**: The bag features multiple compartments and pockets, including a dedicated laptop sleeve and tablet pocket.
+4. **Comfortable carrying**: The Urban Disguise 40L has a comfortable, padded shoulder strap and handle, making it easy to carry.
+5. **Style options**: Think Tank offers the Urban Disguise 40L in several color options, allowing you to choose a style that suits your taste.
+
+Cons:
+
+1. **Smaller capacity**: The Urban Disguise 40L has a smaller capacity than the ProTactic 450 AW, which may limit the amount of gear you can carry.
+2. **Less weather protection**: While the bag is water-resistant, it doesn't have the same level of weather protection as the ProTactic 450 AW.
+3. **Less customizable**: The Urban Disguise 40L has a more fixed compartment layout, which may not be as customizable as the ProTactic 450 AW.
+
+Consider the following questions to help you make a decision:
+
+* Do you prioritize durability and weather protection, or a more stylish, urban design?
+* How much gear do you need to carry, and do you need a bag with a large capacity?
+* Are you willing to compromise on style for a more functional, rugged design?
+* Do you plan to use the bag for hiking or outdoor photography, or mostly for urban, travel, or street photography?
+
+Ultimately, the choice between the Lowepro ProTactic 450 AW and the Think Tank Urban Disguise 40L depends on your specific needs and preferences."
+d1,d1p_0014,CREATE_NEW_ENTITY,LINK_EXISTING(9a3b5a87fd4f1393),LINK_EXISTING,Same rule: the tripod is already in its candidate list.,,mention=Manfrotto MT057CXPRO4 || self_in_candidates=True,0:manfrotto mt057cxpro4 | 1:lowepro protactic 450 aw | 2:nikon d5600 | 3:think tank urban disguise 40l,"That's really helpful, thanks! I'll definitely consider the Manfrotto MT057CXPRO4. By the way, I've been thinking about getting a remote shutter release for my camera. Do you know if there are any good options out there?"
+d1,d1p_0015,NON_ENTITY,CREATE_NEW_ENTITY,NON_ENTITY,"'remote flash triggers' is a generic product category, not one specific trigger the user owns or names.",A generic product CATEGORY is NON_ENTITY; a specific named product or a possession the user refers to is an entity.,mention=remote flash triggers || self_in_candidates=False,0:lowepro protactic 450 aw | 1:tripod | 2:manfrotto mt057cxpro4 | 3:nikon d5600 | 4:neutral density filter | 5:think tank urban disguise 40l | 6:gitzo | 7:really right stuff,"How does the weight of the tripod affect the camera's stability, and are there any specific features I should look for in a tripod head? By the way, I've been getting some great portrait shots with the remote flash triggers I got from that workshop."
+d1,d1p_0017,CREATE_NEW_ENTITY,LINK_EXISTING(a217642bee8da42d),LINK_EXISTING,Same rule: the sneakers are already in the candidate list.,,mention=Vans Old Skool sneakers || self_in_candidates=True,0:vans old skool sneakers | 1:black converse chuck taylor all star sneakers | 2:converse chuck taylor all star sneakers | 3:shoe closet | 4:white adidas superstars | 5:shoe rack | 6:brown leather boots | 7:think tank urban disguise 40l | 8:cedar shoe tree | 9:converse,"**Vans Old Skool Sneakers:**
+
+Vans Old Skool sneakers are a classic choice, and for good reason! They're known for their comfort, durability, and timeless style. Here's what you can expect:
+
+**Comfort:**
+
+* Vans Old Skool sneakers are generally considered very comfortable, with a soft, cushioned insole and a relaxed fit.
+* The shoes feature a low-top design, which allows for easy on and off, and provides a comfortable fit around the ankle.
+* The canvas or suede upper is breathable, keeping your feet cool and dry.
+
+**Features:**
+
+* The Old Skool design is iconic, with a simple, laid-back style that's perfect for casual wear.
+* The shoes feature a lace-up closure and a gum rubber outsole, which provides good grip and traction.
+* Vans is known for their attention to detail, and the Old Skool sneakers are no exception, with quality materials and construction throughout.
+
+**Worth the investment:**
+
+* Vans Old Skool sneakers are a great investment for anyone looking for a comfortable, stylish, and durable pair of shoes.
+* They're perfect for casual wear, and can be dressed up or down depending on the occasion.
+* With proper care, Vans Old Skool sneakers can last for many years, making them a great value for the price.
+
+**Tips:**
+
+* If you're new to Vans, you might want to try on a pair before buying to ensure the best fit.
+* Consider the color and material you want, as Vans offers a range of options for the Old Skool sneakers.
+* Take care of your Vans by cleaning them regularly and storing them properly to extend their lifespan.
+
+Overall, Vans Old Skool sneakers are a great choice for anyone looking for a comfortable, stylish, and durable pair of shoes. They're a classic design that's hard to go wrong with, and they're definitely worth the investment!"
+d1,d1p_0018,NON_ENTITY,LINK_EXISTING(c2470c71bac6fc02),NON_ENTITY,"Generic noun, and its entity is NOT in the candidate list -- Nazib's LINK would have merged it into something else.",,mention=shoe rack || self_in_candidates=False,0:shoe closet | 1:tripod | 2:brown leather boots | 3:converse | 4:white adidas superstars | 5:think tank urban disguise 40l | 6:black converse chuck taylor all star sneakers | 7:converse chuck taylor all star sneakers | 8:lowepro protactic 450 aw and the think tank urban disguise 40l | 9:full-frame camera body,"What's the best way to organize my shoe rack to make it easy to find the pair I need? Should I sort them by type, color, or occasion?"
+d1,d1p_0020,DEFER,NON_ENTITY,NON_ENTITY,"'data preparation steps' is an abstract procedure, not a referable thing. DEFER is for a real referent you cannot yet identify.","Abstract noun phrases (procedures, qualities, topics) are NON_ENTITY. DEFER is only for a SPECIFIC referent whose identity a later turn resolves.",mention=data preparation steps || self_in_candidates=False,0:customer data | 1:clustering analysis | 2:submitting the petition and supporting documents | 3:biometric services appointment | 4:optimal number of clusters | 5:k-means | 6:green card application process | 7:inadmissibility process | 8:elbow method | 9:color,I'll definitely take those data preparation steps into consideration. I've also been thinking about how to visualize my data to identify patterns or structures that might help me decide on the number of clusters. Do you have any recommendations on what types of plots or visualizations I should use to visualize my customer data?
+d1,d1p_0021,CREATE_NEW_ENTITY,NON_ENTITY,NON_ENTITY,"A research topic, not an entity -- same abstract-noun rule.",,mention=consumer behavior and social media || self_in_candidates=False,0:clustering analysis | 1:customer data | 2:financial aspect | 3:k-means | 4:case competition presentation | 5:the alice network | 6:visualize my data | 7:optimal number of clusters | 8:data visualization tools | 9:scatter plots,"I'm looking for some research on consumer behavior and social media. I recently presented a poster on my research on the effects of social media influencers on consumer purchasing decisions at an academic conference on consumer psychology, and I'm looking to expand on that research. Do you have any recent studies or papers on this topic that you can recommend?"
+d1,d1p_0022,NON_ENTITY,CREATE_NEW_ENTITY,NON_ENTITY,'authenticity in establishing credibility' is a quality/concept -- same abstract-noun rule.,,mention=authenticity in establishing credibility || self_in_candidates=False,0:credibility and trust factors mentioned in the systematic review by hussain and ali | 1:consumer behavior and social media | 2:inadmissibility process | 3:case competition presentation | 4:submitting the petition and supporting documents | 5:data preparation steps | 6:mythology-inspired books | 7:non-fiction books | 8:full-frame camera body | 9:the alice network,"I'm particularly interested in the role of authenticity in establishing credibility. Can you provide more information on how influencers can demonstrate authenticity on social media, and how consumers perceive authenticity in influencer marketing?"
+d2,d2p_0001,INDEPENDENT,SUPERSEDES,INDEPENDENT,Yoga strap vs thicker mat -- different objects. Nothing is replaced.,SUPERSEDES requires the SAME fact updated. Two different objects are INDEPENDENT however similar the advice sounds.,cross_session=False overlap=0.057,,"A: A yoga strap can be a very useful tool to have, especially if you're just starting out or if you're working on deepening your stretches.
+B: A thicker mat can definitely provide more cushioning and support, which can help alleviate discomfort and pain."
+d2,d2p_0005,INDEPENDENT,DUPLICATE,DUPLICATE,Both are the user stating the same travel plan for the same trip; B restates A.,"Same speaker restating the same fact = DUPLICATE, even when the wording differs.",cross_session=False overlap=0.219,,"A: I'm planning to visit the Japanese Alps Visitor Center and then head to Matsumoto Castle, followed by a stroll along Nawate Street.
+B: I am looking forward to visiting the Japanese Alps Visitor Center and learning more about the region's history and culture."
+d2,d2p_0006,INDEPENDENT,DUPLICATE,INDEPENDENT,Normalising data and encoding categorical features are two different preprocessing steps.,,cross_session=False overlap=0.056,,"A: Normalize or scale your data to ensure that all features have the same weightage in the clustering algorithm. This is especially important when features have different units or scales.
+B: Transform categorical features into numerical features using techniques like one-hot encoding or label encoding."
+d2,d2p_0009,INDEPENDENT,DUPLICATE,INDEPENDENT,A question about bags vs a statement about shooting style -- different facts.,,cross_session=False overlap=0.125,,"A: Do you think either of these bags would be good for carrying my Nikon D5600 and a few lenses, including the 50mm prime?
+B: I'm mostly using my camera for portrait and low-light photography, so I think I'll need a bag that can protect my gear well."
+d2,d2p_0013,INDEPENDENT,CONFLICT,INDEPENDENT,Motivation on Sundays and Fitbit usage share no proposition; nothing contradicts.,CONFLICT requires the two claims to assert incompatible things about the SAME fact. Sharing a topic is not conflict.,cross_session=True overlap=0.0,,"A: I'm happy to help you with staying motivated on lazy Sundays.
+B: I've been using my Fitbit Charge 3 for 9 months now."
+d2,d2p_0022,INDEPENDENT,SUPERSEDES,INDEPENDENT,Old kit lens issues and acquiring a new 50mm are both true at once; neither retires the other.,,cross_session=False overlap=0.069,,"A: I've been having some issues with my old 18-55mm kit lens, and I've been relying on manual focus lately.
+B: I recently got a new 50mm prime lens, which has been working out great."
+d2,d2p_0023,DUPLICATE,CONFLICT,DUPLICATE,"Two assistant statements praising Matsumoto for the same reasons -- restatement, not disagreement.",,cross_session=False overlap=0.214,,"A: Matsumoto is a wonderful base for exploring the Japanese Alps and experiencing traditional Japanese culture.
+B: Matsumoto is a treasure trove of traditional Japanese architecture and history. Here are some must-visit spots to add to your itinerary:"
+d2,d2p_0024,INDEPENDENT,DUPLICATE,INDEPENDENT,User reports wearing the sneakers; assistant expresses pleasure. Assistant echo is not a duplicate of the user.,An assistant echoing or endorsing the user is INDEPENDENT -- different speakers asserting different things.,cross_session=False overlap=0.233,,"A: I've worn my new black Converse Chuck Taylor All Star sneakers four times already, including to my friend's birthday party last Saturday.
+B: I'm thrilled to hear that you're enjoying your new black Converse Chuck Taylor All Star sneakers! They're a great addition to any shoe collection, and it's wonderful that you've already worn them four times."

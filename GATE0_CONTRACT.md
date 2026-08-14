@@ -8,7 +8,9 @@ Parent: research plan §7 (items 1–10), §2.4 (predeclared metrics), §6.3/§6
 (ceilings and metric groups) · `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (fixes F1,
 F2, F8, F9) · `GRAFT_PHASE5_BUILD.md` P5.0 · `PHASE2_5_DECISIONS.md` (item 8's
 measurement) · `Research papers/INDEX.md` §7 (the dataset selection)
-Status: **DRAFT — nine of ten items filled, item 8 pending. Unsigned.**
+Status: **DRAFT — all ten items filled. Item 8 measured 15 Aug 2026: GO.
+Item 9's corpus-scope sub-decision is the one thing left before signature.
+UNSIGNED.**
 
 Labels as everywhere else: **[EVIDENCE]** = a named paper supports this, venue
 stated · **[HYPOTHESIS]** = this project tests it · **[ANALYSIS]** = engineering
@@ -193,47 +195,89 @@ fix, recorded in the guidelines revision.
 
 ---
 
-## Item 8 — How many annotations are actually feasible — **PENDING**
+## Item 8 — How many annotations are actually feasible — **MEASURED: GO**
 
-**This is a measurement, not a drafting exercise, and it is the one item that
-cannot be written here.** It is the entire purpose of Phase 2.5.
+Measured 14–15 August 2026 by two annotators (**Sabbir**, **Nazib**) on live
+batches drawn from the Phase-5 pilot log. **The verdict is GO with margin.**
 
-**What is already measured** (`data/phase2_5/power.json`, assumptions printed
-beside every number):
+### The arithmetic
 
-| Requirement | Figure |
-|---|---|
-| D1 `n_test` | McNemar paired-proportion, α = 0.05 two-sided, power 0.8; **123–941** items over δ ∈ {0.05, 0.08} × ψ ∈ {0.1, 0.2, 0.3}; headline planning figure **n ≈ 627** at δ = 0.05, ψ = 0.2 |
-| D1 `n_train` | assumption, **1,500** (ConEL-2-scale head tuning) |
-| D2 `n_test` | rare-class floor of 30 per class → **300** pairs at a 10% over-sampled rare share, **600** at 5% |
-| D2 `n_train` | assumption, **1,200** (DialogRE per-relation order) |
+| | Required (headline) | Measured rate | Hours, one annotator |
+|---|---|---|---|
+| **D1** | 625 test + 1,500 train = **2,125** | 228–735 items/h | **9.3 h** at the *slower* rate |
+| **D2** | 300 test + 1,200 train = **1,500** | 203–352 items/h | **7.4 h** at the *slower* rate |
+| **Total** | 3,625 items | — | **16.7 h**, or **8.4 h each** split two ways |
 
-**What is missing** is the other side of the inequality: `items/hour × hours/week
-× weeks available`, where **items/hour is the human annotator's rate** and no
-machine pass can supply it. The bootstrap labels under
-`data/phase2_5/labels/*claude-fable-5-bootstrap*` exist to exercise the
-guidelines and to give Phase 6 seed labels; every row carries a
-machine-assisted flag and `answers_gate0_item8: false`.
+Conservatively costed throughout: each decoder uses the **slower** annotator's
+rate, not the mean. At the pessimistic end of the power grid (D1 `n_test` = 939)
+the total rises only to **18.1 h**. At 4 h/week each that is under three weeks.
 
-**To fill this cell** — `PHASE2_5_DECISIONS.md` §5:
+**The stop condition does not fire.** No scope reduction is required on
+feasibility grounds.
 
-```bash
-python scripts/phase2_5/annotate.py d1 --annotator <you>
-```
+### Agreement — item 7's measurement
 
-then `d2`; then both again with `--pass-2 --subset 20` after ≥ 2 calendar days;
-then `annotate.py kappa d1 --annotator <you>` and compare items/hour against the
-table above.
+**Both decoders clear the conventional bar (κ ≥ 0.6), on batches with real class
+variance and with no prior exposure.**
 
-**Stop condition, quoted from the plan:** *if item 8 shows the required
-annotation volume is not achievable, reduce scope **here** — by narrowing the
-schema or the question types — not later by quietly weakening the evaluation.*
-The Phase-5 pilot's measured yields size the batches: **0.59 mentions per turn**
-(the spike's rate; a third of the plan's original assumption), so reaching
-D1 `n_test` ≈ 627 needs on the order of a thousand turns of extraction, which
-item 9's scope must cover.
+| Decoder | Annotators | Raw | Chance `pe` | **Cohen's κ** |
+|---|---|---|---|---|
+| **D1** | Sabbir vs Nazib | 0.900 | 0.42 | **0.829** |
+| **D2** | Meherin vs Sakib | 0.950 | 0.732 | **0.813** |
 
----
+Both are *inter-annotator* agreement between two people, not one annotator's
+self-agreement — so this item's original caveat ("with one person κ measures
+self-consistency; say self-agreement and never IAA") **no longer binds**.
+Independence comes from being different people, so the ≥ 2-calendar-day gap is
+neither required nor checked.
+
+**It took three attempts, and the failures are the finding.**
+
+| Attempt | D1 | D2 | What it established |
+|---|---|---|---|
+| v0 guidelines | κ 0.262 | κ 0.179 | **failed** — the guidelines were not producing reproducible labels. Five of ten D1 disagreements shared one cause: a rule v0 never stated |
+| v1 guidelines | **κ 0.829** | κ 0.517 | D1 passes. D2's batch was contaminated — 16 of 20 pairs had been seen by one annotator only |
+| v1, fresh annotators | — | **κ 0.813** | D2 settled, on the class-varied batch, by two annotators with no prior exposure to any of it |
+
+A fourth measurement is recorded and **deliberately not quoted**: a clean but
+class-degenerate D2 batch gave raw agreement 0.850 with **κ = 0** — one annotator
+used a single label on all 20 items, so chance agreement equalled observed
+agreement and κ collapsed. That is the kappa paradox, an artefact of zero class
+variance rather than a disagreement, and it is why the decisive D2 measurement
+was run on the class-varied batch instead.
+
+**Residual disagreements: two on D1, one on D2.** The D1 pair were both the
+category-vs-instance line (`yoga apps`, `customer data`); the D2 one is a genuine
+`DUPLICATE`-vs-`SUPERSEDES` boundary — whether added detail *replaces* an earlier
+claim or merely *restates* it — with both annotators leaving reasoned notes. All
+three are now stated rules in guidelines v1.
+
+### Guidelines and adjudication
+
+`GUIDELINES_D1_v1.md` and `GUIDELINES_D2_v1.md` supersede v0. Every rule in them
+was derived from a measured disagreement, and each is followed by the
+disagreement that produced it. Gold sets are
+`labels/d{1,2}_labels_adjudicated_*.jsonl` — 20 D1 and 40 D2 labels, each row
+carrying its own provenance (`both_agreed` / `adjudicated`).
+
+**One caveat that belongs in the write-up.** The adjudications were
+**assistant-derived and human-accepted** rather than resolved item-by-item by
+both annotators. That is weaker than the two-annotator adjudication this item
+specifies, and it is recorded in every adjudicated row and in both guideline
+documents. The rules applied were themselves written from the annotators' own
+disagreements, so the derivation is mechanical rather than a third opinion — but
+it is not what item 7 describes.
+
+### Two findings that are not about the annotators
+
+* **The pair proposer surfaced no `CONFLICT` at all** — 0 in 49 items on the
+  first batch, 34 of which were knowledge-update by design. D2's rare classes are
+  the binding constraint on Contribution 1, so a pool that does not surface them
+  is a Gate-1 problem, and it arrives here rather than at Gate 1.
+* **A question was stored as an assertion.** `"Can you provide more information
+  on social identity theory?"` appears as claim text in a D2 pair. A question
+  asserts nothing and should not enter a memory graph; this is a Stage-A
+  extraction defect that quietly pollutes the pair pool.
 
 ## Item 9 — Dataset selection, and the corpus scope
 
@@ -328,9 +372,9 @@ level the support gate exists to catch, not to admit.
 | 4 · `sufficiency` / `coverage` | drafted |
 | 5 · splits | drafted |
 | 6 · negatives and balance | drafted |
-| 7 · guidelines, agreement, adjudication | drafted |
-| 8 · **feasible annotation volume** | **PENDING — the Phase-2.5 human timed pass** |
-| 9 · dataset selection and corpus scope | drafted; **the scope sub-decision waits on item 8 + the sizing memo** |
+| 7 · guidelines, agreement, adjudication | **measured.** Guidelines v1 supersede v0, every rule derived from a measured disagreement. Real inter-annotator agreement (two people), not self-agreement. **Caveat recorded**: adjudications were assistant-derived and human-accepted rather than resolved by both annotators |
+| 8 · **feasible annotation volume** | **MEASURED 15 Aug 2026 — GO.** 3,625 items at the slower annotator's rate = **16.7 h**, 8.4 h each split two ways. The stop condition does not fire. Agreement: **D1 κ 0.829, D2 κ 0.813**, both inter-annotator and both clearing the 0.6 bar |
+| 9 · dataset selection and corpus scope | drafted; **the scope sub-decision is the only open item** — item 8 is measured and the sizing memo exists |
 | 10 · primary metrics and protocol | drafted |
 
 **Signed:** — *(unsigned)*

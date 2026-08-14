@@ -1,0 +1,41 @@
+{
+ "generated": "2026-08-14T19:46:49+00:00",
+ "note": "Held back from the gold sets: pass-1's label contradicts guidelines v1 rule 1 and no second annotator covered the item. They need a human decision; an absent label is honest, a sentinel class would not be.",
+ "items": [
+  {
+   "decoder": "d1",
+   "item_id": "d1p_0023",
+   "mention": "social identity",
+   "pass1_label": "CREATE_NEW_ENTITY",
+   "reason": "guidelines v1 rule 1: the mention's own entity is in its candidate list, so CREATE contradicts the rule; only one annotator saw this item, so there is nothing to adjudicate against"
+  },
+  {
+   "decoder": "d1",
+   "item_id": "d1p_0024",
+   "mention": "The Nightingale",
+   "pass1_label": "CREATE_NEW_ENTITY",
+   "reason": "guidelines v1 rule 1: the mention's own entity is in its candidate list, so CREATE contradicts the rule; only one annotator saw this item, so there is nothing to adjudicate against"
+  },
+  {
+   "decoder": "d1",
+   "item_id": "d1p_0026",
+   "mention": "The Alice Network",
+   "pass1_label": "CREATE_NEW_ENTITY",
+   "reason": "guidelines v1 rule 1: the mention's own entity is in its candidate list, so CREATE contradicts the rule; only one annotator saw this item, so there is nothing to adjudicate against"
+  },
+  {
+   "decoder": "d1",
+   "item_id": "d1p_0029",
+   "mention": "parents",
+   "pass1_label": "CREATE_NEW_ENTITY",
+   "reason": "guidelines v1 rule 1: the mention's own entity is in its candidate list, so CREATE contradicts the rule; only one annotator saw this item, so there is nothing to adjudicate against"
+  },
+  {
+   "decoder": "d1",
+   "item_id": "d1p_0035",
+   "mention": "brisket",
+   "pass1_label": "CREATE_NEW_ENTITY",
+   "reason": "guidelines v1 rule 1: the mention's own entity is in its candidate list, so CREATE contradicts the rule; only one annotator saw this item, so there is nothing to adjudicate against"
+  }
+ ]
+}

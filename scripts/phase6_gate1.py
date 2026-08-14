@@ -5,12 +5,11 @@
     python scripts/phase6_gate1.py --decisive     # the real Gate-1 run, when they hold
 
 **Gate 1 cannot run yet, and this script says so rather than approximating it**
-(G1).  Its four entry conditions, as of 14 Aug 2026:
+(G1).  Its four entry conditions, as of 15 Aug 2026:
 
-1. ``GATE0_CONTRACT.md`` signed — **blocked** on item 8 (the Phase-2.5 human
-   timed pass);
-2. human D1 **and** D2 labels — **blocked**; only the spike's machine-assisted
-   bootstrap labels exist, and they carry ``answers_gate0_item8: false``;
+1. ``GATE0_CONTRACT.md`` signed — **blocked** on item 8's go/no-go;
+2. human D1 **and** D2 labels — **met** (the pilot batch: 40 D1 + 49 D2 labels
+   under ``*_Sabbir_pilot.jsonl``, LINK labels in the graph's own namespace);
 3. a frozen extractor — **met** (Phase-5 decision 2, candidate B);
 4. an ingested corpus — **partly met**: the live pilot's 248 turns are real
    Stage-A output, but the item-9 scope corpus is undecided.
@@ -180,26 +179,48 @@ def load_d1_gold(graph_entity_ids: set[str] | None = None) -> tuple[dict[str, st
     # order.  Agreement passes through; a disagreement refuses by name, because
     # resolving it is what the adjudication batch exists for (contract item 7),
     # not something a loader may do by accident.
-    by_item: dict[str, str] = {}
-    labelled_in: dict[str, str] = {}
-    for path in sorted((REPO / "data" / "phase2_5" / "labels").glob("d1_*.jsonl")):
-        if "bootstrap" in path.name:
+    # **Adjudicated labels are read first and override, by design** — contract
+    # item 7 routes a two-annotator disagreement to adjudication, so the
+    # refusal below needs a resolution path a person can actually take: fill
+    # the adjudication batch's blank column and save it as
+    # ``d1_labels_adjudicated*.jsonl``.  Without this, two disagreeing files
+    # would deadlock the loader with a message naming a procedure no code
+    # could consume.
+    adjudicated: dict[str, str] = {}
+    label_paths = sorted((REPO / "data" / "phase2_5" / "labels").glob("d1_*.jsonl"))
+    for path in label_paths:
+        if "adjudicated" not in path.name or "bootstrap" in path.name:
+            continue
+        files.append(path.name)
+        file_rows = [
+            json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+        ]
+        adjudicated.update(read_labels(file_rows))
+
+    by_item: dict[str, str] = dict(adjudicated)
+    labelled_in: dict[str, str] = {item_id: "adjudication" for item_id in adjudicated}
+    for path in label_paths:
+        if "bootstrap" in path.name or "adjudicated" in path.name:
             continue
         files.append(path.name)
         file_rows = [
             json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
         ]
         for item_id, label in read_labels(file_rows).items():
+            if item_id in adjudicated:
+                continue  # the adjudicated decision stands, whatever this file says
             if item_id in by_item and by_item[item_id] != label:
                 raise SystemExit(
                     f"REFUSED: item {item_id} is labelled {by_item[item_id]!r} in "
                     f"{labelled_in[item_id]} but {label!r} in {path.name}. Two "
-                    "annotators disagree; the gold label is the adjudication "
-                    "batch's decision (contract item 7), not filename sort order."
+                    "annotators disagree; adjudicate it (fill the adjudication "
+                    "batch's blank column, save as d1_labels_adjudicated*.jsonl) "
+                    "— gold is never filename sort order."
                 )
             by_item[item_id] = label
             labelled_in[item_id] = path.name
     gold: dict[str, str] = {}
+    gold_source: dict[str, str] = {}
     unresolved = 0
     stale_links: list[str] = []
     for item_id, label in by_item.items():
@@ -225,10 +246,27 @@ def load_d1_gold(graph_entity_ids: set[str] | None = None) -> tuple[dict[str, st
             # generator — they are neither, so they are excluded and named.
             stale_links.append(item_id)
             continue
-        gold[span_id(item["turn_id"], item["start"], item["end"])] = label
+        span = span_id(item["turn_id"], item["start"], item["end"])
+        if span in gold and gold[span] != label:
+            # **The item-level refusal cannot see this case**: two item
+            # *generations* assign different item_ids to the same span, so two
+            # batches' labels for one mention never collide on item_id — only
+            # here, at the span the gold dict is actually keyed by.  Without
+            # this check the later-inserted file wins silently (measured: the
+            # winner flipped with a filename rename).  Same rule as above:
+            # a disagreement is adjudication's decision, at the span level too.
+            raise SystemExit(
+                f"REFUSED: span {span} carries label {gold[span]!r} (via "
+                f"{gold_source[span]}) but {label!r} (via {labelled_in[item_id]}, "
+                f"item {item_id}). Two annotation batches disagree on one "
+                "mention; adjudicate it — gold is never filename sort order."
+            )
+        gold[span] = label
+        gold_source[span] = labelled_in[item_id]
     return gold, {
         "label_files": files,
         "labels_read": len(by_item),
+        "adjudicated_overrides": len(adjudicated),
         "keyed_by": "span_id(turn_id, start, end) — item_id is re-issued per "
         "derivation and joining on it attaches labels to the wrong mentions",
         "labels_without_a_source_item": unresolved,
@@ -280,9 +318,16 @@ def train_arms(log, d1_items, embedder, cfg) -> tuple[dict, list, dict]:
 
     # Question types for the stratified split (item 5): unstratified draws move
     # the rare classes between splits, and D1 items carry only the question id.
+    # **The corpus path is anchored at REPO, never the cwd** — with the default
+    # cwd-relative path, launching from anywhere but the repo root silently hit
+    # the FileNotFoundError branch and produced a DIFFERENT test set than a
+    # repo-root launch (measured: stratified 28/4/8 vs unstratified 24/8/8).
+    # The quotable test set may not depend on the launch directory.
     types = {}
     try:
-        index = corpus.question_index(corpus.load_corpus())
+        index = corpus.question_index(
+            corpus.load_corpus(REPO / "data" / "phase2_5" / "raw" / "longmemeval_s")
+        )
         types = {qid: index[qid]["question_type"] for qid in index}
     except (FileNotFoundError, ValueError) as exc:  # the corpus is gitignored
         gold_report["stratification"] = f"unstratified — corpus unavailable: {exc}"
@@ -292,6 +337,29 @@ def train_arms(log, d1_items, embedder, cfg) -> tuple[dict, list, dict]:
         part: [i for i in labelled if i["question_id"] in set(ids)]
         for part, ids in splits.items()
     }
+
+    # **Per-split action composition, in the artefact** — at today's 40 labels
+    # the stratified draw leaves dev with a single question and zero
+    # LINK_EXISTING items, so every arm's early stopping and the similarity
+    # arm's threshold select blind to the linking half of the primary metric.
+    # That is a property of the labelled set, not a code defect, but it must be
+    # visible in the record: a reader weighing the McNemar table needs to know
+    # what the model selection could and could not see.
+    def _composition(items):
+        counts: dict[str, int] = {}
+        for i in items:
+            action = parse_d1_gold(gold_labels[i["item_id"]])[0]
+            counts[action] = counts.get(action, 0) + 1
+        return counts
+
+    composition = {part: _composition(items) for part, items in by_split.items()}
+    dev_link_blind = composition.get("dev", {}).get("LINK_EXISTING", 0) == 0
+    if dev_link_blind:
+        composition["reading"] = (
+            "dev holds no LINK_EXISTING item: early stopping and the similarity "
+            "threshold were selected blind to the linking conjunction that the "
+            "primary metric scores on test. More labelled questions widen dev."
+        )
 
     texts = [i["mention"] for i in labelled]
     vectors = embedder.embed(texts) if texts else []
@@ -318,11 +386,32 @@ def train_arms(log, d1_items, embedder, cfg) -> tuple[dict, list, dict]:
         ),
     }
 
+    # The G4 ceiling, from counts the split already carries: the fraction of
+    # LINK gold whose entity the candidate generator actually proposed.  No
+    # arm can score above it, so it is reported beside the arm numbers
+    # (candidates.py's own contract: no decoder score without the bound it
+    # sits under).
+    def _reachability(items):
+        link = reachable = 0
+        for i in items:
+            parsed = parse_d1_gold(gold_labels[i["item_id"]])
+            if parsed[0] != "LINK_EXISTING":
+                continue
+            link += 1
+            if parsed[1] in {str(c["entity_id"]) for c in i.get("candidates", ())}:
+                reachable += 1
+        return {"link_gold": link, "reachable": reachable,
+                "recall": reachable / link if link else None}
+
     arms: dict[str, list] = {}
     reports: dict[str, Any] = {
         "gold": gold_report,
         "power": reports_power,
         "splits": {k: len(v) for k, v in by_split.items()},
+        "split_composition": composition,
+        "candidate_recall_g4": {
+            part: _reachability(items) for part, items in by_split.items()
+        },
         "arms": {},
     }
 

@@ -322,6 +322,14 @@ per-atom scores` behind the fix-F6 shape; trained on the item-2 distant signal
 with the shared `TRAINING`-style budget dict; its absence is a legal
 configuration of the fusion (five channels stand alone).
 
+*(Amended 15 Aug 2026 — P6.11 now exists, so the conventions this row gestured
+at are code, not intent: reuse `graphbuild.train.split_questions` (user-level,
+stratified, seed 20260813) for any question-level split, and inherit the
+trainer's three guards — the seed reaches **initialisation** (`build_arm`
+pattern), early stopping **restores** the argmin-dev state, and a loop with no
+scorable dev item **refuses** rather than returning its initialisation.
+Reinventing any of these is how Phase 6's caught defects come back.)*
+
 ### P7.9 `scripts/phase7_retrieval.py`
 
 Runs the stack over the pilot log's committed graph: per-question channel

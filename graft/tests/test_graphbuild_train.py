@@ -652,3 +652,145 @@ def test_d2_items_carry_the_linking_turn_as_their_own_now():
          "question_id": "q1", "session_date": "2023-02-01T00:00:00+00:00"}
     item = build_d2_item(0, a, b, turn_ts="2023-02-01T00:00:00+00:00")
     assert item["turn_ts"] == "2023-02-01T00:00:00+00:00"
+
+
+# -- the 15 Aug audit, round 2: cross-batch spans, adjudication, provenance ----
+
+
+def _cross_batch_tree(tmp_path, second_label, adjudicate=None):
+    """Two item GENERATIONS (different id prefixes) naming the same span, each
+    labelled by a different file."""
+    import json as _json
+
+    root = tmp_path
+    (root / "data" / "phase2_5" / "labels").mkdir(parents=True)
+    for prefix, batch in (("d1p", "pilot"), ("d1q", "next")):
+        item = {"item_id": f"{prefix}_0000", "turn_id": "t1", "start": 0, "end": 3}
+        (root / "data" / "phase2_5" / f"d1_items_{batch}.jsonl").write_text(
+            _json.dumps(item) + "\n", encoding="utf-8"
+        )
+    labels = root / "data" / "phase2_5" / "labels"
+    (labels / "d1_labels_Sabbir_pilot.jsonl").write_text(
+        _json.dumps({"item_id": "d1p_0000", "label": "NON_ENTITY", "pass": 1}) + "\n",
+        encoding="utf-8",
+    )
+    (labels / "d1_labels_Sabbir_next.jsonl").write_text(
+        _json.dumps({"item_id": "d1q_0000", "label": second_label, "pass": 1}) + "\n",
+        encoding="utf-8",
+    )
+    if adjudicate:
+        (labels / "d1_labels_adjudicated.jsonl").write_text(
+            "\n".join(
+                _json.dumps({"item_id": iid, "label": lab, "pass": 1})
+                for iid, lab in adjudicate
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def test_two_batches_disagreeing_on_one_span_refuse_rather_than_filename_sort(
+    tmp_path, monkeypatch
+):
+    """Two item generations assign different item_ids to the same span, so the
+    item-level refusal can never see the conflict — only the span-keyed gold
+    write can, and without a check the later file won silently (measured: the
+    winner flipped with a filename rename)."""
+    driver = _driver()
+    monkeypatch.setattr(driver, "REPO", _cross_batch_tree(tmp_path, "DEFER"))
+    with pytest.raises(SystemExit, match="one mention"):
+        driver.load_d1_gold()
+
+
+def test_two_batches_agreeing_on_one_span_pass_through(tmp_path, monkeypatch):
+    driver = _driver()
+    monkeypatch.setattr(driver, "REPO", _cross_batch_tree(tmp_path, "NON_ENTITY"))
+    gold, _ = driver.load_d1_gold()
+    assert len(gold) == 1  # one span, one label
+
+
+def test_an_adjudicated_label_resolves_a_disagreement_instead_of_deadlocking(
+    tmp_path, monkeypatch
+):
+    """The refusal names adjudication as the resolution, so adjudication must be
+    a path code can consume: d1_labels_adjudicated*.jsonl overrides, per item.
+    Covering both generations' item ids settles the span conflict too."""
+    driver = _driver()
+    root = _cross_batch_tree(
+        tmp_path, "DEFER",
+        adjudicate=[("d1p_0000", "DEFER"), ("d1q_0000", "DEFER")],
+    )
+    monkeypatch.setattr(driver, "REPO", root)
+    gold, report = driver.load_d1_gold()
+    assert report["adjudicated_overrides"] == 2
+    assert list(gold.values()) == ["DEFER"], "the adjudicated decision stands"
+
+
+def _annotate_module():
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    scripts = Path(__file__).resolve().parents[2] / "scripts" / "phase2_5"
+    sys.path.insert(0, str(scripts))
+    try:
+        spec = importlib.util.spec_from_file_location("annotate_cli", scripts / "annotate.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(scripts))
+    return module
+
+
+def test_a_second_annotators_rows_carry_their_own_name_and_pass_one(
+    tmp_path, monkeypatch
+):
+    """The row's provenance is the person who produced it, and a different
+    person's labels are their own pass 1 — stamping them pass 2 would silently
+    drop them from gold and hand every measured disagreement to the first
+    annotator (the exact overwrite the loader refuses)."""
+    import json as _json
+
+    cli = _annotate_module()
+    data = tmp_path / "data"
+    labels = tmp_path / "labels"
+    labels.mkdir()
+    data.mkdir()
+    (data / "d1_items.jsonl").write_text(
+        _json.dumps({"item_id": "d1_0000", "mention": "X", "turn_text": "X here",
+                     "start": 0, "end": 1, "candidates": [],
+                     "actions": ["CREATE_NEW_ENTITY"]}) + "\n",
+        encoding="utf-8",
+    )
+    (labels / "d1_labels_Sabbir.jsonl").write_text(
+        _json.dumps({"item_id": "d1_0000", "label": "NON_ENTITY", "pass": 1,
+                     "ts": "2026-08-14T00:00:00+00:00"}) + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(cli, "DATA", data)
+    monkeypatch.setattr(cli, "LABELS", labels)
+    monkeypatch.setattr(cli, "_read_answer", lambda d, i: ("DEFER", None, 1.0))
+    monkeypatch.setattr(cli, "_show_d1", lambda i: None)
+
+    # The documented IAA flow: the κ subset (--pass-2) done by a DIFFERENT person.
+    cli.annotate("d1", "Sabbir", pass2=True, subset=1, items_tag="", second="Alice")
+
+    out = labels / "d1_labels_Alice.jsonl"
+    assert out.exists(), "a second annotator writes under their own name"
+    row = _json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    assert row["annotator"] == "Alice", "provenance is the person who produced the row"
+    assert row["pass"] == 1, "a different person's labels are their own pass 1"
+    assert row["machine_assisted"] is False
+
+
+def test_a_decisive_artefact_names_the_secondaries_that_were_not_computed():
+    """The rule block promises six secondaries; the arms fix alone left a reader
+    unable to distinguish 'never measured' from 'measured and lost'."""
+    from graft.graphbuild.gate1 import run_gate1
+
+    gold = [{"action": "NON_ENTITY", "entity_id": None}]
+    artefact = run_gate1({"proposed": gold, "E1": gold}, gold, smoke=False)
+    omitted = artefact["secondaries_omitted"]
+    assert {"proposer_recall_g5", "d2_macro_f1", "calibration_brier_ece"} <= set(omitted)
+    assert all(isinstance(reason, str) and reason for reason in omitted.values())

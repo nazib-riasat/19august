@@ -136,9 +136,20 @@ def annotate(
                 "label": label,
                 "note": note,
                 "seconds": round(seconds, 1),
-                "annotator": annotator,
-                "machine_assisted": annotator.startswith("claude"),
-                "pass": 2 if pass2 else 1,
+                # The row's provenance is the person who PRODUCED it.  With
+                # --second-annotator the file is already theirs (_labels_path);
+                # stamping the first annotator's name inside it would invert
+                # exactly the provenance the separate file exists to keep.
+                "annotator": second or annotator,
+                "machine_assisted": (second or annotator).startswith("claude"),
+                # A second annotator's labels are their OWN pass 1, whatever
+                # subset they were shown: `--pass-2` selects the κ items, but
+                # "pass 2" as a row field means "the same person, again", and
+                # the gold loader excludes pass 2 on that meaning.  Stamping a
+                # different person's rows pass 2 would silently drop them from
+                # gold and let the first annotator's label win every measured
+                # disagreement — the exact silent overwrite the loader refuses.
+                "pass": 2 if (pass2 and not second) else 1,
                 "ts": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             },
         )

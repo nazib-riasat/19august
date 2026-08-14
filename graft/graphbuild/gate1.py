@@ -289,6 +289,19 @@ def run_gate1(
         "primary metric is still scored on every arm that ran, and the rule "
         "block above is reproduced unedited so the difference is visible"
     )
+    # The same bookkeeping for the rule's six secondaries — the arms fix alone
+    # left a reader unable to distinguish "D2 never measured" from "measured
+    # and lost".  What IS computed here: the D1 primary, its macro-F1 breakdown
+    # and linking accuracy (d1_report); the G4 candidate-recall ceiling arrives
+    # via the driver's extras.  The rest is named, with why.
+    artefact["secondaries_omitted"] = {
+        "proposer_recall_g5": "no gold conflict/supersession pairs joined yet",
+        "d2_macro_f1": "train_d2 exists; the driver does not train or score D2",
+        "d3_d4_metrics": "no trained temporal/conflict decoder (declared open)",
+        "calibration_brier_ece": "calibrate() exists; no decoder is calibrated "
+        "on this path yet",
+        "ceiling_2": "requires the D2-D4 decoders above",
+    }
     correct = {
         name: [end_to_end_correct(p, g) for p, g in zip(predictions, gold)]
         for name, predictions in arms.items()

@@ -4,11 +4,11 @@ Date: 14 August 2026
 Parent: `GRAFT_PHASE6_BUILD.md` (G1–G12, §6) · `GRAFT_EXECUTION_ARCHITECTURE_v1.md`
 (Phase 6, fixes F8/F9) · `GRAFT_RESEARCH_PLAN_v1.md` v1.2 §3.2, §2.4, §6.3–§6.4,
 Gate 1 · `GATE0_CONTRACT.md` (items 1, 3, 5, 6, 8, 9) · `PHASE5_DECISIONS.md` §6
-Status: **built, audited and green (958 tests, 14 Aug 2026). Gate 1 has NOT run
-and cannot** — two of its four entry conditions are human-blocked (G1). **The
-trainer loop is now built** (P6.11, §8) and the decisive path exists; it
-refuses without a signed contract, both decoders' labels, or the pinned
-embedder. A two-source post-build audit (§7)
+Status: **built, twice audited and green (15 Aug 2026). Gate 1 has NOT run
+and cannot — but only the Gate-0 signature blocks it** (G1): the pilot batch
+supplies both decoders' human labels (§8.5). **The trainer loop is built**
+(P6.11, §8) and the decisive path exists; it refuses without the signed
+contract or the pinned embedder. A two-source post-build audit (§7)
 confirmed **21 defects — two of them blockers — and refuted 8**; every
 confirmed finding is fixed and regression-tested, and the smoke run was rebuilt
 from a driver that constructed no edges into a turn-ordered constructor that
@@ -520,3 +520,47 @@ what makes dev selection real).
 No frozen value moved. The Phase-5 pilot log still matches its recorded digest.
 Gate 1 still cannot run: two entry conditions are human-blocked, and the driver
 now refuses on a third ground — the pinned embedder — as well.
+
+### 8.5 The second audit — 15 Aug 2026, after the pilot batch was annotated
+
+The owner annotated a **new pilot batch** (`d1_items_pilot.jsonl`, ids
+`d1p_NNNN`; 40 D1 labels, 49 D2 labels in `*_Sabbir_pilot.jsonl`), whose LINK
+labels name **content-hash entity ids** — resolving §8.3's stale-namespace
+blocker exactly as prescribed. Measured: **40/40 labels join Phase-6 items by
+span, 9/9 LINK labels name real graph entities, 0 unreachable.** The annotate
+CLI also gained `--second-annotator` (a different person's labels under their
+own filename), which item 7's IAA upgrade needs. *(The pilot batch's generator
+script was not kept in the repo — the file is committed and joins cleanly, but
+the derivation is not re-runnable. Known gap, accepted.)*
+
+A second adversarial audit of the trainer + label pipeline (two lenses, every
+finding refuted-or-confirmed by execution) then found **nine confirmed defects
+— two high** — and refuted two. Eight distinct fixes (two findings were the
+same defect), all regression-tested:
+
+| Finding | Fix |
+|---|---|
+| **[high] The quotable test set depended on the launch directory**: `load_corpus()` used a cwd-relative default, so a repo-root launch stratified the split (28/4/8) while any other cwd silently fell back to unstratified (24/8/8) — two different test sets from one command | the corpus path is REPO-anchored; unavailability is now a real absence, not a cwd artefact |
+| **[high] Cross-batch span collision**: the disagreement refusal was keyed by `item_id`, but two item *generations* give the same span different ids — so two batches' labels for one mention silently last-write-win, winner decided by filename sort order (measured: renaming a file flipped gold) | gold refuses a span-level disagreement too, naming both sources |
+| **[medium] The documented IAA flow silently lost the second annotator**: `--second-annotator --pass-2` stamped rows `pass: 2`, which the gold loader excludes — so the first annotator's label entered gold on exactly the items where measured IAA disagreed | a different person's rows are their **own pass 1**, whatever subset they were shown; `pass: 2` means "the same person, again" |
+| **[medium] Provenance inversion**: the second annotator's rows carried the *first* annotator's name and machine flag | rows carry the person who produced them |
+| **[medium] Adjudication had no ingestion path** — the refusal named a resolution no code could consume; two disagreeing files deadlocked | `d1_labels_adjudicated*.jsonl` is read first and overrides per item; the refusal message names the procedure |
+| **[medium] Dev is LINK-blind at 40 labels**: the stratified draw leaves dev = 1 question, 4 items, zero LINK gold — early stopping and the similarity threshold select blind to the linking half of the primary. A property of the labelled set, not a code defect | per-split **action composition** is in the artefact, with a stated reading when dev lacks LINK; more labelled questions is the real remedy |
+| **[medium] The rule block promises six secondaries; the artefact computed two and named omissions for arms only** | `secondaries_omitted` names each uncomputed secondary with why; the **G4 candidate-recall ceiling** is now computed per split from the reachability counts the trainer already carries |
+| **[low] κ-first resume lockout** | resolved by the pass-stamp fix: all of a second annotator's rows are pass 1 in one file, so resume sees them |
+
+Also fixed in the same sitting, from the fresh read that preceded the
+workflow: `train_d2` gained the same non-finite-dev guard as `train_d1_arm`
+(a decoder that never scored a dev item is its initialisation); D2 items now
+carry `turn_ts` (the linking turn — G5 proposes at link time), closing the
+same global-temporal-anchor hole §8.3 closed for D1; and the first
+multi-annotator merge (item-level refusal) landed before the workflow
+confirmed its span-level twin.
+
+**Refuted, for the record**: "the 49 D2 labels are unusable" (restates the
+declared D2-not-wired open item — and `entry_conditions` now finds both
+decoders' human files, so condition 2 is **met**); a no-finding placeholder.
+
+**What this leaves**: Gate 1's remaining human blocker is the Gate-0 signature
+alone. The decisive path still refuses without it, and now also carries the
+composition, ceiling and omission bookkeeping a reader of its artefact needs.
