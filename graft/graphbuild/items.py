@@ -295,6 +295,7 @@ def build_d2_item(
     question_type: str = "",
     stage_a_seq: int | None = None,
     stage_b_seq: int | None = None,
+    turn_ts: str = "",
 ) -> dict[str, Any]:
     """One D2 item, with **``claim_a`` strictly the earlier side**.
 
@@ -320,6 +321,10 @@ def build_d2_item(
         "token_overlap": _overlap(earlier["text"], later["text"]),
         "snapshot_seq": stage_a_seq,
         "stage_b_seq": stage_b_seq,
+        # The pair decision's own "now" — the linking turn (G5 proposes at link
+        # time), so the temporal encoding is anchored where the decision stood,
+        # not at the newest edge some other conversation contributed.
+        "turn_ts": turn_ts,
     }
 
 

@@ -571,3 +571,84 @@ def test_a_decisive_artefact_names_the_arms_that_did_not_run():
     assert "E2" in artefact["arms_omitted"]
     assert "similarity" in artefact["arms_omitted"]
     assert "E1" not in artefact["arms_omitted"]
+
+
+# -- the 15 Aug audit: multi-annotator labels, and D2's parity with D1 ---------
+
+
+def _two_annotator_tree(tmp_path, second_label):
+    import json as _json
+
+    root = tmp_path
+    (root / "data" / "phase2_5" / "labels").mkdir(parents=True)
+    item = {"item_id": "d1p_0000", "turn_id": "t1", "start": 0, "end": 3}
+    (root / "data" / "phase2_5" / "d1_items_pilot.jsonl").write_text(
+        _json.dumps(item) + "\n", encoding="utf-8"
+    )
+    for who, label in (("Alice", "NON_ENTITY"), ("Bob", second_label)):
+        (root / "data" / "phase2_5" / "labels" / f"d1_labels_{who}_pilot.jsonl").write_text(
+            _json.dumps({"item_id": "d1p_0000", "label": label, "pass": 1}) + "\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def test_two_annotators_disagreeing_on_an_item_refuse_rather_than_last_file_wins(
+    tmp_path, monkeypatch
+):
+    """The annotate CLI writes a second annotator's labels under their own name
+    (pass 1 — provenance is the point), so two files can label the same items.
+    Concatenating rows would let the alphabetically-later file win silently:
+    gold decided by filename sort order.  A disagreement is the adjudication
+    batch's decision (contract item 7), never a loader's accident."""
+    driver = _driver()
+    monkeypatch.setattr(driver, "REPO", _two_annotator_tree(tmp_path, "DEFER"))
+    with pytest.raises(SystemExit, match="adjudication"):
+        driver.load_d1_gold()
+
+
+def test_two_annotators_agreeing_on_an_item_pass_through(tmp_path, monkeypatch):
+    driver = _driver()
+    monkeypatch.setattr(driver, "REPO", _two_annotator_tree(tmp_path, "NON_ENTITY"))
+    gold, report = driver.load_d1_gold()
+    assert len(gold) == 1
+    assert sorted(report["label_files"]) == [
+        "d1_labels_Alice_pilot.jsonl",
+        "d1_labels_Bob_pilot.jsonl",
+    ]
+
+
+def test_d2_training_refuses_when_no_dev_item_is_scorable(built):
+    """Same guard as D1, same reason: a decoder that never saw a scorable dev
+    item is its random initialisation, and returning it as 'trained' would
+    poison the D2 secondary silently."""
+    from graft.graphbuild.decoders import D2Decoder
+    from graft.graphbuild.train import train_d2
+
+    log, _, _, _ = built
+    decoder = D2Decoder(8)
+    cache = FeatureCache(log, "base")
+    items = [{"item_id": "d2_0000", "stage_b_seq": 0}]
+    gold = {"d2_0000": "INDEPENDENT"}
+
+    def vectors(item, features):
+        torch.manual_seed(0)
+        return torch.randn(8), torch.randn(8)
+
+    with pytest.raises(ValueError, match="no scorable dev item"):
+        train_d2(decoder, cache, {"train": items, "dev": []}, gold, vectors,
+                 seed=13, budget=TINY)
+
+
+def test_d2_items_carry_the_linking_turn_as_their_own_now():
+    """D1 items got ``turn_ts`` when the global temporal anchor was found; D2
+    items are decided at link time (G5), so the linking turn is their 'now'.
+    Leaving it off re-opens the same cross-conversation anchor for D2."""
+    from graft.graphbuild.items import build_d2_item
+
+    a = {"assertion_id": "a1", "text": "x", "turn_id": "t1", "session_id": "s1",
+         "question_id": "q1", "session_date": "2023-01-01T00:00:00+00:00"}
+    b = {"assertion_id": "a2", "text": "y", "turn_id": "t2", "session_id": "s2",
+         "question_id": "q1", "session_date": "2023-02-01T00:00:00+00:00"}
+    item = build_d2_item(0, a, b, turn_ts="2023-02-01T00:00:00+00:00")
+    assert item["turn_ts"] == "2023-02-01T00:00:00+00:00"

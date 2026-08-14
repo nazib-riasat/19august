@@ -64,3 +64,4 @@ data/phase6/raw/
 
 # Working backups (e.g. a label file snapshotted before an edit).
 *.bak
+*.bak[0-9]

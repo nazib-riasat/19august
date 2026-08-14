@@ -171,17 +171,34 @@ def load_d1_gold(graph_entity_ids: set[str] | None = None) -> tuple[dict[str, st
             items_by_id[item_id] = item
             source_of[item_id] = path.name
 
-    rows: list[dict] = []
     files: list[str] = []
+    # **Merged per file with conflict detection, never by concatenation.**  The
+    # annotate CLI now writes a second annotator's labels under their own name
+    # (`d1_labels_<who>.jsonl`, pass 1 — provenance is the point), so two files
+    # can legitimately label the same items.  Concatenating rows would let the
+    # alphabetically-later file win silently — gold decided by filename sort
+    # order.  Agreement passes through; a disagreement refuses by name, because
+    # resolving it is what the adjudication batch exists for (contract item 7),
+    # not something a loader may do by accident.
+    by_item: dict[str, str] = {}
+    labelled_in: dict[str, str] = {}
     for path in sorted((REPO / "data" / "phase2_5" / "labels").glob("d1_*.jsonl")):
         if "bootstrap" in path.name:
             continue
         files.append(path.name)
-        rows.extend(
+        file_rows = [
             json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
-        )
-
-    by_item = read_labels(rows)
+        ]
+        for item_id, label in read_labels(file_rows).items():
+            if item_id in by_item and by_item[item_id] != label:
+                raise SystemExit(
+                    f"REFUSED: item {item_id} is labelled {by_item[item_id]!r} in "
+                    f"{labelled_in[item_id]} but {label!r} in {path.name}. Two "
+                    "annotators disagree; the gold label is the adjudication "
+                    "batch's decision (contract item 7), not filename sort order."
+                )
+            by_item[item_id] = label
+            labelled_in[item_id] = path.name
     gold: dict[str, str] = {}
     unresolved = 0
     stale_links: list[str] = []

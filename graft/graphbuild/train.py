@@ -661,6 +661,15 @@ def train_d2(
             since_best += 1
             if since_best >= int(budget["early_stop_patience"]):
                 break
+    if not math.isfinite(best_dev):
+        # Same guard as `train_d1_arm`, for the same reason: a decoder that
+        # never saw a scorable dev item is its random initialisation, and
+        # returning it as "trained" would poison the D2 secondary silently.
+        raise ValueError(
+            f"D2 has no scorable dev item ({len(items_by_split.get('dev', ()))} "
+            "dev items): early stopping cannot select, so training would return "
+            "the random initialisation. Enlarge the split or the labelled set."
+        )
     decoder.load_state_dict(best_state)
     decoder.eval()
     return {

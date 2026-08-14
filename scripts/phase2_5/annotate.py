@@ -31,7 +31,9 @@ from common import DATA, LABELS, append_jsonl, read_jsonl
 D2_KEYS = {"I": "INDEPENDENT", "U": "DUPLICATE", "C": "CONFLICT", "S": "SUPERSEDES"}
 
 
-def _labels_path(decoder: str, annotator: str, pass2: bool, items: str = "") -> str:
+def _labels_path(
+    decoder: str, annotator: str, pass2: bool, items: str = "", second: str = ""
+) -> str:
     """Label file for one (decoder, annotator, pass) — and one *item set*.
 
     ``items`` names the batch when it is not the spike's default.  Without it a
@@ -39,9 +41,15 @@ def _labels_path(decoder: str, annotator: str, pass2: bool, items: str = "") -> 
     and two batches' labels would be indistinguishable afterwards — the kind of
     silent mixing that makes an annotation record unusable months later.
     """
-    suffix = "_pass2" if pass2 else ""
+    who = second or annotator
+    # A *second annotator* writes under their own name, never as the first
+    # annotator's "pass 2".  Provenance is the point: a file called
+    # `d1_labels_Sabbir_pass2.jsonl` that a different person produced is a record
+    # nobody can read correctly six weeks later, and the agreement figure
+    # computed from it would be labelled self-agreement when it is not.
+    suffix = "_pass2" if (pass2 and not second) else ""
     tag = f"_{items}" if items else ""
-    return LABELS / f"{decoder}_labels_{annotator}{tag}{suffix}.jsonl"
+    return LABELS / f"{decoder}_labels_{who}{tag}{suffix}.jsonl"
 
 
 def _show_d1(item: dict) -> None:
@@ -96,10 +104,17 @@ def _read_answer(decoder: str, item: dict) -> tuple[str, str | None, float]:
         print("  unrecognised — see the key legend above")
 
 
-def annotate(decoder: str, annotator: str, pass2: bool, subset: int, items_tag: str = "") -> None:
+def annotate(
+    decoder: str,
+    annotator: str,
+    pass2: bool,
+    subset: int,
+    items_tag: str = "",
+    second: str = "",
+) -> None:
     name = f"{decoder}_items_{items_tag}.jsonl" if items_tag else f"{decoder}_items.jsonl"
     items = read_jsonl(DATA / name)
-    out_path = _labels_path(decoder, annotator, pass2, items_tag)
+    out_path = _labels_path(decoder, annotator, pass2, items_tag, second)
     done = {r["item_id"] for r in read_jsonl(out_path)} if out_path.exists() else set()
 
     if pass2:
@@ -136,9 +151,27 @@ def _coarse(label: str) -> str:
     return "LINK_EXISTING" if label.startswith("LINK_EXISTING") else label
 
 
-def kappa(decoder: str, annotator: str, items_tag: str = "") -> None:
+def kappa(decoder: str, annotator: str, items_tag: str = "", second: str = "") -> None:
+    """Agreement between two label sets.
+
+    **Two different statistics wear the same arithmetic**, and which one this is
+    depends entirely on who produced the second set:
+
+    *Self-agreement* (one person, twice, >= 2 days apart) measures whether an
+    annotator is consistent with themselves.  It is **weaker than IAA** and every
+    report says so — the gap exists only to stop them remembering their own
+    answers, which is why it is checked.
+
+    *Inter-annotator agreement* (``--second-annotator``) is the real thing plan
+    §7 item 7 asks for.  Independence comes from being different people, so the
+    calendar gap is **not required and not checked** — reporting a gap warning
+    there would be a warning about nothing.
+    """
     p1 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, False, items_tag))}
-    p2 = {r["item_id"]: r for r in read_jsonl(_labels_path(decoder, annotator, True, items_tag))}
+    p2 = {
+        r["item_id"]: r
+        for r in read_jsonl(_labels_path(decoder, annotator, True, items_tag, second))
+    }
     shared = sorted(set(p1) & set(p2))
     if not shared:
         raise SystemExit("no overlapping items between pass 1 and pass 2")
@@ -152,17 +185,27 @@ def kappa(decoder: str, annotator: str, items_tag: str = "") -> None:
     k = (po - pe) / (1 - pe) if pe < 1 else float("nan")
 
     exact = sum(p1[i]["label"] == p2[i]["label"] for i in shared) / n
-    gap_days = (
-        dt.datetime.fromisoformat(min(r["ts"] for r in p2.values()))
-        - dt.datetime.fromisoformat(max(r["ts"] for r in p1.values()))
-    ).total_seconds() / 86400
 
-    print(f"{decoder.upper()} SELF-agreement (weaker than IAA), n = {n}")
+    if second:
+        print(f"{decoder.upper()} INTER-ANNOTATOR agreement, n = {n}")
+        print(f"  annotators: {annotator} vs {second}")
+    else:
+        print(f"{decoder.upper()} SELF-agreement (weaker than IAA), n = {n}")
     print(f"  raw agreement (4-way action): {po:.3f}")
     print(f"  Cohen's kappa (4-way action): {k:.3f}")
     print(f"  exact agreement incl. entity id: {exact:.3f}")
-    print(f"  gap between passes: {gap_days:.1f} days "
-          f"({'OK' if gap_days >= 2 else 'UNDER the required 2 days — G4 violated'})")
+
+    if second:
+        # No gap requirement: independence comes from being two people.
+        print("  calendar gap: not required (two annotators, independent by "
+              "construction)")
+    else:
+        gap_days = (
+            dt.datetime.fromisoformat(min(r["ts"] for r in p2.values()))
+            - dt.datetime.fromisoformat(max(r["ts"] for r in p1.values()))
+        ).total_seconds() / 86400
+        print(f"  gap between passes: {gap_days:.1f} days "
+              f"({'OK' if gap_days >= 2 else 'UNDER the required 2 days — G4 violated'})")
 
 
 def main() -> None:
@@ -173,6 +216,15 @@ def main() -> None:
     ap.add_argument("--pass-2", action="store_true", dest="pass2")
     ap.add_argument("--subset", type=int, default=20)
     ap.add_argument(
+        "--second-annotator",
+        dest="second",
+        default="",
+        help="a DIFFERENT person doing the re-annotation pass. Their labels are "
+        "written under their own name, the agreement is reported as "
+        "inter-annotator rather than self-agreement, and the 2-day gap is not "
+        "required — independence comes from being two people.",
+    )
+    ap.add_argument(
         "--items",
         default="",
         help="item-set tag, e.g. 'pilot' reads d1_items_pilot.jsonl and writes "
@@ -182,9 +234,9 @@ def main() -> None:
     if args.mode == "kappa":
         if not args.decoder:
             raise SystemExit("kappa needs a decoder: kappa d1|d2")
-        kappa(args.decoder, args.annotator, args.items)
+        kappa(args.decoder, args.annotator, args.items, args.second)
     else:
-        annotate(args.mode, args.annotator, args.pass2, args.subset, args.items)
+        annotate(args.mode, args.annotator, args.pass2, args.subset, args.items, args.second)
 
 
 if __name__ == "__main__":

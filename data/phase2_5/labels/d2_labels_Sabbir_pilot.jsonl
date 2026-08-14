@@ -1,9 +1,49 @@
 {"annotator": "Sabbir", "item_id": "d2p_0000", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 41.3, "ts": "2026-08-14T11:41:48+00:00"}
 {"annotator": "Sabbir", "item_id": "d2p_0001", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 20.8, "ts": "2026-08-14T11:42:08+00:00"}
-{"annotator": "Sabbir", "item_id": "d2p_0002", "label": "SUPERSEDES", "machine_assisted": false, "note": "Looks like a supersedes but thin chance of being a C - Conflict", "pass": 1, "seconds": 90.7, "ts": "2026-08-14T11:43:39+00:00"}
 {"annotator": "Sabbir", "item_id": "d2p_0003", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 22.1, "ts": "2026-08-14T11:44:01+00:00"}
-{"annotator": "Sabbir", "item_id": "d2p_0004", "label": "DUPLICATE", "machine_assisted": false, "note": null, "pass": 1, "seconds": 30.3, "ts": "2026-08-14T11:44:32+00:00"}
 {"annotator": "Sabbir", "item_id": "d2p_0005", "label": "INDEPENDENT", "machine_assisted": false, "note": "Independent because of the intent stated in B but might be a U- duplicate because of the place mentioned", "pass": 1, "seconds": 68.2, "ts": "2026-08-14T11:45:40+00:00"}
 {"annotator": "Sabbir", "item_id": "d2p_0006", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 49.1, "ts": "2026-08-14T11:46:29+00:00"}
-{"annotator": "Sabbir", "item_id": "d2p_0007", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 8.6, "ts": "2026-08-14T11:46:38+00:00"}
-{"annotator": "Sabbir", "item_id": "d2p_0008", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 29.2, "ts": "2026-08-14T11:47:07+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0009", "label": "INDEPENDENT", "machine_assisted": false, "note": "Looks like independent more than others but not quite sure", "pass": 1, "seconds": 119.1, "ts": "2026-08-14T11:49:06+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0010", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 14.8, "ts": "2026-08-14T11:49:21+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0011", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 25.5, "ts": "2026-08-14T11:49:46+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0012", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 29.2, "ts": "2026-08-14T11:50:15+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0013", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 16.7, "ts": "2026-08-14T11:50:32+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0014", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 23.8, "ts": "2026-08-14T11:50:56+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0016", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 40.7, "ts": "2026-08-14T11:53:05+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0017", "label": "INDEPENDENT", "machine_assisted": false, "note": "Both are distinct facts about the same item", "pass": 1, "seconds": 52.6, "ts": "2026-08-14T11:53:57+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0018", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 38.9, "ts": "2026-08-14T11:54:36+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0019", "label": "INDEPENDENT", "machine_assisted": false, "note": "Distinct but not quite sure about what it should be", "pass": 1, "seconds": 78.9, "ts": "2026-08-14T11:55:55+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0020", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 25.0, "ts": "2026-08-14T11:56:20+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0021", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 27.8, "ts": "2026-08-14T11:56:48+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0022", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 21.3, "ts": "2026-08-14T11:57:09+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0023", "label": "DUPLICATE", "machine_assisted": false, "note": null, "pass": 1, "seconds": 14.5, "ts": "2026-08-14T11:57:24+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0024", "label": "INDEPENDENT", "machine_assisted": false, "note": "Seems like a independent because first one give a specific worn example that is missing on the 2nd one but can be U - duplicate because both facts has same number of worn time", "pass": 1, "seconds": 220.4, "ts": "2026-08-14T12:01:04+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0025", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 13.2, "ts": "2026-08-14T12:01:17+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0026", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 10.7, "ts": "2026-08-14T12:01:28+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0027", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 11.8, "ts": "2026-08-14T12:01:40+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0028", "label": "DUPLICATE", "machine_assisted": false, "note": "but the second one has very little specification and elaboration than the first one", "pass": 1, "seconds": 77.3, "ts": "2026-08-14T12:02:57+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0029", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 8.7, "ts": "2026-08-14T12:03:06+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0030", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 24.4, "ts": "2026-08-14T12:03:30+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0031", "label": "SUPERSEDES", "machine_assisted": false, "note": null, "pass": 1, "seconds": 39.1, "ts": "2026-08-14T12:04:09+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0033", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 17.4, "ts": "2026-08-14T12:06:23+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0034", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 9.7, "ts": "2026-08-14T12:06:33+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0035", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 12.3, "ts": "2026-08-14T12:06:45+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0036", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 7.3, "ts": "2026-08-14T12:06:52+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0038", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 43.1, "ts": "2026-08-14T12:09:10+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0039", "label": "INDEPENDENT", "machine_assisted": false, "note": "But can be a S- Supersedes as the first one shows interest and second one shows the start", "pass": 1, "seconds": 100.3, "ts": "2026-08-14T12:10:50+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0041", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 51.3, "ts": "2026-08-14T12:11:53+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0043", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 13.8, "ts": "2026-08-14T12:13:01+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0044", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 9.2, "ts": "2026-08-14T12:13:10+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0045", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 5.4, "ts": "2026-08-14T12:13:16+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0047", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 49.1, "ts": "2026-08-14T12:14:20+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0048", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 28.3, "ts": "2026-08-14T12:14:48+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0008", "label": "INDEPENDENT", "machine_assisted": false, "note": "might be a U as both states similar facts", "pass": 1, "seconds": 23.4, "ts": "2026-08-14T12:31:55+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0015", "label": "INDEPENDENT", "machine_assisted": false, "note": "might be a U thin chance", "pass": 1, "seconds": 36.3, "ts": "2026-08-14T12:32:31+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0046", "label": "INDEPENDENT", "machine_assisted": false, "note": "might be a U if looked beyond the user - assistant pair", "pass": 1, "seconds": 60.4, "ts": "2026-08-14T12:33:32+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0002", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 21.7, "ts": "2026-08-14T12:36:42+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0004", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 9.7, "ts": "2026-08-14T12:36:52+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0007", "label": "DUPLICATE", "machine_assisted": false, "note": null, "pass": 1, "seconds": 48.9, "ts": "2026-08-14T12:37:41+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0032", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 8.6, "ts": "2026-08-14T12:37:49+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0037", "label": "INDEPENDENT", "machine_assisted": false, "note": "because of the user- assistant things but can be U if we overlook that", "pass": 1, "seconds": 53.1, "ts": "2026-08-14T12:38:42+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0040", "label": "DUPLICATE", "machine_assisted": false, "note": null, "pass": 1, "seconds": 29.2, "ts": "2026-08-14T12:39:12+00:00"}
+{"annotator": "Sabbir", "item_id": "d2p_0042", "label": "INDEPENDENT", "machine_assisted": false, "note": null, "pass": 1, "seconds": 9.3, "ts": "2026-08-14T12:39:21+00:00"}

@@ -156,6 +156,7 @@ def construct(
                             a_side["question_id"], ""
                         ),
                         stage_b_seq=snapshot.snapshot_id,
+                        turn_ts=turn.ts,
                     )
                 )
 
