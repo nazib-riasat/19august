@@ -7,6 +7,7 @@ evidence-set learner.
 - **The build plan:** [`GRAFT_EXECUTION_ARCHITECTURE_v1.md`](GRAFT_EXECUTION_ARCHITECTURE_v1.md) (v1.1), 12 phases. Per-phase specs: [Phase 5](GRAFT_PHASE5_BUILD.md) (built and run) · [Phase 6](GRAFT_PHASE6_BUILD.md) (code complete, twice audited) · [Phase 7](GRAFT_PHASE7_BUILD.md) (planned, §6 unsigned).
 - **Why things are the way they are:** [`CLAUDE.md`](CLAUDE.md) — decisions, what was rejected, and the cost of changing your mind.
 - **Decisions taken while building:** [`PHASE0_DECISIONS.md`](PHASE0_DECISIONS.md) · [`PHASE1_DECISIONS.md`](PHASE1_DECISIONS.md) · [`PHASE2_DECISIONS.md`](PHASE2_DECISIONS.md) · [`PHASE2_5_DECISIONS.md`](PHASE2_5_DECISIONS.md) · [`PHASE3_DECISIONS.md`](PHASE3_DECISIONS.md) · [`PHASE4_DECISIONS.md`](PHASE4_DECISIONS.md) · [`PHASE5_DECISIONS.md`](PHASE5_DECISIONS.md).
+- **Which datasets, for what, at what cost:** [`DATASET_DECISION.md`](DATASET_DECISION.md) — every dataset by phase, plus a three-machine time table.
 - **The data contract:** [`GATE0_CONTRACT.md`](GATE0_CONTRACT.md) — nine of ten items drafted, unsigned; Gate 1 is blocked on it.
 - **Picking up a cold session:** [`chatcontext1.md`](chatcontext1.md) — current state, reading order, open items. Start there.
 

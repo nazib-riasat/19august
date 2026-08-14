@@ -210,52 +210,96 @@ def redocred_items(data: Sequence[Any], max_docs: int | None = None) -> list[dic
     return items
 
 
+def _torque_passages(data: Any) -> Iterator[Mapping[str, Any]]:
+    """Passages from either TORQUE split shape.
+
+    **The two splits do not ship the same JSON**, which a train-only loader
+    hides until the day dev is loaded: ``train.json`` is a *list* of annotator
+    HITs each carrying a ``passages`` list, while ``dev.json`` is a *dict* keyed
+    by passage id whose values are passage records directly.  Normalising here
+    keeps the difference in one place — the fix-F6 pattern, applied to a file
+    format.  (Found 15 Aug 2026 by the dataset survey; the old loader raised
+    ``AttributeError: 'str' object has no attribute 'get'`` on dev, because it
+    iterated the dict's keys.)
+    """
+    if isinstance(data, Mapping):
+        for passage in data.values():
+            if isinstance(passage, Mapping):
+                yield passage
+        return
+    for hit in data or ():
+        if not isinstance(hit, Mapping):
+            continue
+        for passage in hit.get("passages", ()) or ():
+            if isinstance(passage, Mapping):
+                yield passage
+
+
+def _torque_qa_pairs(passage: Mapping[str, Any]) -> Iterator[Mapping[str, Any]]:
+    """Question/answer groups, list-shaped (train) or question-keyed (dev)."""
+    pairs = passage.get("question_answer_pairs", ())
+    if isinstance(pairs, Mapping):
+        for question, qa in pairs.items():
+            if isinstance(qa, Mapping):
+                # Dev keys the group by its question text and does not repeat it
+                # inside the value; train carries a "question" field.
+                yield {**qa, "question": qa.get("question", question)}
+        return
+    for qa in pairs or ():
+        if isinstance(qa, Mapping):
+            yield qa
+
+
 def torque_items(data: Sequence[Any], max_passages: int | None = None) -> list[dict[str, Any]]:
     """``(passage, temporal question) -> answer spans``.
 
     TORQUE ships as annotator HITs, each holding several passages, each holding
     several question/answer groups.  Flattened to one item per question, which is
-    the unit its exact-match/F1 metric is defined over.
+    the unit its exact-match/F1 metric is defined over.  **Both split shapes are
+    accepted** — see :func:`_torque_passages`.
     """
     items: list[dict[str, Any]] = []
     seen = 0
-    for hit in data:
-        for passage in hit.get("passages", ()):
-            if max_passages is not None and seen >= max_passages:
-                return items
-            seen += 1
-            text = passage.get("passage", "")
-            # ``events`` is the passage's event inventory — the answer to the
-            # implicit question "which words are events".  Carried on every item
-            # rather than emitted as one, because D4's temporal head needs to know
-            # what the candidate events *are* before it can order them.
-            events = _spans_of(passage.get("events", ()))
-            for qa in passage.get("question_answer_pairs", ()):
-                if not isinstance(qa, Mapping):
-                    continue
-                answer = qa.get("answer", {})
-                items.append(
-                    {
-                        "item_id": f"torque_{len(items):06d}",
-                        "dataset": "torque",
-                        "text": text,
-                        "question": qa.get("question", ""),
-                        "events": events,
-                        "answer_spans": list(answer.get("spans", []))
-                        if isinstance(answer, Mapping)
-                        else [],
-                        # TORQUE marks questions whose correct answer is *no
-                        # events*.  Keeping them is not optional: they are the
-                        # only negative supervision the dataset gives, and
-                        # dropping them would train a head that always answers.
-                        "is_default_question": bool(qa.get("is_default_question", False)),
-                    }
-                )
+    for passage in _torque_passages(data):
+        if max_passages is not None and seen >= max_passages:
+            return items
+        seen += 1
+        text = passage.get("passage", "")
+        # ``events`` is the passage's event inventory — the answer to the
+        # implicit question "which words are events".  Carried on every item
+        # rather than emitted as one, because D4's temporal head needs to know
+        # what the candidate events *are* before it can order them.
+        events = _spans_of(passage.get("events", ()))
+        for qa in _torque_qa_pairs(passage):
+            answer = qa.get("answer", {})
+            items.append(
+                {
+                    "item_id": f"torque_{len(items):06d}",
+                    "dataset": "torque",
+                    "text": text,
+                    "question": qa.get("question", ""),
+                    "events": events,
+                    "answer_spans": list(answer.get("spans", []))
+                    if isinstance(answer, Mapping)
+                    else [],
+                    # TORQUE marks questions whose correct answer is *no
+                    # events*.  Keeping them is not optional: they are the
+                    # only negative supervision the dataset gives, and
+                    # dropping them would train a head that always answers.
+                    "is_default_question": bool(qa.get("is_default_question", False)),
+                }
+            )
     return items
 
 
 def _spans_of(events: Any) -> list[str]:
-    """TORQUE's event inventory, which is a list of ``{"answer": {"spans": [...]}}``."""
+    """TORQUE's event inventory.
+
+    Two shapes again: train gives a *list* of ``{"answer": {"spans": [...]}}``
+    entries, dev gives that record directly as a single mapping.
+    """
+    if isinstance(events, Mapping):
+        events = [events]
     out: list[str] = []
     for entry in events or ():
         if isinstance(entry, Mapping):

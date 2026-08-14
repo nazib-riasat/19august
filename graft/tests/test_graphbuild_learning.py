@@ -29,6 +29,7 @@ from graft.graphbuild.loaders import (
     DIALOGRE_TO_GRAFT,
     REDOCRED_TO_GRAFT,
     dialogre_items,
+    torque_items,
     mapping_report,
 )
 
@@ -108,6 +109,50 @@ def test_dialogre_items_keep_the_native_multi_label_shape():
     raw = [[["speaker1: hi"], [{"x": "A", "y": "B", "r": ["per:alias", "per:friends"]}]]]
     items = dialogre_items(raw)
     assert items[0]["labels"] == ["per:alias", "per:friends"]
+
+
+def test_torque_items_read_both_split_shapes():
+    """**The two TORQUE splits do not ship the same JSON** and a train-only
+    loader hides that until the day dev is loaded: train is a list of annotator
+    HITs carrying a ``passages`` list, dev is a dict keyed by passage id whose
+    values are passage records, whose ``question_answer_pairs`` are keyed by
+    question text and whose ``events`` is a single mapping rather than a list.
+    The old loader raised AttributeError on dev.  (Found 15 Aug 2026.)"""
+    train_shaped = [
+        {
+            "passages": [
+                {
+                    "passage": "The market rallied.",
+                    "events": [{"answer": {"spans": ["rallied"]}}],
+                    "question_answer_pairs": [
+                        {
+                            "question": "What has already happened?",
+                            "answer": {"spans": ["rallied"]},
+                            "is_default_question": False,
+                        }
+                    ],
+                }
+            ]
+        }
+    ]
+    dev_shaped = {
+        "docid_X_sentid_1": {
+            "passage": "The market rallied.",
+            "events": {"answer": {"spans": ["rallied"]}},
+            "question_answer_pairs": {
+                "What has already happened?": {
+                    "answer": {"spans": ["rallied"]},
+                    "is_default_question": False,
+                }
+            },
+        }
+    }
+    for name, raw in (("train", train_shaped), ("dev", dev_shaped)):
+        items = torque_items(raw)
+        assert len(items) == 1, name
+        assert items[0]["question"] == "What has already happened?", name
+        assert items[0]["answer_spans"] == ["rallied"], name
+        assert items[0]["events"] == ["rallied"], name
 
 
 # -- the LLM baseline (G11) -------------------------------------------------

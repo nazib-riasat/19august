@@ -50,6 +50,7 @@ LIVE_DOCS = (
     "GRAFT_PHASE6_BUILD.md",
     # Added 14 Aug 2026 with the Phase-7 plan.
     "GRAFT_PHASE7_BUILD.md",
+    "DATASET_DECISION.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
     "PHASE2_DECISIONS.md",
