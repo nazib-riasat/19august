@@ -97,7 +97,7 @@ python -m pip install --upgrade pip setuptools wheel
 # Alliance Python modules expose the site wheelhouse. Exact project pins are
 # required; failure is preferable to silently changing the experiment stack.
 python -m pip install --no-index -r requirements.txt
-python -m pip install --no-index torch==2.11.0
+python -m pip install --no-index torch
 python -m pip install --no-deps -e .
 
 python -c 'import numpy, torch, yaml; print("numpy", numpy.__version__); print("torch", torch.__version__); print("PyYAML", yaml.__version__)'
