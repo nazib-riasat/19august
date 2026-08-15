@@ -10,7 +10,7 @@
 # is therefore retained only because the supplied account/partition is
 # GPU-specific; it is not represented as useful Phase-3 compute.
 
-#SBATCH --account=def-loutfouz
+#SBATCH --account=def-loutfouz_cpu
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=3-00:00:00
@@ -23,7 +23,7 @@
 set -Eeuo pipefail
 
 EXPECTED_USER="nahian26"
-EXPECTED_ACCOUNT="def-loutfouz"
+EXPECTED_ACCOUNT="def-loutfouz_cpu"
 REPOSITORY_URL="https://github.com/nazib-riasat/GRAFT_System.git"
 GRAFT_REF="${GRAFT_REF:-7cf6a38}"
 
