@@ -59,3 +59,31 @@ torch==2.11.0
 # GRAFT choice; pinned so the manifest does not move for a reason nobody picked.
 torch_geometric==2.8.0.post1
 xxhash==4.0.0
+
+# ---------------------------------------------------------------------------
+# Phase 7 (Stage C) — added 15 Aug 2026.
+#
+# `bm25s` is the BM25 channel (Phase-7 decision 1, gap G2).  The boring-stack
+# rule (architecture 0.4) wants a written justification and this is it, in two
+# parts.
+#
+# **It is the boring-stack shape, verified rather than assumed.**  Installed on
+# this machine 15 Aug 2026: one pure-Python wheel, `numpy` its only runtime
+# dependency -- *no scipy*, no index server, no persistence daemon, no
+# background process.  The index is built in memory from a list of strings and
+# thrown away with the process, which is what §7's "no ANN index, vector
+# database or search server" is actually protecting.
+#
+# **Hand-rolling it would weaken a control.**  BM25 is a *baseline channel*, and
+# R13's catalogue of this project's own defects is that three control bugs all
+# ran in the direction that flattered the proposed method (`PHASE3_DECISIONS.md`
+# §6).  A subtly wrong IDF or length normalisation would not crash; it would
+# make the learned scorer look better than it is, in the one comparison Stage C
+# exists to report.  A published implementation is the cheaper correctness
+# argument.
+#
+# Note for anyone reading a recall table: `retrieve` returns `k` documents
+# whether or not they share a term with the query, so a zero score is "no
+# lexical overlap" rather than "weakly relevant".  `graft.retrieve.bm25` drops
+# non-positive scores for that reason -- see its module docstring.
+bm25s==0.3.10

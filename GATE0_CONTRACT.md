@@ -8,9 +8,10 @@ Parent: research plan §7 (items 1–10), §2.4 (predeclared metrics), §6.3/§6
 (ceilings and metric groups) · `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (fixes F1,
 F2, F8, F9) · `GRAFT_PHASE5_BUILD.md` P5.0 · `PHASE2_5_DECISIONS.md` (item 8's
 measurement) · `Research papers/INDEX.md` §7 (the dataset selection)
-Status: **DRAFT — all ten items filled. Item 8 measured 15 Aug 2026: GO.
-Item 9's corpus-scope sub-decision is the one thing left before signature.
-UNSIGNED.**
+Status: **DRAFT — all ten items filled and decided. Item 8 measured 15 Aug 2026:
+GO. Item 9 decided 15 Aug 2026: scope c, 200 questions. Nothing recorded here
+remains open. UNSIGNED** — signature is the project owner's act, not a
+document edit; see the Sign-off section.
 
 Labels as everywhere else: **[EVIDENCE]** = a named paper supports this, venue
 stated · **[HYPOTHESIS]** = this project tests it · **[ANALYSIS]** = engineering
@@ -309,9 +310,28 @@ against the pilot's measured end-to-end throughput:
 knowledge-update evidence sessions are in **every** candidate scope*, because
 D2's supervision lives there and D2 is the binding constraint on Contribution 1.
 
-**Undecided until the pilot's sizing memo is read together with item 8's
-number.** Deciding it before both would be exactly the unforced guess Phase 5's
-G8 exists to avoid.
+**DECIDED, 15 August 2026 — scope c, 200 questions.** Item 8's number (16.7 h,
+GO with margin) and the pilot's sizing memo are both in hand, which is what this
+item was waiting on. **4,384 turns, 32.3 h on the dev GPU (6.9 h on a 5090).**
+
+Reasoning, from `DATASET_DECISION.md` §5: scope c is the cheapest scope where the
+held-out test slice (~40 questions at 60/20/20) stops being embarrassing, and it
+is explicitly the *first full run*, not the final one. **Extend to scope b′
+(evidence + 2 distractor sessions, 20,798 turns, 153.3 h dev / 32.9 h on a 5090)
+for the final numbers**, calendar and hardware permitting — that is what actually
+makes `pool_cap` bind. Phase 7's own measurement supplies the reason this matters
+concretely, not just in principle: on the pilot's scope-b-shaped graph, **every
+conversation held 8–23 eligible candidates against `pool_cap = 64`**, so every
+pool was the whole conversation and Tier-A recall read 1.000 by arithmetic,
+measuring no retrieval at all (`PHASE7_DECISIONS.md` §3.1). Scope b alone would
+reproduce that at the decisive scale; distractor sessions are the only lever that
+changes it.
+
+Scope a (full corpus, 246,930 turns, ~1,820 h) is not a candidate at any scale
+this project runs at.
+
+**Ingestion itself has not been run at this scope.** Deciding the scope is what
+item 9 asks for; running the 32.3 h job is a separate, explicit action.
 
 ---
 
@@ -374,7 +394,7 @@ level the support gate exists to catch, not to admit.
 | 6 · negatives and balance | drafted |
 | 7 · guidelines, agreement, adjudication | **measured.** Guidelines v1 supersede v0, every rule derived from a measured disagreement. Real inter-annotator agreement (two people), not self-agreement. **Caveat recorded**: adjudications were assistant-derived and human-accepted rather than resolved by both annotators |
 | 8 · **feasible annotation volume** | **MEASURED 15 Aug 2026 — GO.** 3,625 items at the slower annotator's rate = **16.7 h**, 8.4 h each split two ways. The stop condition does not fire. Agreement: **D1 κ 0.829, D2 κ 0.813**, both inter-annotator and both clearing the 0.6 bar |
-| 9 · dataset selection and corpus scope | drafted; **the scope sub-decision is the only open item** — item 8 is measured and the sizing memo exists |
+| 9 · dataset selection and corpus scope | **DECIDED 15 Aug 2026 — scope c, 200 questions (32.3 h), extending to scope b′ (153.3 h) for final numbers.** Ingestion at this scope has not yet run |
 | 10 · primary metrics and protocol | drafted |
 
 **Signed:** — *(unsigned)*

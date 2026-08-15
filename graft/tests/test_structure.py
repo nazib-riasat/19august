@@ -52,7 +52,18 @@ REPO_ROOT = PACKAGE_ROOT.parent
 #: The same containment applies: importing ``graft.graphbuild`` pulls in no ML
 #: library, so the Stage-B fingerprint and the commit validator stay usable on a
 #: bare interpreter.
-ML_ALLOWED_PACKAGES = ("graft.setgen", "graft.ingest", "graft.graphbuild")
+#:
+#: **Phase 7 widened it a fourth time** (`GRAFT_PHASE7_BUILD.md` decision 1, gap
+#: G2): ``graft.retrieve`` runs ``bm25s`` for the lexical channel, the shared
+#: pinned embedder for the dense one, and will run torch for the GNN scorer when
+#: Gate 0 signs.  ``bm25s`` was already on ``ML_LIBRARIES`` below — listed there
+#: by Phase 0 *before* anything needed it — so admitting the package is again the
+#: deliberate one-line edit against a failing test.  Containment is stricter here
+#: than for the other three, because Stage C's five training-free channels are
+#: the part that has to run today: importing any non-scorer ``graft.retrieve``
+#: module must pull in **no torch at all**, which
+#: ``test_the_retrieve_package_does_not_import_torch`` asserts module by module.
+ML_ALLOWED_PACKAGES = ("graft.setgen", "graft.ingest", "graft.graphbuild", "graft.retrieve")
 
 
 def _source_files(subdir: str | None = None, *, ml_allowed: bool = False) -> list[Path]:
@@ -116,16 +127,21 @@ def test_the_phase_0_to_2_surface_imports_no_ml_library():
 
 
 def test_the_ml_boundary_is_a_narrowing_not_a_hole():
-    """The allowance is three packages, and each was opened by a named decision.
+    """The allowance is four packages, and each was opened by a named decision.
 
     A future phase widening this list is making a decision; a future phase
     widening it *silently* is removing the guard that keeps ``H`` free of
     anything learned (v1.2 §4.4).  Phase 3 opened ``graft.setgen`` (P3.0),
-    Phase 5 opened ``graft.ingest`` (decision 13) and Phase 6 opened
-    ``graft.graphbuild`` (decision 1); a fourth entry needs a fourth written
-    decision.
+    Phase 5 opened ``graft.ingest`` (decision 13), Phase 6 opened
+    ``graft.graphbuild`` (decision 1) and Phase 7 opened ``graft.retrieve``
+    (decision 1, gap G2); a fifth entry needs a fifth written decision.
     """
-    assert ML_ALLOWED_PACKAGES == ("graft.setgen", "graft.ingest", "graft.graphbuild")
+    assert ML_ALLOWED_PACKAGES == (
+        "graft.setgen",
+        "graft.ingest",
+        "graft.graphbuild",
+        "graft.retrieve",
+    )
     for pkg in ML_ALLOWED_PACKAGES:
         importlib.import_module(pkg)
 
@@ -500,5 +516,91 @@ def test_graphbuild_defines_no_cross_module_dataclass():
     ids=lambda p: p.name,
 )
 def test_every_graphbuild_module_has_a_docstring(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"
+
+
+#: Every ``graft.retrieve`` module that is **not** the GNN scorer.  Phase 7's
+#: five channels are training-free by design (G6: "the channel stack must run and
+#: be measured *without* the scorer"), which is only true if none of them drags
+#: torch in.  Listed explicitly rather than globbed so that adding a module is a
+#: decision about which side of the line it falls on.
+RETRIEVE_NON_SCORER_MODULES = (
+    "graft.retrieve",
+    "graft.retrieve.pins",
+    "graft.retrieve.pool",
+    "graft.retrieve.bm25",
+    "graft.retrieve.dense",
+    "graft.retrieve.entity",
+    "graft.retrieve.temporal",
+    "graft.retrieve.expand",
+    "graft.retrieve.fuse",
+    "graft.retrieve.recall",
+)
+
+
+def test_the_retrieve_package_does_not_import_torch():
+    """Phase-7 decision 1's containment half — stricter than the other three.
+
+    ``graft.ingest`` and ``graft.graphbuild`` promise only that *importing the
+    package* is torch-free.  Stage C promises more, because G6 makes the
+    five-channel stack the thing that runs and is measured **today**, while the
+    scorer waits on the Gate-0 signature: every non-scorer module must be
+    importable with no torch anywhere in ``sys.modules``.
+
+    ``bm25s`` and the shared embedder are *permitted* here — that is what
+    decision 1 bought — so this checks torch and torch_geometric specifically
+    rather than all of :data:`ML_LIBRARIES`.  ``graft.retrieve.dense`` reaches
+    the pinned encoder through ``graphbuild.embed``, whose model loading is
+    already lazy; if that ever regresses, the dense channel stops being runnable
+    on a bare interpreter and this is the test that says so.
+    """
+    import subprocess
+
+    program = (
+        "import importlib, sys, json\n"
+        f"for n in {list(RETRIEVE_NON_SCORER_MODULES)!r}:\n"
+        "    importlib.import_module(n)\n"
+        "from graft.retrieve.pins import stage_c_fingerprint\n"
+        "stage_c_fingerprint()\n"
+        "print(json.dumps(sorted(l for l in ['torch', 'torch_geometric'] if l in sys.modules)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
+    assert not leaked, f"a non-scorer graft.retrieve module pulled in {leaked}"
+
+
+def test_retrieve_defines_no_cross_module_dataclass():
+    """Criterion 12 held over the fourth ML-allowed package.
+
+    Same reason as the third: ``_source_files()`` skips ML-allowed packages, so
+    widening the allowance would quietly exempt ``graft.retrieve`` from the rule
+    that ``schemas.py`` is the single home of the data model.  Stage C's transient
+    shapes are plain tuples and dicts, and the one type that crosses a module
+    boundary — ``CandidateAtom`` — is Phase 0's, unchanged.
+    """
+    offenders: list[str] = []
+    for path in sorted((PACKAGE_ROOT / "retrieve").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for decorator in node.decorator_list:
+                target = decorator.func if isinstance(decorator, ast.Call) else decorator
+                name = getattr(target, "id", None) or getattr(target, "attr", None)
+                if name == "dataclass":
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}::{node.name}")
+    assert not offenders, "dataclasses defined in graft.retrieve: " + ", ".join(offenders)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((PACKAGE_ROOT / "retrieve").rglob("*.py")),
+    ids=lambda p: p.name,
+)
+def test_every_retrieve_module_has_a_docstring(path):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"

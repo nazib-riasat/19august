@@ -47,6 +47,16 @@ compare the output with a teammate's::
   notice.  Encoder *weights* are not bit-identical across machines and are not
   promised to be; the setup that produced them is.
 
+* **Stage-C fingerprint** (Phase-7 exit criterion 15) — the same idea for
+  retrieval: the fusion arithmetic (normalisation, per-channel weights, the
+  combining rule and the tie-break), the BM25 constants, the expansion bounds,
+  the scorer's declared configuration, and the **shared** embedder pin.  Two
+  machines that fuse channels with different arithmetic produce recall numbers
+  that are not comparable, and nothing else in the run would say so.
+  ``pool_cap`` is deliberately absent: it lives in the config tree and is already
+  covered by ``config hash``, and giving a frozen value two homes is the failure
+  mode `CLAUDE.md` §5 catalogues.
+
 If any of these disagree between two machines running the same commit, that is a
 real bug and worth chasing before it contaminates a result.
 
@@ -66,6 +76,7 @@ from graft.config import config_hash, load_config
 from graft.eventlog import EventLog
 from graft.graphstore import ReplayGraphStore
 from graft.graphbuild.pins import endpoint_table_hash, stage_b_fingerprint
+from graft.retrieve.pins import SCORER, stage_c_fingerprint
 from graft.ingest.pins import EXTRACTOR, ingestion_fingerprint
 from graft.ledger import Ledger
 from graft.runtime import REPRO_KEY, run_manifest, set_seed
@@ -168,6 +179,8 @@ def main() -> int:
     print(f"manifest print   {digest_of(repro)}")
     print(f"stage-B print    {stage_b_fingerprint()}"
           f"   (endpoints {endpoint_table_hash()})")
+    print(f"stage-C print    {stage_c_fingerprint()}"
+          + ("" if SCORER["built"] else "   (scorer declared, not built - Gate 0 unsigned)"))
     print(f"ingestion print  {ingestion_fingerprint()}"
           + ("" if EXTRACTOR is not None else "   (no extractor frozen yet - G2 bakeoff)"))
     print()

@@ -257,6 +257,45 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     # max_new_tokens; B's own 3-turn check produced a truncation parse failure.
     ("parse failure → 0 by construction",
      "never malformed — prefix validity, not completion within the token budget (PHASE5_DECISIONS.md 1.6)", "R19", None),
+
+    # R20 — the stale-ruling sweep, 15 Aug 2026.  Decision 6 was RULED on
+    # 12 Aug 2026 (option 1, threshold unchanged at 0.10, PHASE3_DECISIONS.md
+    # 6.8b), and PHASE3_DECISIONS.md 4 item 8 recorded it correctly — but six
+    # other places went on describing it as the open item blocking the
+    # calibration gate, including the handoff's own run instructions.  A reader
+    # following those would have believed a ruling was owed before step 6 could
+    # run.  This is the "a correction lands in four or five places and three is
+    # the usual score" pattern with the score at one.
+    #
+    # Prose explaining the change stays legal (see the RETIRED docstring), which
+    # is why the correction notes left in place may quote these without emphasis.
+    ("option 2 must be ruled **before** step 6 runs",
+     "RULED 12 Aug 2026 — option 1, decision 6 unchanged at 0.10 (PHASE3_DECISIONS.md 6.8b)", "R20", None),
+    ("option 2 — raising decision 6's threshold — is the only clean one",
+     "the ruling predates the gate; nothing is left to rule before step 6 runs (6.8b)", "R20", None),
+    ("Option 2 is worth a ruling before step 6 runs.",
+     "RULED 12 Aug 2026 — option 1; 2.3 is the pre-ruling analysis (6.8b)", "R20", "PHASE3_DECISIONS.md"),
+    ("DECISION 1 RULED; THE REST AWAIT SIGN-OFF",
+     "FIVE RULED (1, 6, 11, 29, 30); THE REST AWAIT SIGN-OFF", "R20", "GRAFT_PHASE3_BUILD.md"),
+    ("decision 1 is ruled, the rest are recommended",
+     "five decisions are ruled: 1, 6, 11, 29, 30", "R20", "CLAUDE.md"),
+
+    # R21 — Gate-0 item 9 (corpus scope) decided 15 Aug 2026: scope c, 200
+    # questions, extending to scope b' for final numbers.  Six documents called
+    # it the sole open item or asserted it "still open"; all six are corrected
+    # and none of the six retired strings below may reappear as a normative
+    # claim.  Ingestion at scope c has NOT run yet -- that remains true and is
+    # not what these strings retire.
+    ("Item 9's corpus scope is the only open item",
+     "DECIDED 15 Aug 2026 -- scope c, 200 questions (GATE0_CONTRACT.md item 9)", "R21", None),
+    ("the scope sub-decision is the only open item",
+     "DECIDED 15 Aug 2026 -- scope c, 200 questions (GATE0_CONTRACT.md item 9)", "R21", "GATE0_CONTRACT.md"),
+    ("Item 9's corpus-scope sub-decision is the one thing left before signature",
+     "item 9 is decided; only the signature itself remains", "R21", "GATE0_CONTRACT.md"),
+    ("it is still open, and the build", "item 9 is now decided (scope c); ingestion at that scope has not run", "R21", "GRAFT_PHASE7_BUILD.md"),
+    ("item 9's, it is still open, and the build", "item 9 is now decided (scope c); ingestion at that scope has not run", "R21", "PHASE7_DECISIONS.md"),
+    ("Undecided until the pilot's sizing memo is read together with item 8's",
+     "DECIDED 15 Aug 2026 -- scope c, 200 questions", "R21", "GATE0_CONTRACT.md"),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

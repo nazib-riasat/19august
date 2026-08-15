@@ -20,7 +20,7 @@ build with its own two-source audit (`PHASE5_DECISIONS.md` §7). Read this plus
 | **Phase 4** — five Tier-1 search methods + Gate-3 harness | **Stage A built, green and RUN (13 Aug 2026);** Stage B waits on Phase 3's matrix, as G7's two-stage exit requires. `graft/setgen/search/`. **Three sub-decisions of the ruled §6 table were overturned by measurement** — `PHASE4_DECISIONS.md` §1. |
 | **Phase 5** — Stage A ingestion | **Built, green, and run (14 Aug 2026)** — `graft/ingest/`, Gate-0 contract drafted 9/10, **G2 bakeoff frozen on candidate B** (1.7% parse failure vs A's 23.3%), **live pilot 248 turns end to end**. Every machine-measurable exit criterion met. A two-source audit confirmed 19 defects + 1 found in-house — two of them blockers in the bakeoff harness itself — all fixed and regression-tested (`PHASE5_DECISIONS.md` §7); the bakeoff's first run was aborted and its instrument corrected before anything froze (§1.6), and the token cap was raised once more under a written-down prediction after a `no_survivor` verdict (§2.1a/b). **Remaining: four human audit worksheets + Gate-0 item 8.** Two findings to carry forward: **a third of extracted assertions fail to ground** (108/333) and the **quarantine rate is 32%** — the NLI audit is the instrument that separates "extractor overreaches" from "0.8 is strict". |
 | **Phase 6** — Stage B graph construction | **Built, audited, green (14 Aug 2026)** — `graft/graphbuild/` (validate, items, candidates, embed, features, encoders, decoders, loaders, llmlink, commit, standin, gate1). A two-source audit confirmed **21 defects (2 blockers)**, refuted 8; all fixed and regression-tested (`PHASE6_DECISIONS.md` §7). Smoke run rebuilt: 187 D1 items (177 with construction-time candidates), 120 D2 items, 130 edges, corruption audit green over real commits. **The trainer (P6.11) is now built** and the decisive path exists; a review of it found 9 more defects (2 blockers — gold labels joined by a non-durable id, and every LINK label naming the spike's entity namespace), all fixed (`PHASE6_DECISIONS.md` §8). Gate 1 waits on the **Gate-0 signature alone**: the pilot batch (15 Aug) supplies 40 D1 + 49 D2 human labels in the graph's own namespace (40/40 span-join, 9/9 LINK reachable), and a second audit fixed 8 more defects (`PHASE6_DECISIONS.md` §8.5 — incl. a cwd-dependent test set and a filename-sort gold collision). |
-| **Phase 7** — Stage C retrieval | **Planned 14 Aug 2026** (`GRAFT_PHASE7_BUILD.md`, G1–G10, §6 unsigned); no code. Five training-free channels + fusion first (no GPU), the ≤8M GNN scorer last; the two-tier recall instrument (Tier A runs today, Tier B waits on the Gate-0 signature); `pool_cap = 64` inherited frozen. |
+| **Phase 7** — Stage C retrieval | **§6 adopted, steps 0–5 built, green and RUN (15 Aug 2026)** — `graft/retrieve/` (pool, entity, temporal, expand, bm25, dense, fuse, recall, pins) + `scripts/phase7_retrieval.py`. `bm25s` adopted (G2), `graft.retrieve` is the fourth ML-allowed package with a **stricter** containment guard. **Step 6, the scorer, is not built — it trains and Gate 0 is unsigned.** **Two findings, both in `PHASE7_DECISIONS.md` §3**: Tier-A recall is 1.000 on 9/10 pilot questions *by arithmetic* (8–23 candidates per conversation against `pool_cap = 64` — the pool is the whole conversation), and the entity channel matched an anchor in only **3 of 10** questions. |
 | Phases 8–11 | Not started. |
 
 **958 tests, ~3 min, all passing. Nothing skipped, nothing xfailed.**
@@ -129,14 +129,19 @@ written in, and none of the learner files makes sense without it.
 
 | Track | Next action | Blocks |
 |---|---|---|
-| **A — Phase 3** | the calibration gate below (~12 GPU-h at rung 0) | Gate 2, Phase 4 Stage B (S5's row), Phase 9 |
-| **B — Phase 5 GPU** | **done** — bakeoff frozen (candidate B), live pilot run. Only a scope-scale re-ingestion remains, and that waits on item 9 | — |
-| **C — human** | **Gate-0 item 8 is DONE — GO (§3a).** Remaining: **item 9's corpus scope** (a decision, not a measurement), then signature; plus the four Phase-5 audit worksheets in `artefacts/phase5_pilot/` | **signing `GATE0_CONTRACT.md`**, and therefore Gate 1 |
+| **A — Phase 3** | the calibration gate below (~12 CPU-h at rung 0; no GPU) — **can run now, nothing blocks it** | Gate 2, Phase 4 Stage B (S5's row), Phase 9 |
+| **B — Phase 5 GPU** | **done at pilot scale** — bakeoff frozen (candidate B), live pilot run. **Item 9 is decided (scope c, 200 q, 32.3 h) — the scope-c re-ingestion is the next action**, not blocked on anything but GPU time | — |
+| **C — human** | **Gate-0 item 8 is DONE — GO (§3a). Item 9 is DECIDED (scope c, 15 Aug 2026, §3b below).** Remaining: the **signature itself** (a human act, not a document edit); plus the four Phase-5 audit worksheets in `artefacts/phase5_pilot/` | **signing `GATE0_CONTRACT.md`**, and therefore Gate 1 |
 | **D — Phase 6** | **code complete + twice audited.** Next: nothing in code — Gate 1 needs the Gate-0 signature, D2 labels, and D1 link labels re-annotated against the current 187-item batch | a decisive Gate 1 |
+| **E — Phase 7** | **steps 0–5 built, green, run (15 Aug 2026).** Next: the scorer (step 6), which needs the Gate-0 signature; and a scope with distractors, without which the recall instrument measures nothing (`PHASE7_DECISIONS.md` §3.1) | Phase 8's gate features, Phase 9's environment |
 
-A and D contend for the same 8 GB GPU and cannot run simultaneously; C is human
-time and contends with nothing. Track D's build is mostly CPU work until its
-step 4.
+**Track A does *not* contend with the GPU tracks** — `TrainSpec.device` defaults
+to `"cpu"` ([trainer.py:139](graft/setgen/trainer.py:139)) and
+`DATASET_DECISION.md` §4 lists Phase 3's GPU usage as "nothing", so the
+calibration gate's ~12 h are **CPU** hours and its 39 runs are independent
+(~3 h wall clock on 16 cores). *(An earlier version of this table said A and D
+contend for the same 8 GB card and cannot run simultaneously. That was wrong, and
+it was costing free parallelism.)* C is human time and contends with nothing.
 
 ### 3a. The annotation pass — DONE, Gate-0 item 8 is GO (15 Aug 2026)
 
@@ -206,11 +211,29 @@ labels but **no timing**.
    on social identity theory?"* appears as claim text in a D2 pair. A question
    asserts nothing; this is a Stage-A extraction defect polluting the pair pool.
 
-**Item 9's corpus scope is now the only thing between here and signing the
-Gate-0 contract**, and it is a decision, not a measurement: full corpus 1,820
-GPU-h · evidence sessions only 80.8 h · 100 questions 16.2 h · 200 questions
-32.3 h. One constraint already fixed: the knowledge-update evidence sessions are
-in every candidate scope.
+### 3b. The corpus scope — DECIDED, item 9 is closed (15 Aug 2026)
+
+**Scope c, 200 questions — 4,384 turns, 32.3 h on the dev GPU (6.9 h on a
+5090).** Costed alternatives: full corpus 1,820 h (not a candidate at any scale
+here) · evidence sessions only 80.8 h · evidence + 2 distractors 153.3 h. One
+constraint fixed throughout: the knowledge-update evidence sessions are in every
+candidate scope, because that is where D2's supervision lives.
+
+**Extend to scope b′ (evidence + 2 distractor sessions, 153.3 h) for the final
+numbers**, calendar and hardware permitting — full reasoning in
+`DATASET_DECISION.md` §5 and `GATE0_CONTRACT.md` item 9.
+
+**Why the extension is not optional decoration.** Phase 7's own measurement gives
+the concrete reason: on the pilot's scope-b-shaped graph, every conversation held
+8–23 eligible candidates against `pool_cap = 64`, so every pool was the whole
+conversation and Tier-A recall read 1.000 by arithmetic — measuring no retrieval
+at all (`PHASE7_DECISIONS.md` §3.1). Scope c alone would very likely reproduce
+that at the decisive scale, since it is still evidence-only; distractor sessions
+are the one lever that changes it.
+
+**What is and is not done.** The scope is *decided*; ingestion at that scope has
+**not** run. `GATE0_CONTRACT.md`'s Sign-off table records the decision; only the
+signature — a human act — remains before Gate 1 can run.
 
 ---
 
@@ -245,12 +268,24 @@ and its output must never be written into §6.
 L6/L7/GAFlowNet run the §6b amendment procedures are contaminated by learner
 results, which is why nothing may be adjusted afterwards.
 
-**Read `PHASE3_DECISIONS.md` §2.3 before running the gate.** Measured on
-`tiny_instance()`, L7 is the *slowest* of the six flow arms to converge. If the
-adopted `N` lands where it has not converged, criterion 26 records C3 unsupported
-for a reason that is about budget, not mechanism. §2.3 lists three options and
-notes that option 2 — raising decision 6's threshold — is the only clean one and
-must be ruled **before** the gate runs, not after.
+**Nothing is left to rule before the gate runs.** The last such item — whether to
+raise decision 6's threshold so `N` lands where L7 has converged — was **ruled on
+12 August 2026: option 1, accept, threshold unchanged at 0.10**
+(`PHASE3_DECISIONS.md` §6.8b; §2.3 is the pre-ruling analysis and says so).
+
+Read §6.8b anyway, for the argument, because it is the one that makes a null
+result on C3 interpretable: if `N` is enough for the flow family and **L7 alone**
+is still short, that is the finding fix F12 asks for — the primary is improvement
+at a *fixed training budget*, so an arm needing more budget to reach the same TV
+is evidence against better credit assignment rather than an artefact of the
+budget. A threshold tightened to protect L7 would be unfalsifiable in the one
+direction it exists to be falsifiable. The genuinely inconclusive case — `N` so
+small that *nothing* separates — is caught twice, by decision 6 on the tuning
+suite and criterion 15 on the main suite, both routing to `inconclusive` rather
+than to a negative verdict.
+
+*(This paragraph previously instructed the reader to rule option 2 before running
+the gate. That was already false when written: the ruling predates it.)*
 
 ### Built in Phase 3
 
@@ -302,14 +337,16 @@ than this laptop. Someone has to say which.
 | Item | Blocks | Where |
 |---|---|---|
 | **The terminal convention was never written down** | nothing now; it should still be recorded | plan §4.1 says "pick one and write it down"; nobody did. The code *has* picked one — measured on `tiny_instance()`, a state that is both a valid stop and has children gives `F(s) = 181.49` vs `R(s) = 14.88`, so `R` is the flow on the terminating `STOP` edge, **not** the terminal state flow. Phase 3 now depends on it in four objectives and honours it: the terminating transition is a first-class step with its own `log P_F(STOP \| x)`, `log P_B = 0` and `φ` slot, so no loss assumes `F(X) = R(X)`. **Three lines to record; still not done.** |
-| **Phase-3 §6 not fully signed off** | quoting any Gate-2 number | ε, lr, batch, the 1 h ceiling, the 0.10 sanity threshold, `c₀`, the 0.05 consistency band, `λ_aux` are all `[recommended]`; **the build adopted them as written and says so** (`PHASE3_DECISIONS.md` §4 item 2). `N` and β come from step 6. `23a` is filled from LED-GFN Appendix C. |
+| **Phase-3 §6 not fully signed off** | quoting any Gate-2 number | **Five decisions are RULED — 1 (11 Aug), and 6, 11, 29, 30 (12 Aug, `PHASE3_DECISIONS.md` §6.8b).** Still `[recommended]`: ε, lr, batch, the 1 h ceiling, `c₀`, the 0.05 consistency band, `λ_aux`, and 28 (SubTB's λ); **the build adopted them as written and says so** (§4 item 2). `N` and β come from step 6. `23a` is filled from LED-GFN Appendix C. *(The 0.10 sanity threshold was listed here as `[recommended]`; it is decision 6 and has been ruled since 12 Aug.)* |
 | **SubTB's λ is in no decision table** | L5, and therefore β and `N` | set to 0.9 in `TrainSpec.subtb_lambda` — SubTB (ICML 2023)'s *hypergrid* value (its other tasks use 0.99–1.9, so it is not a single paper default), and **[ANALYSIS]** as applied to this environment. Added to §6 as decision 28 by the build; **not signed.** L5 is the arm that selects β *and* sizes `N`, so it is the worst arm to have an unlisted hyperparameter. |
-| **L7 is the slowest flow arm to converge** | the calibration gate | measured on `tiny_instance()`, one seed: 0.167 at 20k against GAFlowNet's 0.097. If `N` lands where L7 has not converged, criterion 26 records C3 unsupported for a budget reason. `PHASE3_DECISIONS.md` §2.3 has the three options; option 2 must be ruled **before** step 6 runs. |
+| ~~**L7 is the slowest flow arm to converge**~~ — **CLOSED, ruled 12 Aug 2026** | nothing; **it does not block the calibration gate** | option 1 (accept; decision 6 stays at 0.10). `PHASE3_DECISIONS.md` §6.8b carries the reasoning, §2.3 the pre-ruling analysis. The decisive argument: if `N` suffices for the flow family and L7 alone is short, **that is the finding fix F12 asks for** — the primary is improvement at a *fixed* budget, so an arm needing more budget is evidence against better credit assignment, not an artefact. The convergence table it was raised on is also stale: after R6, L7 is *first* of six at 50k, not last. *(This row previously read "option 2 must be ruled before step 6 runs", which was already false when written.)* |
 | **Gate-0 re-sign-off** for the β eligibility amendment | formally, Phase 3 | `GRAFT_PHASE2_BUILD.md` §6b, decision-rule procedure, step 2. Has not happened. |
 | **The 0.001 margin** | possibly a regeneration | one main-suite instance clears the `neither` band at β = 4 by 0.001. Both exits cost something; deliberately undecided. `PHASE2_DECISIONS.md` §4.2. |
-| **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | **all ten items filled; UNSIGNED.** Item 8 measured 15 Aug 2026 — **GO**, 16.7 h, D1 κ 0.829 / D2 κ 0.813 (§3a). **Item 9's corpus scope is the only open item**, and it is a decision, not a measurement. D1 and D2 still have no off-the-shelf supervision. |
+| **Gate-0 data contract** (v1.2 §7 items 1–10) | Phases 5–9 | **all ten items filled and decided; UNSIGNED.** Item 8 measured 15 Aug 2026 — **GO**, 16.7 h, D1 κ 0.829 / D2 κ 0.813 (§3a). **Item 9 decided 15 Aug 2026 — scope c, 200 questions (§3b); nothing recorded here remains open.** Only the signature — a human act — is outstanding. D1 and D2 still have no off-the-shelf supervision. |
 | **The D2 pair pool surfaced no CONFLICT at all** | D2's rare classes, and therefore C1 | 0 of 49 items, with 34 drawn from knowledge-update questions. A proposer property, not a labelling one (§3a) — Phase 6's pair proposer, not Phase 2.5's annotation. |
 | **A question is stored as an assertion** | D2's pair pool, and ceiling 1 | "Can you provide more information on…" appears as claim text in a D2 pair. A question asserts nothing and should not enter a memory graph — a Stage-A extraction defect (§3a). |
+| **Stage C's recall instrument has nothing to measure at the pilot scope** | any ceiling-3 number | 8–23 eligible candidates per conversation against `pool_cap = 64`, so Tier-A recall is 1.000 by arithmetic on 9/10 questions and a channel returning its input unchanged would score identically. Flagged per question by `recall.saturation()`. Item 9 is now decided (scope c, §3b) but scope c is still evidence-only and will likely reproduce this; **scope b′'s distractor sessions are the one lever that changes it**, and that extension is not yet run. `PHASE7_DECISIONS.md` §3.1 |
+| **The entity channel matched an anchor in 3 of 10 questions** | Stage C's entity channel, and Phase 8's anchor feature | one miss is decision 7's normalised-exact rule (`"new black Converse…"` vs the graph's `"black converse…"`); six are the **category-vs-instance** line — the same one behind both residual D1 disagreements at Gate-0 item 8. Not amended: changing a matching rule because a run was unflattering is the §6b failure. `PHASE7_DECISIONS.md` §3.2 |
 | **Decision 11's tolerance moved; decision 29 is new** | signing off §6 | R13 found the 1% capacity tolerance unachievable by width (the dead block is ~half a width step at every scale), so the criterion is now minimality plus "control never smaller". Decision 29 fixes GRPO's `G = 8`. Both were changed **before** any L6/L7/GAFlowNet result was inspected, which is what §6b's second procedure is about — but neither is signed. |
 | **Three late-found baselines** | plan §5.3 | HyperMem, Chain-of-Memory, *How Memory Management Impacts LLM Agents* — in the library, not in the plan. |
 

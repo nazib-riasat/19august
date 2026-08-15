@@ -553,7 +553,13 @@ See §5.
 
 ---
 
-## 6. Decisions to lock before writing code — **DECISION 1 RULED; THE REST AWAIT SIGN-OFF**
+## 6. Decisions to lock before writing code — **FIVE RULED; THE REST AWAIT SIGN-OFF**
+
+**Ruled: 1** (11 Aug 2026, the Tier-1 roster) and **6, 11, 29, 30** (12 Aug 2026 —
+the L4/L5 sanity threshold, capacity matching, GRPO's group size and `logZ_θ`'s
+learning rate; reasoning in `PHASE3_DECISIONS.md` §6.8b). Every other row is
+`[recommended]` or `[fill at step 6]`, and the build adopted the recommended ones
+as written and recorded that it did.
 
 **This table is normative.** Where a restatement elsewhere disagrees with it, the table wins and the restatement is a bug. Restatements point at a decision number rather than repeating its value — the mitigation Phase 2 adopted after five review rounds in which most defects were a fix landing in three places out of four.
 

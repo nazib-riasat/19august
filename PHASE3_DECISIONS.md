@@ -264,7 +264,24 @@ doing casually. Three options, in increasing cost:
    which is load-bearing for fix F12. Not recommended.
 
 **Option 1 is what the current code does**, because it is the only one that
-changes no decision at all. Option 2 is worth a ruling before step 6 runs.
+changes no decision at all.
+
+> **RULED 12 August 2026 — option 1, decision 6 unchanged at 0.10. §6.8b carries
+> the reasoning and supersedes this section's "worth a ruling before step 6
+> runs".** Everything above is the *pre-ruling* analysis and is kept because the
+> risk it describes is real and a later reader may want to overturn the ruling
+> knowingly. Two things to carry forward with it. First, §6.8b's decisive
+> argument is not in this section at all: if `N` is enough for the flow family
+> and **L7 alone** is still short, that is the finding fix F12 asks for — the
+> primary is "improvement at a *fixed training budget*" precisely because C3's
+> claim is about credit assignment, so an arm needing more budget to reach the
+> same TV is evidence *against* better credit assignment, not an artefact. A
+> threshold tightened to protect L7 from that would be unfalsifiable in the one
+> direction it exists to be falsifiable. Second, the evidence *this* section rests
+> on no longer exists: after R6, L7 is first of six at 50k rather than last
+> (§2.2). Neither table settles the ordering — one seed on a 17-state lattice was
+> never enough — which is exactly why the ruling was taken on the argument rather
+> than on either table. **Nothing blocks the calibration gate on this item.**
 
 ### 2.4 Capacity matching — **superseded by §6.4; the nominal match was wrong**
 
@@ -336,7 +353,7 @@ terminates with probability 1.
 | # | Open item | Why it matters |
 |---|---|---|
 | 1 | **`N` and β are not frozen.** Step 6 has not run. | Nothing past step 7 may be quoted; §6's `[fill at step 6]` cells are still empty |
-| 2 | **§6's `[recommended]` values are not signed.** The build adopted them as written and says so here. | A value adopted by a builder is not a value signed by the project. Twelve cells: decisions 5, 6, 10, 14, 15, 19 (`c₀`), 23, 25, 26 |
+| 2 | **§6's `[recommended]` values are not signed.** The build adopted them as written and says so here. | A value adopted by a builder is not a value signed by the project. Decisions **5, 10, 14, 15, 19 (`c₀`), 23, 25, 26** and 28. *(Decision 6 was on this list; it is **ruled and signed** — §6.8b, and its §6 row reads `[signed before calibration]`. Five decisions are ruled in total: 1, 6, 11, 29, 30.)* |
 | 3 | **SubTB's λ is in no decision table.** Set to 0.9 — SubTB (ICML 2023)'s *hypergrid* value (Appendix A); the paper's other tasks use 1.9 and 0.99, so there is no single paper default — in `TrainSpec.subtb_lambda`. | Decision 23 freezes the optimiser, lr, batch and clipping; λ is a hyperparameter of exactly that kind and the plan does not list it. **[ANALYSIS]** as applied here. It belongs in §6 before Gate 2 is read |
 | 4 | **The terminal convention was never written down.** Plan §4.1 line 333 says "pick one and write it down"; nobody did. The code uses the **terminating-edge** convention (`F(s) ≠ R(s)` at a state that both stops and continues), verified empirically in Phase 2. | Carried from `PHASE2_DECISIONS.md`. Phase 3 now depends on it in four objectives |
 | 5 | **Gate-0 re-sign-off for the Phase-2 β amendment** is still outstanding. | Recorded in the Phase-2 handoff |

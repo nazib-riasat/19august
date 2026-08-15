@@ -5,7 +5,7 @@
 Date: 14 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 7) · `GRAFT_RESEARCH_PLAN_v1.md` v1.2 §3.3, §2.4, §6.3–§6.4 · `GATE0_CONTRACT.md` (items 2, 3, 9) · `PHASE6_DECISIONS.md` §5 (the handoff) · `PHASE5_DECISIONS.md` §2.2a (the obligation parser's measured rates) · `CLAUDE.md` §6 (`pool_cap = 64` is frozen)
 Effort: ~1.5–2 weeks solo **[ANALYSIS]** — an estimate; the GNN scorer is the schedule risk, and it is deliberately last in the build order.
-Status: **§6 unsigned. Nothing here has run.**
+Status: **§6 adopted 15 Aug 2026** (decisions 1–10 and 12 as recommended; 11 stays deferred to Gate-0 item 9). **Steps 0–5 built; step 6 — the scorer — is not built, because it trains and Gate 0 is unsigned.** `PHASE7_DECISIONS.md` is the record and wins conflicts with this file.
 
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 
@@ -407,7 +407,28 @@ Phase 6's build order.
 
 ---
 
-## 6. Decisions to lock before writing code — **UNSIGNED**
+## 6. Decisions to lock before writing code — **ADOPTED 15 Aug 2026**
+
+**Every row's "Recommended" column is adopted as written**, with two
+qualifications recorded rather than glossed:
+
+* **Decision 11 is not adopted, because it was not this document's to adopt.**
+  The scope corpus is Gate-0 item 9's. **Item 9 is now decided** (scope c, 200
+  questions; `GATE0_CONTRACT.md` item 9, 15 Aug 2026), but ingestion at that
+  scope has not run, so steps 0–5 ran on the pilot's 10 questions under G9's
+  honesty stamp. Nothing in steps 0–5 depends on the scope; the recall
+  *numbers* do, which is exactly why they are labelled machinery numbers and why
+  they will need re-running once scope-c ingestion exists.
+* **Decision 9 is adopted but not built.** The scorer trains, and
+  `GATE0_CONTRACT.md`'s first line is that nothing is trained before it signs.
+  Adopting the row fixes the interface the other modules are written against
+  (fusion accepts a sixth channel; its absence is a legal configuration);
+  building it waits for the signature.
+
+Adopted by the build, in the Phase-3 shape (`PHASE3_DECISIONS.md` §4 item 2):
+**the build took them as written and says so**, rather than leaving the code
+resting on an unsigned table. Decisions 2, 4 and the `pool_cap` in 3 are
+*inherited frozen* (`CLAUDE.md` §6, `PHASE6_DECISIONS.md`), not re-decided here.
 
 | # | Decision | Recommended | Cost if changed later |
 |---|---|---|---|
