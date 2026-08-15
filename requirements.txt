@@ -10,8 +10,8 @@
 # `requirements-ml.txt` at Phase 3, so that Phases 0-4 stay installable in
 # seconds on any machine and inside a bare Kaggle notebook.
 
-PyYAML==6.0.3
-numpy==2.4.6
+PyYAML
+numpy
 
 # dev
-pytest==9.1.1
+pytest
