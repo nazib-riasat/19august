@@ -68,7 +68,7 @@ echo "Scratch:   $GRAFT_ROOT"
 echo "Started:   $(date --iso-8601=seconds)"
 
 module --force purge
-module load python/3.11
+module load python
 
 echo "Python module: $(python --version 2>&1)"
 python -c 'import sys; assert sys.version_info[:2] == (3, 11), sys.version'
