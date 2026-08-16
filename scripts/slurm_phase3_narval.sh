@@ -25,7 +25,7 @@ set -Eeuo pipefail
 EXPECTED_USER="nahian26"
 EXPECTED_ACCOUNT="def-loutfouz_cpu"
 REPOSITORY_URL="https://github.com/nazib-riasat/GRAFT_System.git"
-GRAFT_REF="${GRAFT_REF:-7cf6a38}"
+
 
 if [[ "${USER:-}" != "$EXPECTED_USER" ]]; then
     echo "ERROR: this job is configured for user $EXPECTED_USER, not ${USER:-unset}." >&2
@@ -63,27 +63,14 @@ echo "Job:       $SLURM_JOB_ID"
 echo "User:      $USER"
 echo "Account:   ${SLURM_JOB_ACCOUNT:-$EXPECTED_ACCOUNT}"
 echo "Node:      ${SLURMD_NODENAME:-unknown}"
-echo "Git ref:   $GRAFT_REF"
 echo "Scratch:   $GRAFT_ROOT"
 echo "Started:   $(date --iso-8601=seconds)"
 
-module --force purge
 module load python
 
 echo "Python module: $(python --version 2>&1)"
 python -c 'import sys; assert sys.version_info[:2] == (3, 11), sys.version'
 
-if [[ ! -d "$REPO_DIR/.git" ]]; then
-    git clone --branch master --single-branch "$REPOSITORY_URL" "$REPO_DIR"
-else
-    if [[ -n "$(git -C "$REPO_DIR" status --porcelain)" ]]; then
-        echo "ERROR: $REPO_DIR has local changes; refusing to overwrite them." >&2
-        exit 1
-    fi
-    git -C "$REPO_DIR" fetch origin master
-fi
-
-git -C "$REPO_DIR" checkout --detach "$GRAFT_REF"
 cd "$REPO_DIR"
 
 if [[ ! -x "$ENV_DIR/bin/python" ]]; then
@@ -93,7 +80,7 @@ fi
 source "$ENV_DIR/bin/activate"
 export PIP_CACHE_DIR="$CACHE_DIR"
 
-python -m pip install --upgrade pip setuptools wheel
+
 # Alliance Python modules expose the site wheelhouse. Exact project pins are
 # required; failure is preferable to silently changing the experiment stack.
 python -m pip install --no-index -r requirements.txt
