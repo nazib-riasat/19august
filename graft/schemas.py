@@ -67,6 +67,8 @@ __all__ = [
     "ATOM_KINDS",
     "ELIGIBILITY",
     "OUTCOMES",
+    "ABSTAIN_CAUSES",
+    "GateDecision",
     "ASSERTION_BACKED_NTYPES",
     "PAYLOAD_ASSERTION_ID",
     "PAYLOAD_NAME",
@@ -186,6 +188,21 @@ ATOM_KINDS = ("node", "edge", "binding")
 ASSERTION_KINDS = ("claim", "value", "event", "time")
 ELIGIBILITY = ("eligible", "quarantined")
 OUTCOMES = ("answer", "abstain", "contested")
+
+#: **Why an abstention has a cause, and why there are exactly two** (Phase-8 G5).
+#:
+#: Research plan §4.2's corrected design has two distinct routes to abstaining:
+#: the **gate** decides no sufficient proof exists (step 2), and Stage D exhausts
+#: its checker budget and **falls back** (step 3).  They are different failures
+#: with different fixes — one is a classifier's judgement, the other is a budget —
+#: and flattening them into a single "abstention rate" repeats precisely the
+#: mistake `PHASE5_DECISIONS.md` §1 catalogues for the quarantine causes, where
+#: two causes under one number inflated the rate the gate was judged on.
+#:
+#: Reserved at Phase 8 so §6.4's "post-hoc fallback trigger rate" is reportable
+#: from the **first** Stage-D run rather than retrofitted afterwards; Phase 9
+#: wires the fallback counter and until then it stays zero.
+ABSTAIN_CAUSES = ("gate", "fallback")
 
 # --------------------------------------------------------------------------
 # Payload conventions (Phase 1)
@@ -1132,10 +1149,29 @@ class OutputRecord:
     proofset: ProofSet | None = None
     ledger_snapshot: Mapping[str, Any] = field(default_factory=dict)
     config_hash: str = ""
+    #: Which of :data:`ABSTAIN_CAUSES` produced an ``abstain`` outcome, or
+    #: ``None`` for any other outcome.  **Reserved by Phase 8** (G5) and written
+    #: by Phase 9/10; see the constant for why the distinction is structural
+    #: rather than a log field.
+    abstain_cause: str | None = None
 
     def __post_init__(self) -> None:
         if self.outcome not in OUTCOMES:
             raise ValueError(f"outcome must be one of {OUTCOMES}, got {self.outcome!r}")
+        if self.abstain_cause is not None:
+            if self.abstain_cause not in ABSTAIN_CAUSES:
+                raise ValueError(
+                    f"abstain_cause must be one of {ABSTAIN_CAUSES}, got "
+                    f"{self.abstain_cause!r}"
+                )
+            if self.outcome != "abstain":
+                # A cause on a non-abstention would make the fallback rate
+                # countable over records that did not abstain -- the flattening
+                # this field exists to prevent, arriving from the other side.
+                raise ValueError(
+                    f"abstain_cause {self.abstain_cause!r} set on a {self.outcome!r} "
+                    "record; only an abstention has a cause"
+                )
         object.__setattr__(self, "citations", tuple(self.citations))
         object.__setattr__(self, "ledger_snapshot", _freeze_mapping(self.ledger_snapshot))
 
@@ -1147,6 +1183,7 @@ class OutputRecord:
             "proofset": None if self.proofset is None else self.proofset.to_dict(),
             "ledger_snapshot": dict(self.ledger_snapshot),
             "config_hash": self.config_hash,
+            "abstain_cause": self.abstain_cause,
         }
 
     @classmethod
@@ -1159,4 +1196,69 @@ class OutputRecord:
             proofset=None if ps is None else ProofSet.from_dict(ps),
             ledger_snapshot=data.get("ledger_snapshot", {}),
             config_hash=data.get("config_hash", ""),
+            # Absent in records written before Phase 8; `None` is the correct
+            # reading of those -- they predate the distinction -- which is why
+            # this addition does **not** move `SCHEMA_VERSION`: no existing
+            # record's interpretation changes, only the shape grows.
+            abstain_cause=data.get("abstain_cause"),
+        )
+
+
+@dataclass(frozen=True)
+class GateDecision:
+    """What the Phase-8 answerability gate returns.  One bit and one probability.
+
+    Lives here rather than in ``graft/gate/`` because it **crosses a module
+    boundary** — Phase 10's orchestrator consumes it — and criterion 12 makes
+    ``schemas.py`` the single home of the data model.  The same reasoning that
+    puts ``OutputRecord`` here.
+
+    ``feature_names`` travels with the decision on purpose: a gate's output is
+    only interpretable against the features it saw, and the ablation arms
+    (``pool_only`` / ``with_question``) differ by exactly that list.  A decision
+    recorded without it cannot later be attributed to an arm.
+    """
+
+    p_answerable: float
+    answerable: bool
+    threshold: float
+    feature_names: tuple[str, ...] = ()
+    arm: str = ""
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "p_answerable", _check_finite(self.p_answerable, "p_answerable"))
+        object.__setattr__(self, "threshold", _check_finite(self.threshold, "threshold"))
+        if not 0.0 <= self.p_answerable <= 1.0:
+            raise ValueError(
+                f"p_answerable must be a probability, got {self.p_answerable}; the "
+                "threshold rule and every calibration number are defined on [0, 1]"
+            )
+        object.__setattr__(self, "feature_names", tuple(self.feature_names))
+
+    @property
+    def abstain_cause(self) -> str | None:
+        """``"gate"`` when this decision abstains, else ``None``.
+
+        The gate can only ever produce the ``gate`` cause; ``fallback`` belongs to
+        Stage D's budget exhaustion and is never set from here.
+        """
+        return None if self.answerable else "gate"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "p_answerable": self.p_answerable,
+            "answerable": self.answerable,
+            "threshold": self.threshold,
+            "feature_names": list(self.feature_names),
+            "arm": self.arm,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "GateDecision":
+        return cls(
+            p_answerable=float(data["p_answerable"]),
+            answerable=bool(data["answerable"]),
+            threshold=float(data["threshold"]),
+            feature_names=tuple(data.get("feature_names", ())),
+            arm=data.get("arm", ""),
         )

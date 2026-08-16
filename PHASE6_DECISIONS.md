@@ -4,9 +4,10 @@ Date: 14 August 2026
 Parent: `GRAFT_PHASE6_BUILD.md` (G1–G12, §6) · `GRAFT_EXECUTION_ARCHITECTURE_v1.md`
 (Phase 6, fixes F8/F9) · `GRAFT_RESEARCH_PLAN_v1.md` v1.2 §3.2, §2.4, §6.3–§6.4,
 Gate 1 · `GATE0_CONTRACT.md` (items 1, 3, 5, 6, 8, 9) · `PHASE5_DECISIONS.md` §6
-Status: **built, twice audited and green (15 Aug 2026). Gate 1 has NOT run
-and cannot — but only the Gate-0 signature blocks it** (G1): the pilot batch
-supplies both decoders' human labels (§8.5). **The trainer loop is built**
+Status: **built, twice audited and green (15 Aug 2026). Gate 1 has NOT run**
+— Gate 0 signed 15 Aug 2026, so what remains is the label work (G1): D2 labels
+and D1 link labels re-annotated against the current 187-item batch; the pilot
+batch supplies both decoders' human labels (§8.5). **The trainer loop is built**
 (P6.11, §8) and the decisive path exists; it refuses without the signed
 contract or the pinned embedder. A two-source post-build audit (§7)
 confirmed **21 defects — two of them blockers — and refuted 8**; every

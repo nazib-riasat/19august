@@ -50,6 +50,18 @@ LIVE_DOCS = (
     "GRAFT_PHASE6_BUILD.md",
     # Added 14 Aug 2026 with the Phase-7 plan.
     "GRAFT_PHASE7_BUILD.md",
+    # Added 15 Aug 2026 with the Phase-8 plan — same day it was written, because
+    # a guard that does not read a live document cannot retire anything in it
+    # (the GRAFT_PHASE3_BUILD.md lesson above, pre-empted this time).
+    "GRAFT_PHASE8_BUILD.md",
+    # Added 16 Aug 2026 by the Phase-9 audit. All three were live and none was
+    # read — the same gap this list already records for GRAFT_PHASE3_BUILD.md,
+    # reopened by three documents landing faster than the registry. The Phase-9
+    # pair matters most: PHASE9_DECISIONS.md *wins conflicts* with its own build
+    # plan, so an unretired wording there outranks the corrected one everywhere.
+    "GRAFT_PHASE9_BUILD.md",
+    "PHASE8_DECISIONS.md",
+    "PHASE9_DECISIONS.md",
     "DATASET_DECISION.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
@@ -296,6 +308,55 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
     ("item 9's, it is still open, and the build", "item 9 is now decided (scope c); ingestion at that scope has not run", "R21", "PHASE7_DECISIONS.md"),
     ("Undecided until the pilot's sizing memo is read together with item 8's",
      "DECIDED 15 Aug 2026 -- scope c, 200 questions", "R21", "GATE0_CONTRACT.md"),
+    # R22 -- the Gate-0 SIGNATURE (15 Aug 2026, delegated and recorded as such)
+    # and its Phase-7 consequences.  R21 retired only the item-9 wording; a
+    # 15 Aug audit found the signature itself still described as outstanding in
+    # SIX live documents (CLAUDE.md, chatcontext1.md x3, README.md,
+    # PHASE5_DECISIONS.md, PHASE6_DECISIONS.md, GRAFT_PHASE7_BUILD.md), the
+    # Tier-B by-name refusal still asserted in the honesty stamp, the artefact
+    # and a test that PINNED the stale wording -- and the same audit found the
+    # Phase-3 header still claiming only decision 1 was ruled, contradicting
+    # its own signed section-6 heading.  None of these may reappear.
+    ("all ten items decided, UNSIGNED",
+     "SIGNED 15 Aug 2026 (delegated, recorded as such); Gate 1 unblocked", "R22", None),
+    ("filled and decided; UNSIGNED",
+     "SIGNED 15 Aug 2026 (delegated, recorded as such); Gate 1 unblocked", "R22", None),
+    ("Gate 1 is blocked on it being signed",
+     "Gate 0 signed 15 Aug 2026; Gate 1 is unblocked", "R22", None),
+    ("Gate 1 is blocked on this document being signed",
+     "signed 15 Aug 2026; Gate 1 is unblocked", "R22", None),
+    ("nine of ten items drafted, unsigned",
+     "all ten decided and signed 15 Aug 2026", "R22", None),
+    ("but only the Gate-0 signature blocks it",
+     "Gate 0 signed 15 Aug 2026; what remains for Gate 1 is the label work", "R22", None),
+    ("Tier B refuses until GATE0_CONTRACT.md signs",
+     "both tiers live since the 15 Aug 2026 signature (item 3.2 as amended)", "R22", None),
+    ("refused until GATE0_CONTRACT.md signs",
+     "both tiers live since the 15 Aug 2026 signature", "R22", None),
+    ("Tier B refuses by name until Gate-0 signs",
+     "Tier B live since the 15 Aug 2026 signature", "R22", None),
+    ("Decision 1 is ruled; the remaining values are recommended and awaiting sign-off",
+     "section 6 signed off in full 15 Aug 2026 (rulings 11-12 Aug, remainder signed as written)", "R22", "GRAFT_PHASE3_BUILD.md"),
+    # R23 -- the 16 Aug 2026 Phase-9 audit.  Three blockers, and each left a
+    # wording that would reintroduce it.  The capacity one is the important
+    # entry: the retired 1% tolerance survived as an *executable default*, which
+    # this guard structurally cannot see (it reads prose, not floats), so the
+    # prose retirement below is paired with a regression test in
+    # test_setgen_real.py that reads the default itself.
+    ("Cor 5.1's terminal-reward scaling applies to exactly it",
+     "Cor 5.1 corrects graph automorphisms under node-by-node generation; an id-defined set-state MDP has no automorphism group (PHASE9_DECISIONS.md 1.4)", "R23", None),
+    ("the one Symmetry-Aware GFlowNets (ICML 2025) is actually about",
+     "duplicate corpus text is a dataset diagnostic, not the phenomenon SA-GFN corrects (PHASE9_DECISIONS.md 1.4)", "R23", None),
+    ("recorded in ``pins.GRANULARITY``",
+     "no such symbol; the decision lives in pins.CORPORA['wiki2']['gold'] (PHASE9_DECISIONS.md 2.1)", "R23", None),
+    ("h_filter after dedup by canon_set_hash",
+     "the portfolio constructs through the masks and spends 0 terminal checks (PHASE9_DECISIONS.md 1.1)", "R23", None),
+    ("supporting sentences over the shipped distractor context",
+     "documents are paragraphs on both corpora, decided by measurement (PHASE9_DECISIONS.md 2.1)", "R23", None),
+    ("content_key duplicates per pool",
+     "structurally zero by id derivation; the varying quantity is equivalent_evidence_atoms (PHASE9_DECISIONS.md 1.4)", "R23", None),
+    ("+8.1% acc / +9.7% F1 macro over sparse final-answer",
+     "8.1/9.7 is Graph-S3's abstract against seven baselines; its Table 3 ablation is 11.8/17.1, macro-averaged by this project (PHASE9_DECISIONS.md 7.7)", "R23", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

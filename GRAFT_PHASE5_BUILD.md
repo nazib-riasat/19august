@@ -355,8 +355,8 @@ record shapes (which labels supervise D1–D4 and from where — the
 `Research papers/INDEX.md` §7 selection is the input; splits chronological +
 user-level; negative-example policy; annotation guidelines v1 seeded from the
 spike's flagged items; the G1 threshold; the predeclared primary metrics, which
-plan §2.4 already tables). Freeze Tier B (G9). **Gate 1 is blocked on this
-document being signed; building Phases 5's code is not.**
+plan §2.4 already tables). Freeze Tier B (G9). **Gate 1 was blocked on this
+document being signed (it signed 15 Aug 2026); building Phase 5's code never was.**
 
 ### P5.1 `ingest/corpus.py`
 

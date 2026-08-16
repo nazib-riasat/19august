@@ -41,6 +41,8 @@ from graft.graphbuild.pins import DATASETS
 
 __all__ = [
     "RAW_ROOT",
+    "MUSIQUE_ROOT",
+    "PHASE9_ROOT",
     "DIALOGRE_TO_GRAFT",
     "REDOCRED_TO_GRAFT",
     "TORQUE_TO_GRAFT",
@@ -48,11 +50,27 @@ __all__ = [
     "dialogre_items",
     "redocred_items",
     "torque_items",
+    "musique_pairs",
     "mapping_report",
     "loader_artefact",
 ]
 
 RAW_ROOT = Path("data") / "phase6" / "raw"
+
+#: Phase 8's raw root.  Separate from :data:`RAW_ROOT` because the directory
+#: should say which phase owns the corpus, while the *pin* stays in
+#: ``graphbuild.pins.DATASETS`` so that ``load_split`` remains the single
+#: SHA-verified reader.  Callers pass ``root=MUSIQUE_ROOT`` explicitly —
+#: ``load_split`` already took a ``root`` argument, so nothing about its
+#: signature had to change to accommodate a second phase.
+MUSIQUE_ROOT = Path("data") / "phase8" / "raw"
+
+#: Phase 9's raw root, holding Stage D's two Tier-1 training corpora.  Separate
+#: from the two above for the same reason they are separate from each other: the
+#: directory is a *phase's* fetch, gitignored per machine, and one root shared
+#: across phases would make "which files does this phase need" unanswerable from
+#: the pins alone.  Callers pass ``root=PHASE9_ROOT`` explicitly.
+PHASE9_ROOT = Path("data") / "phase9" / "raw"
 
 
 # --------------------------------------------------------------------------
@@ -140,6 +158,16 @@ def load_split(dataset: str, split: str, root: Path | None = None, verify: bool 
                 f"{dataset}/{split} SHA mismatch: expected {expected}, got {got}. "
                 "The pin describes a different file; re-fetch, or re-pin deliberately."
             )
+    if path.suffix == ".jsonl":
+        # JSON Lines, which MuSiQue ships and the Phase-6 three do not.  Handled
+        # here rather than in a second reader so the SHA check stays on **one**
+        # path: a parallel loader in `graft/gate/` would be a second place for
+        # the verify-then-parse discipline to drift out of step.
+        return [
+            json.loads(line)
+            for line in blob.decode("utf-8").splitlines()
+            if line.strip()
+        ]
     return json.loads(blob.decode("utf-8"))
 
 
@@ -312,6 +340,64 @@ def _spans_of(events: Any) -> list[str]:
 # --------------------------------------------------------------------------
 # the mapping loss — the number the contract actually cares about
 # --------------------------------------------------------------------------
+
+
+def musique_pairs(data: Sequence[Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """MuSiQue-Full rows → contrast pairs, plus a report of what did not pair.
+
+    **The trap this function exists for: ``id`` is the *pair* key, not a row
+    key.** Both members of a contrast pair carry the **same** ``id`` (verified on
+    dev, 15 Aug 2026 — e.g. ``2hop__153573_109006`` appears twice, once
+    answerable and once not). Anything that builds ``{row["id"]: row}`` therefore
+    keeps one twin and silently discards the other — halving the corpus and, far
+    worse, destroying the *contrast* that is the entire reason Phase-8 decision 1
+    chose Full over Ans.
+
+    Returns ``(pairs, report)``. Each pair is
+    ``{"id", "question", "answerable", "unanswerable"}``; ``question`` is stored
+    once because the two are byte-identical, which is the property that keeps the
+    gate off question wording (G2's leakage argument). That identity is
+    **checked, not assumed** — a group whose two questions differ is reported as
+    ``question_mismatch`` rather than silently accepted.
+
+    Groups that are not exactly one answerable plus one unanswerable are
+    excluded and counted. On dev that is 0 of 2,417; the counts exist so a future
+    release that changes the shape is visible instead of quietly dropping rows.
+    """
+    groups: dict[str, list[Mapping[str, Any]]] = {}
+    for row in data:
+        groups.setdefault(str(row["id"]), []).append(row)
+
+    pairs: list[dict[str, Any]] = []
+    malformed: dict[str, int] = {"wrong_size": 0, "wrong_labels": 0, "question_mismatch": 0}
+    for key in sorted(groups):
+        members = groups[key]
+        if len(members) != 2:
+            malformed["wrong_size"] += 1
+            continue
+        labels = {bool(m["answerable"]) for m in members}
+        if labels != {True, False}:
+            malformed["wrong_labels"] += 1
+            continue
+        yes = next(m for m in members if m["answerable"])
+        no = next(m for m in members if not m["answerable"])
+        if yes["question"] != no["question"]:
+            malformed["question_mismatch"] += 1
+            continue
+        pairs.append(
+            {
+                "id": key,
+                "question": yes["question"],
+                "answerable": yes,
+                "unanswerable": no,
+            }
+        )
+    return pairs, {
+        "rows": len(data),
+        "groups": len(groups),
+        "pairs": len(pairs),
+        "malformed": malformed,
+    }
 
 
 def mapping_report(

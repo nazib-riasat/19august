@@ -555,12 +555,7 @@ class Trainer:
         torch.manual_seed(spec.seed)
         self.rng = np.random.default_rng(spec.seed)
 
-        state_dim, action_dim = SyntheticFeaturizer.dims(envs[0].instance, envs[0].graph)
-        for env in self.envs[1:]:
-            if SyntheticFeaturizer.dims(env.instance, env.graph) != (state_dim, action_dim):
-                raise ValueError(
-                    "instances disagree on feature width; one model cannot span them"
-                )
+        state_dim, action_dim = self._dims()
         self.state_dim, self.action_dim = state_dim, action_dim
 
         # `device` as well as `dtype`: the featurizer builds its tensors on
@@ -586,13 +581,7 @@ class Trainer:
             else None
         )
 
-        self.featurizers = [
-            SyntheticFeaturizer(
-                env.instance, env.graph, self.policy, env.instance.cfg,
-                delta_d=arm.delta_d, device=spec.device, dtype=spec.dtype,
-            )
-            for env in self.envs
-        ]
+        self.featurizers = self._build_featurizers()
 
         # G9 / decision 16: no ledger, no query scope, no terminal_checks.  The
         # attribute exists so the assertion at ``train`` has something to read.
@@ -636,6 +625,42 @@ class Trainer:
             if arm.trains_potential
             else None
         )
+
+    # -- the two environment-dependent seams (Phase-9 G1) ------------------
+    #
+    # Everything else in ``__init__`` — the heads, the optimisers, the capacity
+    # accounting, the param groups — is generic over the environment, and only
+    # these two lines were not.  They are methods rather than inline code so
+    # that Phase 9's incremental environment can substitute a real featurizer
+    # **without duplicating head construction**, which would be two
+    # implementations of capacity matching drifting apart in separate files —
+    # and capacity matching is a ruled decision that Gate 2 depends on.
+    #
+    # Extracted 16 August 2026, behaviour-preserving: Phase 3's suite is what
+    # verifies that claim, not this comment.
+
+    def _dims(self) -> tuple[int, int]:
+        """``(state_dim, action_dim)`` for this trainer's environments."""
+        state_dim, action_dim = SyntheticFeaturizer.dims(
+            self.envs[0].instance, self.envs[0].graph
+        )
+        for env in self.envs[1:]:
+            if SyntheticFeaturizer.dims(env.instance, env.graph) != (state_dim, action_dim):
+                raise ValueError(
+                    "instances disagree on feature width; one model cannot span them"
+                )
+        return state_dim, action_dim
+
+    def _build_featurizers(self) -> list[SyntheticFeaturizer]:
+        """One featurizer per environment, sharing this trainer's policy."""
+        return [
+            SyntheticFeaturizer(
+                env.instance, env.graph, self.policy, env.instance.cfg,
+                delta_d=self.arm.delta_d,
+                device=self.spec.device, dtype=self.spec.dtype,
+            )
+            for env in self.envs
+        ]
 
     # -- capacity ----------------------------------------------------------
 

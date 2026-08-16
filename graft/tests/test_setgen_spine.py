@@ -293,6 +293,35 @@ _ADAPTER_LAYER = {
     "graft/setgen/rollout.py",
     "graft/setgen/trainer.py",
     "graft/setgen/gate2.py",
+    # Phase 9's boundary module: it *constructs* the real ``AtomPool`` (through
+    # Phase 7's ``build_pool``, never a second mapping), so it names the type and
+    # is an adapter by the same rule ``features.py`` is.
+    "graft/setgen/proofs.py",
+}
+
+#: Phase 9's other three modules are **deliberately not exempt**.
+#:
+#: ``atomfeat.py`` is the real-data sibling of ``features.py`` and ``realenv.py``
+#: of ``rollout.py``, so exempting them would have been the natural reading — and
+#: it would have been the wrong one.  Neither imports a ``StateGraph``, a
+#: ``LatticeInstance`` or anything from ``graft.synth``, and *that they never
+#: will* is precisely the property Phase 9 rests on: the real environment must
+#: not be able to reach the synthetic one, or the two would be one code path with
+#: two names.  Holding them to the learner standard asserts it every run.
+#: ``pins.py`` is frozen values and imports nothing at all from the environment.
+_PHASE9_SCANNED = {
+    "graft/setgen/pins.py",
+    "graft/setgen/atomfeat.py",
+    # The feature vocabulary, split out of `atomfeat` so the stage-D fingerprint
+    # can be computed on a bare interpreter (`verify_handoff.py` calls it).
+    "graft/setgen/featurenames.py",
+    "graft/setgen/realenv.py",
+    # The distilled head and the portfolio reach the environment only through
+    # ``RealEnvironment`` and ``RealFeaturizer``, never through a lattice type —
+    # and ``distill.py`` in particular must stay outside ``H``'s import graph
+    # entirely (`CLAUDE.md` §4.2), which the scan is one half of.
+    "graft/setgen/distill.py",
+    "graft/setgen/portfolio.py",
 }
 
 #: Phase 4's package, listed separately so the top-level closed list stays a
@@ -313,7 +342,7 @@ _SEARCH_LAYER = {
 #: Every top-level `setgen/` module. `policy.py` is deliberately **not** an
 #: adapter — it is the F6 interface itself and imports nothing but torch, so the
 #: scan above covers it like a learner does.
-_TOPLEVEL = _ADAPTER_LAYER | {"graft/setgen/policy.py"}
+_TOPLEVEL = _ADAPTER_LAYER | {"graft/setgen/policy.py"} | _PHASE9_SCANNED
 
 
 def test_no_learner_module_touches_the_environment():
@@ -375,6 +404,26 @@ def test_the_adapter_layer_is_a_closed_list():
     assert "graft/setgen/policy.py" not in _ADAPTER_LAYER, (
         "policy.py is the F6 interface; exempting it would exempt the boundary"
     )
+
+    # Phase 9's corpus adapters are a closed list for a *different* reason from
+    # the two above: they are the only modules in the project permitted to name a
+    # corpus, so the list is what keeps "everything above proofs.py is
+    # source-agnostic" checkable. A new adapter is a deliberate act; one that
+    # appeared without an entry here would widen the boundary silently.
+    corpora_root = root / "corpora"
+    if corpora_root.is_dir():
+        present_corpora = {
+            p.relative_to(root.parents[1]).as_posix() for p in corpora_root.glob("*.py")
+        }
+        assert present_corpora == {
+            "graft/setgen/corpora/__init__.py",
+            "graft/setgen/corpora/scoring.py",
+            "graft/setgen/corpora/wiki2.py",
+            "graft/setgen/corpora/musique_ans.py",
+        }, (
+            "the Phase-9 corpus package changed; each module is a corpus adapter "
+            f"and the addition has to be recorded. Present: {sorted(present_corpora)}"
+        )
 
     # Phase 4's package is a closed list for the same reason, and for a sharper
     # one: a *learner* smuggled in under `search/` would be exempt from exit

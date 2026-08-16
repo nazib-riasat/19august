@@ -36,6 +36,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Sequence
 
 from graft.retrieve.pins import EXPANSION
+from graft.retrieve.pool import eligible_nodes
 from graft.schemas import ASSERTION_BACKED_NTYPES
 
 __all__ = ["expand_channel"]
@@ -67,6 +68,7 @@ def expand_channel(
     *,
     max_hops: int | None = None,
     fan_out: int | None = None,
+    conv_id: str | None = None,
 ) -> tuple[dict[str, float], dict[str, Any]]:
     """Breadth-first walk from ``seeds`` over live edges, bounded in depth and width.
 
@@ -76,14 +78,25 @@ def expand_channel(
 
     ``report`` carries ``fan_out_binds``, which exit criterion 10 requires in the
     artefact.
+
+    Hits are filtered through ``eligible_nodes`` (15 Aug 2026 audit): the walk
+    follows live edges, and a live edge can reach a quarantined assertion's node
+    or — via a cross-conversation edge — another user's.  Assembly would refuse
+    both, but only by inflating ``hits_refused_ineligible`` and this channel's G7
+    row; the walk itself may *traverse* any node (an ineligible hub still routes),
+    only the **emitted hits** are restricted, matching the other channels.
     """
     hops = int(EXPANSION["max_hops"] if max_hops is None else max_hops)
     width = int(EXPANSION["fan_out"] if fan_out is None else fan_out)
     if width <= 0:
         raise ValueError(f"fan_out must be positive, got {width}")
 
-    frontier = sorted(set(seeds))
+    # Materialised once: a generator input would otherwise be exhausted by the
+    # walk and re-counted as 0 in the report below (15 Aug 2026 audit).
+    seed_set = set(seeds)
+    frontier = sorted(seed_set)
     visited = set(frontier)
+    allowed = set(eligible_nodes(snapshot, conv_id))
     hits: dict[str, float] = {}
     binds = 0
     per_hop: list[int] = []
@@ -99,7 +112,7 @@ def expand_channel(
                     continue
                 visited.add(other)
                 nxt.add(other)
-                if snapshot.ntype(other) in ASSERTION_BACKED_NTYPES:
+                if snapshot.ntype(other) in ASSERTION_BACKED_NTYPES and other in allowed:
                     # ``max`` rather than assignment: a node first reached at hop
                     # 2 down one path and hop 1 down another keeps the nearer
                     # score.  Frontier order would otherwise decide it.
@@ -110,7 +123,7 @@ def expand_channel(
             break
 
     return dict(sorted(hits.items())), {
-        "seeds": len(set(seeds)),
+        "seeds": len(seed_set),
         "max_hops": hops,
         "fan_out": width,
         "fan_out_binds": binds,

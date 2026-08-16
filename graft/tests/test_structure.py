@@ -63,7 +63,23 @@ REPO_ROOT = PACKAGE_ROOT.parent
 #: the part that has to run today: importing any non-scorer ``graft.retrieve``
 #: module must pull in **no torch at all**, which
 #: ``test_the_retrieve_package_does_not_import_torch`` asserts module by module.
-ML_ALLOWED_PACKAGES = ("graft.setgen", "graft.ingest", "graft.graphbuild", "graft.retrieve")
+#:
+#: **Phase 8 widened it a fifth time** (`GRAFT_PHASE8_BUILD.md` decision 2, gap
+#: G3): ``graft.gate`` trains a logistic regression and a 2-layer MLP, and the
+#: three P6.11 trainer guards it inherits are torch-shaped.  The containment is
+#: the tightest of the five and the reason is G9's two-stage split: everything
+#: except the model — the feature contract, the label recipe, the MuSiQue
+#: adaptation, the whole selective-prediction instrument — must stay checkable on
+#: a bare interpreter, because those are the parts whose *correctness* the
+#: write-up depends on.  ``test_the_gate_package_confines_torch_to_the_model``
+#: asserts it module by module.
+ML_ALLOWED_PACKAGES = (
+    "graft.setgen",
+    "graft.ingest",
+    "graft.graphbuild",
+    "graft.retrieve",
+    "graft.gate",
+)
 
 
 def _source_files(subdir: str | None = None, *, ml_allowed: bool = False) -> list[Path]:
@@ -127,20 +143,22 @@ def test_the_phase_0_to_2_surface_imports_no_ml_library():
 
 
 def test_the_ml_boundary_is_a_narrowing_not_a_hole():
-    """The allowance is four packages, and each was opened by a named decision.
+    """The allowance is five packages, and each was opened by a named decision.
 
     A future phase widening this list is making a decision; a future phase
     widening it *silently* is removing the guard that keeps ``H`` free of
     anything learned (v1.2 §4.4).  Phase 3 opened ``graft.setgen`` (P3.0),
     Phase 5 opened ``graft.ingest`` (decision 13), Phase 6 opened
-    ``graft.graphbuild`` (decision 1) and Phase 7 opened ``graft.retrieve``
-    (decision 1, gap G2); a fifth entry needs a fifth written decision.
+    ``graft.graphbuild`` (decision 1), Phase 7 opened ``graft.retrieve``
+    (decision 1, gap G2) and Phase 8 opened ``graft.gate`` (decision 2, gap G3);
+    a sixth entry needs a sixth written decision.
     """
     assert ML_ALLOWED_PACKAGES == (
         "graft.setgen",
         "graft.ingest",
         "graft.graphbuild",
         "graft.retrieve",
+        "graft.gate",
     )
     for pkg in ML_ALLOWED_PACKAGES:
         importlib.import_module(pkg)
@@ -602,5 +620,112 @@ def test_retrieve_defines_no_cross_module_dataclass():
     ids=lambda p: p.name,
 )
 def test_every_retrieve_module_has_a_docstring(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"
+
+
+#: Every ``graft.gate`` module except the model.  Phase 8's G9 splits the build
+#: into a Stage A that must run today and a Stage B that waits on scope-c
+#: ingestion, and everything in Stage A except training has to be checkable
+#: without the ML stack for that split to mean anything.
+#: The gold sidecar's field names.  Defined here as well as in
+#: ``test_retrieve.py`` rather than imported across test modules: a test that
+#: depends on another test file's constant fails for a confusing reason when that
+#: file is reorganised, and the list is three strings.
+GOLD_FIELDS = ("has_answer", "answer_session_ids", "evidence_session_ids")
+
+GATE_NON_MODEL_MODULES = (
+    "graft.gate",
+    "graft.gate.pins",
+    "graft.gate.features",
+    "graft.gate.labels",
+    "graft.gate.adapt_musique",
+    "graft.gate.riskcov",
+    "graft.gate.decide",
+)
+
+
+def test_the_gate_package_confines_torch_to_the_model():
+    """Phase-8 decision 2's containment half — the tightest of the five.
+
+    ``graft.gate.model`` may import torch; **nothing else in the package may**,
+    not even transitively.  ``decide`` is the callable Phase 10 wires, so if it
+    acquired an ML import the orchestrator would inherit one; ``riskcov`` is
+    reused unchanged by Phase 10/11 on end-to-end outputs (§8); and ``features``
+    is the contract whose correctness the write-up rests on.
+    """
+    import subprocess
+
+    program = (
+        "import importlib, sys, json\n"
+        f"for n in {list(GATE_NON_MODEL_MODULES)!r}:\n"
+        "    importlib.import_module(n)\n"
+        "from graft.gate.pins import stage_g_fingerprint\n"
+        "stage_g_fingerprint()\n"
+        "print(json.dumps(sorted(l for l in ['torch', 'torch_geometric'] if l in sys.modules)))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=str(REPO_ROOT)
+    )
+    assert result.returncode == 0, result.stderr
+    leaked = json.loads(result.stdout.strip().splitlines()[-1])
+    assert not leaked, f"a non-model graft.gate module pulled in {leaked}"
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted(
+        p for p in (PACKAGE_ROOT / "gate").rglob("*.py") if p.name != "labels.py"
+    ),
+    ids=lambda p: p.name,
+)
+def test_no_gate_module_except_labels_mentions_a_gold_field(path):
+    """Phase-8 G3, the same shape as Phase-7 exit criterion 7.
+
+    A gate that could read ``has_answer`` or ``answer_session_ids`` would **be**
+    the label, and every abstention number would be measuring the instrument
+    rather than the gate.  ``labels.py`` is the one sanctioned boundary, exactly
+    as ``retrieve/recall.py`` is for Stage C.
+    """
+    source = path.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    names = {
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    }
+    names |= {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+    names |= {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    offending = sorted(n for n in names if n in GOLD_FIELDS)
+    assert not offending, f"{path.name} references gold field(s) {offending}"
+
+
+def test_gate_defines_no_cross_module_dataclass():
+    """Criterion 12 held over the fifth ML-allowed package.
+
+    ``GateDecision`` crosses a module boundary — Phase 10's orchestrator consumes
+    it — so it lives in ``schemas.py`` where the data model lives, not beside the
+    code that constructs it.
+    """
+    offenders: list[str] = []
+    for path in sorted((PACKAGE_ROOT / "gate").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for decorator in node.decorator_list:
+                target = decorator.func if isinstance(decorator, ast.Call) else decorator
+                name = getattr(target, "id", None) or getattr(target, "attr", None)
+                if name == "dataclass":
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}::{node.name}")
+    assert not offenders, "dataclasses defined in graft.gate: " + ", ".join(offenders)
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((PACKAGE_ROOT / "gate").rglob("*.py")),
+    ids=lambda p: p.name,
+)
+def test_every_gate_module_has_a_docstring(path):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"

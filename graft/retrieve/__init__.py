@@ -33,10 +33,14 @@ reading of the spec.
 ``fuse``             P7.6 — the declared arithmetic, and full assembly
 ``recall``           P7.7 — the two-tier instrument; the only gold-reading module
 ``pins``             what Phase 7 freezes, plus the Stage-C fingerprint
+``scorer``           P7.8 — the ≤ 8M query-conditioned GNN, the sixth channel
 ===================  ==========================================================
 
-``scorer`` (P7.8) is **not built**: it trains, and ``GATE0_CONTRACT.md``'s first
-line is that nothing is trained before it signs.  Its absence is a legal
-configuration of the fusion, not a missing piece — the five training-free
-channels stand alone by design (G6).
+``scorer`` (P7.8) was **built 15 August 2026, after** ``GATE0_CONTRACT.md``
+signed — its first line is that nothing is trained before the signature, and
+building steps 0–5 first is what honoured the ordering.  **Built is not
+trained**: no checkpoint exists yet, and the runner adds the sixth channel only
+when ``--scorer`` names one.  Its absence remains a legal configuration of the
+fusion, not a missing piece — the five training-free channels stand alone by
+design (G6).
 """

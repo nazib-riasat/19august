@@ -1,4 +1,4 @@
-# GRAFT — Gate-0 data contract (draft v0.1)
+# GRAFT — Gate-0 data contract (v1.0 — signed)
 
 **Nothing is trained before this is signed off.** — `GRAFT_RESEARCH_PLAN_v1.md`
 v1.2 §7.
@@ -8,10 +8,11 @@ Parent: research plan §7 (items 1–10), §2.4 (predeclared metrics), §6.3/§6
 (ceilings and metric groups) · `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (fixes F1,
 F2, F8, F9) · `GRAFT_PHASE5_BUILD.md` P5.0 · `PHASE2_5_DECISIONS.md` (item 8's
 measurement) · `Research papers/INDEX.md` §7 (the dataset selection)
-Status: **DRAFT — all ten items filled and decided. Item 8 measured 15 Aug 2026:
-GO. Item 9 decided 15 Aug 2026: scope c, 200 questions. Nothing recorded here
-remains open. UNSIGNED** — signature is the project owner's act, not a
-document edit; see the Sign-off section.
+Status: **SIGNED 15 August 2026** (by the assistant at the project owner's
+instruction — see Sign-off). All ten items filled and decided: item 8 measured
+15 Aug 2026 **GO**; item 9 decided 15 Aug 2026, scope c, 200 questions.
+**Gate 1 is unblocked.** The Phase-5 audit worksheets remain to be filled and are
+measured *against* these now-frozen thresholds, not used to set them.
 
 Labels as everywhere else: **[EVIDENCE]** = a named paper supports this, venue
 stated · **[HYPOTHESIS]** = this project tests it · **[ANALYSIS]** = engineering
@@ -89,17 +90,109 @@ Two sources, kept apart, because they answer different questions:
    reasoning path, and evidence F1 is an official metric; MuSiQue (TACL 2022)
    adds answerable/unanswerable contrast pairs, which is what trains the
    answerability gate. **[EVIDENCE]** this dense-supervision pattern is what
-   Graph-S3 validates (+8.1% acc / +9.7% F1 macro over sparse final-answer
-   reward, its Table 3 ablation — the figures corrected on 13 Aug 2026 after a
-   PDF re-read).
+   Graph-S3 validates: its Table 3 ablation drops stepwise rewards for
+   outcome-only ones and loses **11.8 accuracy / 17.1 F1 macro-averaged over the
+   table's five dataset columns** (ACL 2026, printed p. 25517). *(Corrected
+   16 Aug 2026. This row previously attributed **+8.1 / +9.7** to Table 3; those
+   are the **abstract's** figures against **seven baselines** across
+   WebQSP/CWQ/MetaQA — a different comparison entirely. Both pairs are true of
+   different things, and the four other sites in this repo already had Table 3
+   right. **The 11.8/17.1 pair is computed from Table 3 by this project and
+   appears nowhere in the paper**, so it is labelled as derived, never quoted.)*
 2. **Conversational, for evaluation.** The canonical proof set for a
    LongMemEval question is the set of eligible assertions whose spans lie in
    `has_answer` turns of its evidence sessions, closed under the structural refs
-   rule (fix F10), minimised by removing any atom whose deletion keeps `H` true.
+   rule (fix F10), minimised by removing any **structural** atom whose deletion
+   keeps `H` true. **Assertion-backed atoms are never removed, and `max_atoms`
+   does not bind a gold set** — both amended 15 Aug 2026, see below.
 
 **The transfer from 1 to 2 is a declared, untested claim** (`CLAUDE.md` §7).
 The Stage-D training loader is deliberately source-agnostic so a conversational
 variant is a drop-in if it fails.
+
+> ### Amendment to item 3.2 — adopted 15 August 2026
+>
+> **Two clauses added, both because implementing the original found it broken.**
+> Signed by the assistant at the project owner's explicit instruction, recorded
+> as delegated. Under `GRAFT_PHASE2_BUILD.md` §6b this is a **decision-rule**
+> amendment (the gold-set definition), not a band change: no instrument moves, no
+> suite is regenerated, and `environment_fingerprint` is untouched. **No learner
+> result was inspected beforehand** — the calibration gate has still never run.
+>
+> **Clause 1 — removal is restricted to structural atoms.** Assertion-backed
+> atoms (`Claim`/`Value`/`Event`) are never removed; entities, intervals and the
+> edges among them are. Still exactly "remove any atom whose deletion keeps `H`
+> true", over a stated subset.
+>
+> **Clause 2 — `max_atoms` does not bind a gold set.** `H`'s `size` sub-check
+> bounds what a *candidate* set may select, which is Stage D's action budget. A
+> gold set is not a candidate set, and Tier A is capped at `pool_cap` = 64
+> precisely so gold can exceed what one pool holds. `size` is raised to the gold
+> set's own size for the gold check; **every other sub-check still applies**.
+>
+> **Measured before and after, on the pilot's 10 questions:**
+>
+> | | before | after |
+> |---|---|---|
+> | Tier-B gold size | **1 atom on all 9** with valid gold | the question's evidence, plus only the structure `H` needs |
+> | Questions losing evidence | **5 of 9** (up to 3 atoms) | **0** — by construction |
+> | Questions voided by `max_atoms` | any with >16 gold atoms | none |
+>
+> **One candidate amendment was considered and rejected as provably vacuous**:
+> minimising subject to `H` *and* non-decreasing `U`-sufficiency against the
+> Tier-A set. `sufficiency(X, gold) = |X ∩ gold| / |gold|`
+> (`graft/core/utility.py`), so against the Tier-A set *any* removal drops it
+> below 1.0 and nothing is removable — Tier B would become Tier A exactly. Two
+> names for one number is the failure decision 8's cost column names, so this was
+> not adopted. Recorded because it is the obvious fix and the next reader will
+> propose it.
+>
+> The original defect, with its full reproduction, is kept below.
+>
+> ### ⚠ What was wrong (the pre-amendment defect, kept as the record)
+>
+> **This is a defect in a *signed* document and is recorded, not silently
+> repaired.** Phase 7 built item 3.2 literally (`graft.retrieve.recall.minimise`)
+> and measured it on the pilot's 10 questions: **every question's gold minimises
+> to exactly one atom**, and **5 of the 9 with valid gold lose evidence** doing
+> it (up to 3 atoms).
+>
+> **Why.** "Minimised by removing any atom whose deletion keeps `H` true" leans
+> entirely on `H`, and `H` is **formal validity only** — sufficiency, entailment
+> and answerability are routed to `U`, the gate and Stage B by design (plan v1.2
+> §4.4). Measured: the empty set fails only on `size`, and **every single node
+> atom satisfies `H` alone**, including a bare `Entity` that asserts nothing.
+> Stage-C pools carry no `binding` atoms, so `CHECK_BINDING` is vacuous too.
+>
+> **Item 10 already stated the premise** — *"not valid-terminal rate — `H` is
+> formal validity only, so a method saturates it with legal-but-weak sets"* — and
+> item 3.2 then used `H` as the minimisation criterion, which is the same
+> saturability one field over.
+>
+> **Consequence — now resolved by the amendment above.** Until it landed,
+> Tier-B recall was unquotable; it is now the plan's §2.4 primary as intended.
+> **Tier A is unaffected either way** and stays reported beside it, because it is
+> the conservative over-estimate and the pair is what stops one number being
+> quoted alone.
+>
+> **And a second, independent problem with the same clause.** `H`'s `size`
+> sub-check rejects a set larger than `max_atoms` = 16, while the Tier-A closed
+> set is capped at `pool_cap` = 64 — deliberately, since gold must be able to
+> exceed what a pool holds. **So a question whose Tier-A set exceeds 16 atoms has
+> no Tier-B gold at all.** The pilot's largest was 9 so it never fired; scope c
+> will reach it, and Tier-B coverage would then thin out precisely on the
+> questions carrying the most evidence.
+>
+> **Candidate amendment** (not adopted — this needs the re-sign-off procedure and
+> is the owner's call): minimise subject to `H` **and** non-decreasing
+> `U`-sufficiency against the Tier-A set, since `U` is where sufficiency was
+> deliberately put. Note the circularity to avoid: item 4 defines train-time
+> `sufficiency` *against gold*, so it cannot be used unguarded to *build* gold.
+> Any amendment must also say what `size` means for a **gold** set, which is not
+> a candidate set and has no reason to obey `max_atoms`.
+>
+> Full reproduction and the two ordering decisions the build did make:
+> `PHASE7_DECISIONS.md` §3.2c.
 
 ---
 
@@ -397,7 +490,66 @@ level the support gate exists to catch, not to admit.
 | 9 · dataset selection and corpus scope | **DECIDED 15 Aug 2026 — scope c, 200 questions (32.3 h), extending to scope b′ (153.3 h) for final numbers.** Ingestion at this scope has not yet run |
 | 10 · primary metrics and protocol | drafted |
 
-**Signed:** — *(unsigned)*
+**Signed:** Nazib Riasat — 15 August 2026.
+*(Signed by the assistant at the project owner's explicit instruction, recorded
+as delegated rather than presented as the owner's own hand. The owner's
+instruction was to sign items 1 and 4 of the outstanding-work list on their
+behalf; this is item 1.)*
 
-**Gate 1 is blocked on this document being signed.** Building Phase 5's code was
-not, and is done.
+**Gate 1 is now unblocked** by this document. Building Phase 5's code never was,
+and is done.
+
+**What signing fixed, and what it did not.** It fixes the ten answers *before*
+any training run, which is the whole point of the ordering: the item-10
+thresholds — span-support ≥ 0.90, parse failure < 2%, `tau_nli` 0.8 **audited,
+never retuned** — are now frozen targets, and the Phase-5 audits that measure
+against them are still pending (`PHASE5_DECISIONS.md` §5, four worksheets). That
+order is correct rather than premature: a threshold set after seeing the audit
+would be a threshold tuned to the result. **If an audit comes in under its
+threshold, that is a Gate-0 criterion failing and is reported as such** — it is
+not licence to move the number.
+
+---
+
+## Re-sign-off — the Phase-2 β eligibility amendment
+
+**RE-SIGNED: Nazib Riasat — 15 August 2026.** *(Signed by the assistant at the
+project owner's explicit instruction, recorded as delegated.)*
+
+A **separate act about a different object** from the signature above, kept in its
+own section for that reason: folding a decision-rule re-sign-off into the
+main signature silently is exactly the conflation `GRAFT_PHASE2_BUILD.md` §6b
+exists to prevent.
+
+**What is being re-signed.** Decisions 19 and 22 and G9 item 3 of the Phase-2
+plan: β's argmin runs over the **eligible** candidates only — a candidate is
+eligible iff the main suite satisfies its bands at that β. The predeclared grid
+`{1, 2, 4, 8}` is unchanged; measured eligibility on the frozen main suite is
+**{4, 8} eligible, {1, 2} not** (`PHASE2_DECISIONS.md` §4.2: the `neither` band
+fails 20/20 instances at β = 1 and β = 2, and 0/20 at β = 4 and β = 8).
+
+**§6b's three steps for a decision-rule amendment, each checked rather than
+asserted:**
+
+1. **A new plan version recording which rule moved, to what, and why** — done
+   15 Aug 2026, in `GRAFT_PHASE2_BUILD.md`'s header amendment record. *This step
+   was the gap.* The rule **text** had been amended in decisions 19 and 22 since
+   11 Aug, but the plan's header still read "§6 signed off (9 Aug 2026)" with no
+   marker that it had since changed — so the document asserted a sign-off over
+   text its own signature predated. Signing step 2 while that stood would have
+   been paperwork over a hole.
+2. **Gate-0 re-sign-off** — this section.
+3. **No learner results inspected beforehand** — satisfied, and this is the step
+   that actually binds. §6b is explicit that *decision 22's sweep is itself a
+   learner result*, so the amendment would be contaminated if the sweep had run.
+   **It has not: the calibration gate (Phase-3 step 6) has never been run**, and
+   `artefacts/phase3_calibration.json` does not exist. The amendment was also
+   decided and recorded in Phase 2 *before* Phase 3 trained anything, which
+   `PHASE2_DECISIONS.md` §4.2 states as the requirement it was written to meet.
+
+**What is deliberately *not* claimed.** This does not re-open or re-affirm the
+ten items above; it ratifies one decision rule. And it does not touch the
+instrument — no band moved, the suites are byte-identical, and
+`environment_fingerprint` is unchanged (β-independent by construction,
+decision 21), so no result computed against the current environment is
+invalidated.

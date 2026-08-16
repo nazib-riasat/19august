@@ -27,6 +27,7 @@ from graft.schemas import (
     CandidateAtom,
     CheckResult,
     Edge,
+    GateDecision,
     Interval,
     Node,
     Obligations,
@@ -223,6 +224,24 @@ def output_record(rng: random.Random) -> OutputRecord:
     )
 
 
+def gate_decision(rng: random.Random) -> GateDecision:
+    """Phase-8's gate output.
+
+    ``p_answerable`` is drawn on [0, 1] because the class refuses anything else —
+    the threshold rule and every calibration number are defined on that interval.
+    ``answerable`` is drawn independently of the threshold on purpose: the record
+    must round-trip whatever decision produced it, including one replayed from an
+    artefact written under a different operating point.
+    """
+    return GateDecision(
+        p_answerable=rng.random(),
+        answerable=rng.random() < 0.5,
+        threshold=rng.random(),
+        feature_names=tuple(token(rng) for _ in range(rng.randint(0, 5))),
+        arm=rng.choice(("pool_only", "with_question", "")),
+    )
+
+
 #: Every schema class paired with its generator.  The round-trip test iterates
 #: this, so a new schema class that is not added here fails the coverage check.
 GENERATORS = {
@@ -238,4 +257,5 @@ GENERATORS = {
     Node: node,
     Edge: edge,
     OutputRecord: output_record,
+    GateDecision: gate_decision,
 }

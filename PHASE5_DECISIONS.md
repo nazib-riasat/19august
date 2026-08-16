@@ -609,8 +609,11 @@ python scripts/phase5_bakeoff.py --out artefacts/phase5_bakeoff.json
 python scripts/phase5_pilot.py --out artefacts/phase5_pilot.json --twice
 ```
 
-**What remains is the four worksheets under `artefacts/phase5_pilot/`**, which
-exist and are populated (50 / 50 / 30 / 48 rows). Fill the named column in each:
+**DONE — all four filled and returned 15 August 2026** (50 / 50 / 30 / 48 rows,
+100% filled). Labels are **human**; an assistant repaired the CSV structure only
+and wrote no judgment column. Results in §5a; the blank originals are kept at
+`artefacts/phase5_pilot/filled_backup/`. The column specification each was filled
+against:
 
 | Worksheet | Column to fill | Criterion |
 |---|---|---|
@@ -618,6 +621,72 @@ exist and are populated (50 / 50 / 30 / 48 rows). Fill the named column in each:
 | `audit_fuzzy_spans.csv` | `well_bounded` | **every** rung-3 span, not a sample; the mis-bound rate is reported, never tuned toward |
 | `audit_nli.csv` | `human_entailed` | agreement at `tau_nli = 0.8`, stratified near the threshold. **Audit, not retune** |
 | `audit_obligation_slots.csv` | the `gold_*` columns | scored with `graft.core.obligations.slot_level_scores`; reported wherever coverage is reported (fix F2) |
+
+### 5a. What the audits measured — 15 August 2026
+
+Measured against the **frozen** Gate-0 thresholds: the contract was signed
+earlier the same day, so these are audits *against* fixed targets, not inputs to
+setting them.
+
+**1. Span support — PASSES, with a denominator that had to be ruled.**
+
+| Scope | Result | |
+|---|---|---|
+| **Eligible assertions only** | **35 / 35 = 1.000** | ✅ against Gate-0's ≥ 0.90 |
+| All 50 audited rows | 39 / 50 = 0.780 | ✗ |
+
+**Ruled: the eligible-only reading is the criterion's.** Quarantined assertions
+never enter the active graph (fix F9), so a *precision* statement about
+retrievable evidence is over what was admitted. The all-rows figure is not a
+precision failure but a different quantity, and the 4-of-15 quarantined rows that
+*were* supported are a **false-quarantine recall loss** — recorded here because
+it is a real cost of `tau_nli` = 0.8 and belongs beside finding 2.
+
+**2. NLI — 84% agreement overall, and a probable verifier defect underneath it.**
+
+Near-threshold 24/25 = 0.960; far 18/25 = 0.720. The error is asymmetric: **7
+false negatives against 1 false positive.**
+
+**Do not read this as "`tau_nli` is too strict" yet.** Several of the seven are
+near-verbatim restatements scoring ~0.001 — for example premise *"Taking care of
+your leather boots is crucial to extend their lifespan and prevent damage. Here
+are some tips…"* against hypothesis *"Taking care of your leather boots is
+crucial to extend their lifespan and prevent damage."*, scored **0.001**, while a
+structurally identical near-threshold row scores 0.9968. A verbatim prefix cannot
+be a 0.001 entailment. That points at premise/hypothesis pairing, ordering or
+truncation inside the verifier, **not at the threshold** — and the contract's
+"audit, never retune" rule bites precisely here: the honest next step is to
+reproduce the seven, not to move 0.8.
+
+**3. Fuzzy spans — 9 / 30 well-bounded = 0.300, so a 70% mis-bound rate.**
+
+The population, not a sample (every rung-3 span, per G5). Reported, never tuned
+toward. The failures are visible and coarse: one span is `sparent`, a fragment of
+*"parents"*; many begin mid-clause (`"warm light."`, `"candid moments."`,
+`"'re sharp and well-lit."`). This is a ceiling-1 finding and the largest single
+quality defect Stage A has produced.
+
+**4. Obligation slots — and the number that matters is `entity_anchor` at 17%.**
+
+| Slot | Exact match |
+|---|---|
+| `entity_anchor` | **8 / 48 = 0.167** |
+| `value_type` | 21 / 48 = 0.438 |
+| `time_expression` | 4 / 21 = 0.190 |
+| `needs_source` | 44 / 48 = 0.917 |
+| `aggregate` | 27 / 48 = 0.562 |
+
+Exact string match is a harsh metric on a free-text slot — *"painting classes"*
+against gold *"painting projects"* scores 0 while being nearly right — so 0.167
+is a **floor**, not the parser's true quality.
+
+**It is nonetheless the same defect Phase 7 measured from the other end.**
+`PHASE7_DECISIONS.md` §3.2 found the entity channel matching an anchor in only
+3 of 10 questions and considered amending decision 7's normalised-exact rule.
+This says the anchors are **mostly wrong at source**, so the fault is upstream in
+the parser rather than in the matcher — which weakens the case for amending
+decision 7 and strengthens leaving it alone (§3.2a already recommended waiting).
+Two independent measurements, one cause.
 
 ---
 
@@ -632,8 +701,10 @@ exist and are populated (50 / 50 / 30 / 48 rows). Fill the named column in each:
   source. Deliberately outside `GRAPH_OPS`: no `Mention` node exists until D1
   decides, so replay ignores the op. *(Added 14 Aug — §7's finding 3: before
   this, D1's items were unrecoverable from the permanent record.)*
-* **`GATE0_CONTRACT.md`**, nine of ten items drafted. **Gate 1 is blocked on it
-  being signed**, which needs item 8.
+* **`GATE0_CONTRACT.md`**, drafted here at nine of ten items. *(Since overtaken:
+  item 8 measured GO and item 9 decided 15 Aug 2026, and the contract **signed**
+  the same day — Gate 1 is unblocked. This bullet is the state Phase 5 handed
+  over, kept as the historical record.)*
 * **The measured yields** (mentions/turn, assertions/turn, quarantine rate) that
   size Gate-1's annotation batches under item 8's items/hour.
 * **The frozen extractor and prompt registry**, because Phase 6's

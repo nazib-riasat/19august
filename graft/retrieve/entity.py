@@ -36,6 +36,7 @@ from __future__ import annotations
 from typing import Any
 
 from graft.graphbuild.candidates import normalise_name
+from graft.retrieve.pool import eligible_nodes
 from graft.schemas import (
     ASSERTION_BACKED_NTYPES,
     PAYLOAD_ALIASES,
@@ -84,6 +85,8 @@ def entity_channel(
     snapshot: Any,
     obligations: Obligations,
     conv_id: str | None = None,
+    *,
+    seeds: tuple[str, ...] | None = None,
 ) -> dict[str, float]:
     """Anchor → matched entities → their live edges' assertion-backed endpoints.
 
@@ -96,10 +99,25 @@ def entity_channel(
     whichever endpoint is not the entity picks up both without enumerating the
     edge vocabulary here — which would be a fifth place to update when
     :data:`graft.schemas.ENDPOINT_TABLE` changes.
+
+    ``seeds`` lets a caller that already matched the anchor (the runner matches
+    once and hands the same seeds to the expansion walk) skip the second
+    ``match_entities`` scan — before this, matching ran twice per question and
+    its cost landed in *both* channels' latency rows (15 Aug 2026 audit).
     """
-    seeds = match_entities(snapshot, obligations.entity_anchor, conv_id)
+    if seeds is None:
+        seeds = match_entities(snapshot, obligations.entity_anchor, conv_id)
     if not seeds:
         return {}
+    # **Eligibility and scope, filtered here as well as at assembly** (15 Aug
+    # 2026 audit).  This channel follows *edges*, and a live edge can reach a
+    # quarantined assertion's node or another conversation's — ``build_pool``
+    # would refuse both, but only by inflating ``hits_refused_ineligible``, the
+    # count that exists to flag quarantine leakage, and the refused hits would
+    # still pollute this channel's G7 recall row and its ``unique`` count.  The
+    # text channels already filter through ``eligible_nodes``; this one now does
+    # the same, so all four emit over one candidate space.
+    allowed = set(eligible_nodes(snapshot, conv_id))
     hits: dict[str, float] = {}
     for entity_id in seeds:
         for edge in snapshot.edges_of(entity_id):
@@ -108,6 +126,6 @@ def entity_channel(
             other = edge.dst if edge.src == entity_id else edge.src
             if other == entity_id:
                 continue
-            if snapshot.ntype(other) in ASSERTION_BACKED_NTYPES:
+            if snapshot.ntype(other) in ASSERTION_BACKED_NTYPES and other in allowed:
                 hits[other] = 1.0
     return dict(sorted(hits.items()))

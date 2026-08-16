@@ -57,6 +57,26 @@ compare the output with a teammate's::
   covered by ``config hash``, and giving a frozen value two homes is the failure
   mode `CLAUDE.md` §5 catalogues.
 
+* **stage-G fingerprint** (Phase-8 exit criterion 12) — the gate's identity: the
+  two ablation arms, the model classes and their parameter cap, the feature-block
+  names *and their order* (an ablation is a column mask over that order, so a
+  reordering silently changes which columns an arm sees), the threshold rule, the
+  two prevalences, the class handling, and the abstain-cause vocabulary. Weights
+  are not bit-identical across machines and are not promised to be; the setup
+  that produced them is, and so is the arithmetic that turns a probability into
+  an abstention.
+
+* **stage-D fingerprint** (Phase-9 exit criterion 16) — Stage D's identity: the
+  training corpora and the subset decision 2 pinned, the obligation-synthesis
+  rules, the featurizer's feature **names in vector order** (the Phase-8
+  correction, adopted here from the start rather than after an audit found two
+  different experiments sharing one identity), the distillation and portfolio
+  constants, the training ladder, and the Gate-3 decision rule itself. ``beta``,
+  ``K``, ``checker_budget`` and the seeds stay absent — they are the config
+  tree's. ``n_real`` is bound though it is ``None`` until build step 4 derives
+  it: a run at 50,000 trajectories and one at 200,000 are different experiments,
+  and ``None`` marks a fingerprint taken before the budget was known.
+
 If any of these disagree between two machines running the same commit, that is a
 real bug and worth chasing before it contaminates a result.
 
@@ -76,6 +96,8 @@ from graft.config import config_hash, load_config
 from graft.eventlog import EventLog
 from graft.graphstore import ReplayGraphStore
 from graft.graphbuild.pins import endpoint_table_hash, stage_b_fingerprint
+from graft.gate.pins import PRIMARY_METRIC, stage_g_fingerprint
+from graft.setgen.pins import stage_d_fingerprint, training_blocked_reason
 from graft.retrieve.pins import SCORER, stage_c_fingerprint
 from graft.ingest.pins import EXTRACTOR, ingestion_fingerprint
 from graft.ledger import Ledger
@@ -181,6 +203,11 @@ def main() -> int:
           f"   (endpoints {endpoint_table_hash()})")
     print(f"stage-C print    {stage_c_fingerprint()}"
           + ("" if SCORER["built"] else "   (scorer declared, not built - Gate 0 unsigned)"))
+    print(f"stage-G print    {stage_g_fingerprint()}"
+          f"   (gate primary: {PRIMARY_METRIC})")
+    blocked = training_blocked_reason()
+    print(f"stage-D print    {stage_d_fingerprint()}"
+          f"   (Stage-D training: {'BLOCKED' if blocked else 'unblocked'})")
     print(f"ingestion print  {ingestion_fingerprint()}"
           + ("" if EXTRACTOR is not None else "   (no extractor frozen yet - G2 bakeoff)"))
     print()

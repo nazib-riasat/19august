@@ -30,6 +30,7 @@ from graft.graphbuild.pins import EMBEDDER
 __all__ = [
     "EMBEDDER",
     "CHANNELS",
+    "SCORER_CHANNEL",
     "CHANNEL_WEIGHTS",
     "NORMALISATION",
     "TIE_BREAK",
@@ -50,11 +51,25 @@ __all__ = [
 #: than a missing channel.
 CHANNELS = ("bm25", "dense", "entity", "expand")
 
+#: The learned channel's name in the fusion table.  Separate from
+#: :data:`CHANNELS` because that tuple is "the channels that run without
+#: training" — the set G6 requires to stand alone — and folding the scorer into
+#: it would make its absence look like a missing channel rather than the legal
+#: configuration decision 9 declares it to be.
+SCORER_CHANNEL = "scorer"
+
 #: **All weights 1.0, and that is the decision** — not a placeholder awaiting a
 #: sweep.  Recall is the purpose of this stage (plan §3.3 says so twice), the
 #: per-channel recall table (G7) is the instrument that would justify moving one,
 #: and moving one before that table exists would be tuning against nothing.
-CHANNEL_WEIGHTS: dict[str, float] = {name: 1.0 for name in CHANNELS}
+#:
+#: The scorer's weight is listed **explicitly rather than defaulted**.  ``fuse``
+#: falls back to 1.0 for an unlisted channel, so omitting it would work and would
+#: leave the one *learned* channel's weight the only one not in the fingerprint —
+#: exactly the asymmetry decision 3 exists to prevent.
+CHANNEL_WEIGHTS: dict[str, float] = dict(
+    {name: 1.0 for name in CHANNELS}, **{SCORER_CHANNEL: 1.0}
+)
 
 #: Per-channel min–max to [0, 1] **over that question's own results**.  BM25
 #: scores and cosines share no scale, so a raw union would be a comparison
@@ -124,7 +139,8 @@ EXPANSION: dict[str, Any] = {
 }
 
 # --------------------------------------------------------------------------
-# decision 9 — the scorer (G6).  Declared here, built after Gate 0 signs.
+# decision 9 — the scorer (G6).  Declared before Gate 0 signed; built 15 Aug
+# 2026, once it had.
 # --------------------------------------------------------------------------
 
 #: The GNN scorer's frozen configuration.  It is in the fingerprint **before it
@@ -140,13 +156,22 @@ EXPANSION: dict[str, Any] = {
 #: ``GATE0_CONTRACT.md`` item 2, which beats the architecture's 2Wiki row: the
 #: distant signal is conversation-native, so the Wikipedia→conversation transfer
 #: declaration (`CLAUDE.md` §7) is not spent here.
+#: ``layers`` is here because it was **not** (15 Aug 2026 audit): the layer
+#: count was a hard-coded constructor default, so two differently-deep scorers
+#: would have carried the same Stage-C fingerprint — configuration identity is
+#: the one cross-machine property Stage C promises, and depth was outside it.
+#: (The fingerprint moved when this key landed; recorded in
+#: `PHASE7_DECISIONS.md` §7 — nothing decisive had been produced under the old
+#: one.)  ``hidden`` is deliberately absent: it is `graphbuild.pins.TRAINING`'s
+#: value, referenced not re-pinned, the same rule as the embedder above.
 SCORER: dict[str, Any] = {
     "max_params": 8_000_000,
     "passes": 1,
+    "layers": 2,
     "query_conditioned": True,
     "training_signal": "distant_answer_session_ids",
     "optional_in_fusion": True,
-    "built": False,
+    "built": True,
 }
 
 
@@ -154,6 +179,7 @@ def frozen_values() -> dict[str, Any]:
     return {
         "embedder": EMBEDDER,
         "channels": list(CHANNELS),
+        "scorer_channel": SCORER_CHANNEL,
         "channel_weights": dict(sorted(CHANNEL_WEIGHTS.items())),
         "normalisation": NORMALISATION,
         "fusion": FUSION,

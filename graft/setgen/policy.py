@@ -232,10 +232,22 @@ def match_capacity(
     target: int,
     *,
     base: int = 64,
-    tol: float = 0.01,
+    tol: float | None = None,
     limit: int = 4096,
 ) -> int:
-    """Smallest hidden width whose ``count`` is ``>= target`` and within ``tol``.
+    """Smallest hidden width whose ``count`` is ``>= target``, optionally within ``tol``.
+
+    **``tol`` defaults to ``None`` — the directional clause alone — and that is a
+    correction, not a convenience** (16 Aug 2026 audit).  It used to default to
+    ``0.01``: the very tolerance `PHASE3_DECISIONS.md` §6.4 retired as
+    *unachievable by width* (the dead block is ~half a width step at every
+    scale, so the narrowest closing width always overshoots by ~1.4–2.2%).  A
+    retired number surviving as an **executable default** is invisible to
+    `scripts/check_plan_consistency.py`, which reads prose and cannot see a
+    float — and it cost exactly what it was retired for: Phase 9's step-4 caller
+    took the default, the raise fired on the correct width, and its handler fell
+    back to a control **smaller than the proposed method**.  Callers that want a
+    pathology guard pass one explicitly (``gate2.CAPACITY_SANITY_CEILING``).
 
     **Decision 11 has two clauses and only one of them is symmetric.** "Never
     smaller" is a direction; the percentage is a tolerance. A control with fewer
@@ -270,11 +282,13 @@ def match_capacity(
             f"no hidden width <= {limit} reaches {target} parameters "
             f"(best {achieved} at width {width})"
         )
-    if achieved > target * (1.0 + tol):
+    if tol is not None and achieved > target * (1.0 + tol):
         raise ValueError(
             f"capacity granularity too coarse: width {width} gives {achieved} "
             f"against a target of {target}, which is "
-            f"{100.0 * (achieved / target - 1.0):.2f}% over a {100 * tol:.0f}% "
-            "tolerance. Decision 11 is not satisfiable by width alone here."
+            f"{100.0 * (achieved / target - 1.0):.2f}% over this caller's "
+            f"{100 * tol:.0f}% ceiling. That ceiling is a pathology guard, not "
+            "decision 11's criterion — the criterion is the directional clause "
+            "plus minimality, both already satisfied by the width returned."
         )
     return width

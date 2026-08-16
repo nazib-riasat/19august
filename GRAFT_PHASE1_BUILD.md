@@ -555,7 +555,7 @@ one public function per term.
 
 | Term | Definition | Range | Character |
 |---|---|---|---|
-| `sufficiency` | `\|X ∩ gold\| / \|gold\|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+11.8 acc / +17.1 F1 macro over sparse terminal reward, its Table 3 ablation) |
+| `sufficiency` | `\|X ∩ gold\| / \|gold\|` | [0,1] | deterministic given gold. **[EVIDENCE]** Graph-S3 (ACL 2026) validates dense supervision from offline golden subgraphs (+11.8 acc / +17.1 F1 macro over sparse terminal reward, its Table 3 ablation — (macro-averaged from Table 3 by this project; the pair is not printed in the paper)) |
 | `coverage` | `1 − mean(d₁..d₄)` over active slots; 1.0 when no slots are active | [0,1] | deterministic; shares `slot_status` with `d(s)` (G4) |
 | `source_quality` | mean tier over selected atoms, from `config.source_tiers` (G7) | [0,1] | metadata-derived |
 | `temporal_correctness` | `\|constraint ∩ ⋃ evidence intervals\| / \|constraint\|`; 1.0 when unbounded (G5) | [0,1] | deterministic interval arithmetic |

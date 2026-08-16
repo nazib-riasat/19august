@@ -5,7 +5,7 @@
 Date: 14 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 7) · `GRAFT_RESEARCH_PLAN_v1.md` v1.2 §3.3, §2.4, §6.3–§6.4 · `GATE0_CONTRACT.md` (items 2, 3, 9) · `PHASE6_DECISIONS.md` §5 (the handoff) · `PHASE5_DECISIONS.md` §2.2a (the obligation parser's measured rates) · `CLAUDE.md` §6 (`pool_cap = 64` is frozen)
 Effort: ~1.5–2 weeks solo **[ANALYSIS]** — an estimate; the GNN scorer is the schedule risk, and it is deliberately last in the build order.
-Status: **§6 adopted 15 Aug 2026** (decisions 1–10 and 12 as recommended; 11 stays deferred to Gate-0 item 9). **Steps 0–5 built; step 6 — the scorer — is not built, because it trains and Gate 0 is unsigned.** `PHASE7_DECISIONS.md` is the record and wins conflicts with this file.
+Status: **§6 adopted 15 Aug 2026** (decisions 1–10 and 12 as recommended; 11 deferred to Gate-0 item 9, which decided scope c the same day). **All seven steps built and green** — steps 0–5 first, then step 6, the scorer, once `GATE0_CONTRACT.md` was signed. **The scorer is built but NOT trained**: one of step 6's three "done when" conditions is unmet and stays unmet until GPU/CPU time is spent on it. `PHASE7_DECISIONS.md` is the record and wins conflicts with this file.
 
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 
@@ -72,7 +72,9 @@ proof set per question. `GATE0_CONTRACT.md` item 3 defines the conversational
 one — *eligible assertions whose spans lie in `has_answer` turns of the
 question's evidence sessions, closed under the structural refs rule, minimised
 by removing any atom whose deletion keeps `H` true* — but the H-minimised form
-needs per-question obligations and a signed contract, and Gate 0 is unsigned.
+needs per-question obligations and a signed contract. *(Written while Gate 0 was
+unsigned; it signed 15 Aug 2026 and Tier B is live — item 3.2 as amended, see
+`PHASE7_DECISIONS.md` §3.2c.)*
 
 **Decision — a two-tier recall instrument, both tiers built now:**
 
@@ -335,7 +337,8 @@ Reinventing any of these is how Phase 6's caught defects come back.)*
 Runs the stack over the pilot log's committed graph: per-question channel
 table, union/capped recall (Tier A), latency p50/p95 per channel, obligation
 slots as parsed, fan-out binding counts, one JSON artefact with the G9 honesty
-stamp. Refuses Tier-B recall by name until the Gate-0 contract signs.
+stamp. *(As built: the Gate-0 contract signed 15 Aug 2026, so both tiers run and
+are reported side by side; the by-name refusal served its purpose and is gone.)*
 
 ### P7.10 `graft/tests/`
 
@@ -372,10 +375,17 @@ Phase 6's build order.
    negative-tested.
 3. Two runs over the same graph and questions produce identical pools and
    identical artefacts (the determinism the ledger's digest discipline expects).
+   *(Amended 15 Aug 2026: "identical artefacts" is measured as an identical
+   `determinism.digest` — the artefact minus its declared volatile keys
+   (`runtime.VOLATILE_KEYS`: wall-clock latencies and the host environment).
+   Byte-identity is impossible while criterion 14 embeds latencies; the digest
+   is the testable surface, and the exclusion list is itself asserted by test.)*
 
 **Recall is measured, honestly**
 4. Tier-A required-atom recall per question and pooled, on the pilot graph,
-   labelled with G9's three bounds; Tier B refuses by name until Gate-0 signs.
+   labelled with G9's three bounds; Tier B *(live since the 15 Aug 2026
+   signature; its pre-signature state was a by-name refusal)* reported beside
+   it, with required-node/required-edge Recall@k for both tiers (plan §3.3, §6.4).
 5. The per-channel and union(pre-cap/post-cap) table exists — the ablation
    loop, not per-channel scripts (G7).
 6. Ceiling 3 is reported beside ceilings 1–2, never alone (G9).
@@ -469,6 +479,6 @@ number produced on the stand-in-constructed pilot graph.
   "anchor found? value-type candidate present? time constraint satisfiable?",
   all computable from the pool + the recorded slots.
 * **The recall instrument and its gold callable** — ceiling 3 at every later
-  gate, and Tier B ready the day the contract signs.
+  gate, with both tiers live since the 15 Aug 2026 signature.
 * **The Stage-C fingerprint**, alongside the ingestion and Stage-B ones — the
   triple that makes a cross-machine run's identity checkable end to end.

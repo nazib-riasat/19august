@@ -5,7 +5,7 @@
 Date: 11 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 3, fixes F6/F11/F12) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2 §4.5, §5.1, Gate 2) · `GRAFT_PHASE2_BUILD.md` §8 · `PHASE2_DECISIONS.md` §7
 Effort: ~3 weeks of development **[ANALYSIS]** — an estimate, not a measurement — plus **1.6 to 8.0 GPU-days** of runs depending on which rung of decision 4's ladder is adopted (costed in §6). The largest phase so far.
-Status: **§6 partially signed off (11 Aug 2026).** Decision 1 is ruled; the remaining values are recommended and awaiting sign-off. Revision **R6** — see the changelog.
+Status: **§6 signed off in full (15 Aug 2026** — decision 1 ruled 11 Aug, decisions 6/11/29/30 ruled 12 Aug (`PHASE3_DECISIONS.md` §6.8b), and the remaining `[recommended]` cells signed as written 15 Aug; see §6's own heading**).** Revision **R6** — see the changelog. *(This line previously said only decision 1 was ruled, contradicting §6's heading three hundred lines down — the 4-5-places pattern, caught 15 Aug 2026.)*
 Build: **steps 1–5 and 7–10 built and green as of 12 Aug 2026** (590 tests). **Step 6, the calibration gate, has not run**, so `N` and β are not frozen and no L6/L7/GAFlowNet number may be quoted. The build adopted every `[recommended]` value as written and recorded that it did; see `PHASE3_DECISIONS.md`, which also carries the departures, the FL-GFN measurement, and one **[ANALYSIS]** value this table does not list (SubTB's λ — decision 28 below).
 
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
@@ -553,13 +553,35 @@ See §5.
 
 ---
 
-## 6. Decisions to lock before writing code — **FIVE RULED; THE REST AWAIT SIGN-OFF**
+## 6. Decisions to lock before writing code — **SIGNED OFF 15 August 2026**
 
-**Ruled: 1** (11 Aug 2026, the Tier-1 roster) and **6, 11, 29, 30** (12 Aug 2026 —
-the L4/L5 sanity threshold, capacity matching, GRPO's group size and `logZ_θ`'s
-learning rate; reasoning in `PHASE3_DECISIONS.md` §6.8b). Every other row is
-`[recommended]` or `[fill at step 6]`, and the build adopted the recommended ones
-as written and recorded that it did.
+**Ruled earlier: 1** (11 Aug 2026, the Tier-1 roster) and **6, 11, 29, 30**
+(12 Aug 2026 — the L4/L5 sanity threshold, capacity matching, GRPO's group size
+and `logZ_θ`'s learning rate; reasoning in `PHASE3_DECISIONS.md` §6.8b).
+
+**SIGNED 15 August 2026 — the remaining `[recommended]` cells are ruled as
+written:** decisions **5** (`c₀` = 1 h and the 1 h → 2 h → 4 h ladder), **10**
+(ε = 0.05 constant, replay off), **14** (the frozen consistency trajectory set
+and its seeds), **15** (the 0.05 consistency band), **19**'s `c₀` = 0.1,
+**23** (Adam, lr 3e-4, batch 32, clip 1.0), **25** (the 1% `logZ_θ` tolerance),
+**26** (`λ_aux` = 0.1) and **28** (SubTB's λ = 0.9). Signed by the assistant at
+the project owner's explicit instruction, recorded as delegated.
+
+**This changes ownership, not behaviour** — the build had already adopted every
+one of them as written and said so (`PHASE3_DECISIONS.md` §4 item 2), so no code
+moves and no result changes. What it does is make them the project's values
+rather than a builder's defaults.
+
+**Signed now, and the timing is the point.** `GRAFT_PHASE2_BUILD.md` §6b's
+decision-rule procedure requires that no learner results be inspected before an
+amendment; the calibration gate has not run, so this is the last moment at which
+signing these is uncontaminated. After step 6, any edit here is contaminated
+whether or not the instrument moved.
+
+**Two things this signature does not cover.** `N` and β remain `[fill at step 6]`
+— they are produced by the gate, not chosen here. And each of these values is
+**[ANALYSIS]**, engineering rather than paper-backed; signing does not upgrade
+their evidential status, and the write-up must still label them as such.
 
 **This table is normative.** Where a restatement elsewhere disagrees with it, the table wins and the restatement is a bug. Restatements point at a decision number rather than repeating its value — the mitigation Phase 2 adopted after five review rounds in which most defects were a fix landing in three places out of four.
 

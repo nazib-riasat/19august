@@ -5,7 +5,33 @@
 Date: 8 August 2026
 Parent: `GRAFT_EXECUTION_ARCHITECTURE_v1.md` (Phase 2) · `GRAFT_RESEARCH_PLAN_v1.md` (v1.2 §6.4) · `GRAFT_PHASE1_BUILD.md` §8 · `PHASE1_DECISIONS.md` §7
 Effort: ~1.5–2 weeks solo
-Status: §6 signed off (9 Aug 2026). Ready to code.
+Status: §6 signed off (9 Aug 2026); **amended 11 Aug 2026 and re-signed
+15 Aug 2026** — see the amendment record below. Built and green.
+
+**Amendment 1, the β eligibility rule (§6b's decision-rule procedure).**
+*What moved:* decisions 19 and 22, and G9 item 3 — the argmin that selects β now
+runs over the **eligible** candidates only, where a candidate is eligible iff the
+main suite satisfies its bands at that β. *What did not move:* the predeclared
+grid `{1, 2, 4, 8}` is unchanged, the generator is untouched, the three suites
+stay byte-identical, and `environment_fingerprint` does **not** move (it is
+β-independent by construction, decision 21). *Why:* measured across all twenty
+main-suite instances, the `neither` band fails at **20/20** for β = 1 and β = 2
+and passes at **0/20** for β = 4 and β = 8 — half the predeclared grid is
+categorically unusable with this suite, and an argmin over all four could return
+a winner that then fails re-validation (`PHASE2_DECISIONS.md` §4.2, which also
+records the two rejected alternatives and why hand-picking `{4, 8}` is worse).
+
+This is the **second** §6b procedure, not the first: no band moved, so steps 2–4
+of the band procedure — new config version, suite regeneration, new environment
+fingerprint — do not apply and applying them would discard a valid instrument for
+nothing. The three steps that do apply are this record, the Gate-0 re-sign-off
+(done 15 Aug 2026, `GATE0_CONTRACT.md`), and *no learner results inspected
+beforehand* — satisfied, because decision 22's sweep is itself a learner result
+and the calibration gate has never run.
+
+*Recorded 15 Aug 2026.* The rule text had been amended in place in decisions 19
+and 22 since 11 Aug, but this header still read as though the 9 Aug sign-off
+covered it — so the plan asserted a sign-off over text the signature predated.
 
 Labels inherited: **[EVIDENCE]** (named paper) · **[HYPOTHESIS]** (project tests it) · **[ANALYSIS]** (engineering or mathematical judgment made here).
 

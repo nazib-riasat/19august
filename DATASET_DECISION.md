@@ -4,7 +4,7 @@
 
 Date: 15 August 2026
 Parent: `GRAFT_RESEARCH_PLAN_v1.md` v1.2 §6.1 · `GATE0_CONTRACT.md` items 1–3, 9 · `GRAFT_EXECUTION_ARCHITECTURE_v1.md` Phases 5–11 · `CLAUDE.md` §7
-Status: **Recommendation, unsigned.** Gate-0 item 9 (corpus scope) is the sub-decision this document exists to inform; nothing here is frozen until item 9 signs.
+Status: **Recommendation — and item 9 has since taken it (15 Aug 2026): scope c, 200 questions, extending to scope b′ for final numbers**, recorded in `GATE0_CONTRACT.md` item 9, which signed the same day. §5 below is the reasoning that decision adopted; the rest of this document remains the dataset reference it was.
 Labels inherited: **[EVIDENCE]** (named paper, venue stated) · **[HYPOTHESIS]** (this project tests it) · **[ANALYSIS]** (engineering judgment made here).
 
 **Method.** Four parallel surveys over the 103-paper library plus outside literature, covering ~50 candidate datasets; every size, licence and label semantics traced to a paper section, a dataset card, or a file on disk. An independent verification pass over the fourteen adopted candidates was launched and **did not complete** (session limit) — so the adoption reasons below are single-sourced, and §8 lists exactly what that leaves unchecked.
@@ -121,7 +121,8 @@ Synthetic lattice            → Phase 3
 | **Phase 6** — Stage B, Gate-1 matrix (4 arms × 3 seeds) | bge-small embedder + encoders (E1 0.05M / E2 3.76M / E3 4.26M) | **~1–3 h** ~ | ~1–3 h | **~1–2 h** ~ — models are tiny; graph replay is CPU-bound |
 | ⤷ D3/D4 pre-training (DialogRE, Re-DocRED, TORQUE) | same encoders, native label sets | ~2–6 h ~ | ~2–6 h | ~1–4 h ~ |
 | **Phase 7** — Stage C GNN scorer (≤8M) | one forward per question-pool, ≤64 atoms | **< 1 h** | < 1 h | **< 1 h** — too small to differentiate |
-| **Phase 8** — answerability gate | none (logistic regression / 2-layer MLP) | **< 1 h** | < 1 h | < 1 h |
+| **Phase 8** — answerability gate | **the embedder, over MuSiQue paragraphs** — *not* "none" (corrected 15 Aug 2026) | **~1–4 h** ~ CPU, **~20–40 min** on the dev GPU | ~1–4 h ⛔ | **~15–30 min** |
+| ⤷ *of which*: LR / 2-layer MLP training, 2 arms × 3 seeds | nothing — CPU | **minutes** | minutes | minutes |
 | **Phase 9** — Stage D pool prep (2Wiki + MuSiQue + HoVer) | bge-small embedder over the pools, one-time | **~4–8 h** ~ | ~3–5 h | **~1–2 h** ~ |
 | ⤷ Stage D training, 7 learners × 3 seeds | **nothing** — CPU, same as Phase 3 | **~33 h**, worst case ~7 d | slower (4 cores) | ~33 h — no benefit |
 | ⤷ Stage D conversational-track ablation | nothing (CPU) | **+ ~1 d** | slower | + ~1 d |
@@ -129,6 +130,16 @@ Synthetic lattice            → Phase 3
 | ⤷ eval, LoCoMo (1,986 q × 4 systems) | " | **~16–52 h** | ⛔ | **~3.5–11 h** |
 
 `~` = estimated, no measured epoch time exists.
+
+**Phase 8's row was wrong until 15 Aug 2026 and the correction is worth keeping.**
+It read "GPU: none · < 1 h", which is true of the *classifier* and false of the
+*phase*: `GRAFT_PHASE8_BUILD.md` G8 has the MuSiQue adapter compute BM25/dense
+channel scores "over paragraphs by the same `bm25s`/pinned-embedder stack", and
+MuSiQue-Full ships ~20 paragraphs across 49,628 questions — order 10⁶ paragraph
+slots, several hundred thousand of them unique after the content-keyed cache
+dedups the contrast twins. **The embedding pass is the entire cost; training is
+minutes.** The lesson is the row's own: "GPU: none" was read off the model class
+rather than off the feature pipeline that feeds it.
 **⛔ = the number is what the hardware *would* deliver; the machine cannot run the frozen configuration at all,** so the figure is unusable for any comparable run — see below.
 
 ### Why Kaggle is marked ⛔ on every LLM row

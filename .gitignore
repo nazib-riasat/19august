@@ -62,6 +62,15 @@ Thumbs.db
 # redistributed through this repo.
 data/phase6/raw/
 
+# Phase 8's external dataset: MuSiQue-Full (CC BY 4.0), SHA-pinned in
+# graphbuild.pins.DATASETS and re-fetched per machine. ~590 MB extracted,
+# plus the 272 MB official archive kept under data/musique/ so Phase 9's
+# MuSiQue-Ans splits can be extracted without a second download.
+data/phase8/raw/
+data/musique/
+
 # Working backups (e.g. a label file snapshotted before an edit).
 *.bak
 *.bak[0-9]
+
+data/phase9/raw/

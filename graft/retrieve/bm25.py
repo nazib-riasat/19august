@@ -79,7 +79,17 @@ class BM25Channel:
             show_progress=False,
         )
         retriever = bm25s.BM25(method=BM25["method"], k1=BM25["k1"], b=BM25["b"])
-        retriever.index(tokens, show_progress=False)
+        try:
+            retriever.index(tokens, show_progress=False)
+        except ValueError:
+            # A corpus whose every text tokenises to nothing (all stopwords or
+            # single characters) leaves ``bm25s`` with an empty vocabulary, and
+            # its indexer raises ``max()`` on an empty dict (probed on 0.3.10,
+            # 15 Aug 2026 audit).  Such a corpus has no lexical content to match,
+            # so the honest degradation is the same as an empty corpus: this
+            # channel goes quiet and the other channels carry the question.
+            self._retriever = None
+            return
         self._retriever = retriever
 
     def query(self, text: str, top_k: int | None = None) -> dict[str, float]:

@@ -76,6 +76,33 @@ def json_sanitize(obj: Any) -> Any:
     return obj
 
 
+#: The keys :func:`deterministic_view` strips — every place a wall clock or the
+#: host environment leaks into an artefact.  ``latency``/``latency_ms``/
+#: ``timings_ms`` are ``time.perf_counter`` readings; ``environment`` is
+#: :func:`run_manifest`'s ``ENV_KEY`` section (``utc_started``, hostname, GPU).
+VOLATILE_KEYS: tuple[str, ...] = ("latency", "latency_ms", "timings_ms", ENV_KEY)
+
+
+def deterministic_view(obj: Any) -> Any:
+    """The artefact minus its volatile keys — the surface two runs must agree on.
+
+    Exit criterion 3 of Phase 7 asks that two runs over the same graph and
+    questions produce "identical artefacts", and taken byte-literally that is
+    impossible: the artefact embeds wall-clock latencies, which is itself an exit
+    criterion (14).  This function is the resolution (15 Aug 2026 audit): the
+    determinism claim is made — and digested, and tested — over everything
+    *except* the declared volatile keys, so a timing cannot hide a real
+    nondeterminism and a real nondeterminism cannot hide behind a timing.
+    """
+    if isinstance(obj, dict):
+        return {
+            k: deterministic_view(v) for k, v in obj.items() if k not in VOLATILE_KEYS
+        }
+    if isinstance(obj, (list, tuple)):
+        return [deterministic_view(v) for v in obj]
+    return obj
+
+
 def set_seed(seed: int) -> None:
     """Seed every RNG this project may touch.
 

@@ -57,6 +57,7 @@ __all__ = [
     "node_atom_id",
     "node_text",
     "build_pool",
+    "uncapped_pool",
     "validate_edge_refs",
 ]
 
@@ -256,6 +257,7 @@ def build_pool(
     *,
     cap: int | None = None,
     config: Config | None = None,
+    conv_id: str | None = None,
 ) -> tuple[AtomPool, dict[str, float], dict[str, Any]]:
     """Scored assertion-backed nodes → a closed, capped ``AtomPool``.
 
@@ -290,7 +292,14 @@ def build_pool(
     # that lives only in the callers is one new caller away from being absent.
     # A negative test passes a quarantined node in directly; before this filter it
     # was admitted, because assembly trusted whoever scored it.
-    eligible = set(eligible_nodes(snapshot))
+    #
+    # ``conv_id`` extends the same boundary to conversation scope (15 Aug 2026
+    # audit).  The entity and expansion walks follow *edges*, and an edge whose
+    # far endpoint belongs to another conversation would carry another user's
+    # claim into this question's pool -- plan section 8 risk #1, the wrong-merge
+    # failure Phase 6 had to guard against retroactively.  Scope is enforced
+    # where eligibility is: at assembly, not only in the callers.
+    eligible = set(eligible_nodes(snapshot, conv_id))
     pairs = [(node_id, score) for node_id, score in offered if node_id in eligible]
     refused = len(offered) - len(pairs)
     # Highest score first, ties by node id.  Both keys matter: the score is the
@@ -341,4 +350,51 @@ def build_pool(
         "edge_atoms": sum(1 for a in pool if a.kind == "edge"),
         "support_atoms": len(pool) - len(hit_atoms),
     }
+    return pool, scores, report
+
+
+def uncapped_pool(
+    snapshot: Any,
+    scored_nodes: Mapping[str, float] | Iterable[tuple[str, float]],
+    *,
+    config: Config | None = None,
+    conv_id: str | None = None,
+) -> tuple[AtomPool, dict[str, float], dict[str, Any]]:
+    """The closed pool of *every* eligible offered node — no cap can bind.
+
+    Exists because three call sites were guessing.  The runner's pre-cap pool
+    used ``cap = 64 * (len(fused) + 1)`` and the gold builders used
+    ``64 * len(nodes) + 64`` — both finite, neither derived from the closure they
+    were bounding, and closure grows with the *edges among* the chosen nodes,
+    which is O(n²) in the schema.  A guess that binds silently truncates the
+    gold set or the pre-cap pool, and ``cap_skipped`` was being discarded at
+    every one of those call sites, so nothing would have said so (15 Aug 2026
+    audit).
+
+    The exact cap is computed first — the closed size of all eligible offered
+    nodes plus their companions — and ``build_pool`` is then called with it, so
+    there is **one** mapping code path, used by capped and uncapped pools alike.
+    ``|materialise(S)|`` is monotone in ``S``, so every greedy prefix fits and
+    ``cap_skipped == 0`` is guaranteed; the assertion is the invariant's tripwire,
+    not a hope.
+    """
+    offered = (
+        dict(scored_nodes) if isinstance(scored_nodes, Mapping) else dict(scored_nodes)
+    )
+    eligible = set(eligible_nodes(snapshot, conv_id))
+    keep = sorted(n for n in offered if n in eligible)
+    chosen: set[str] = set()
+    for node_id in keep:
+        chosen.add(node_id)
+        chosen.update(_companions(snapshot, node_id))
+    size = len(_materialise(snapshot, frozenset(chosen)))
+    pool, scores, report = build_pool(
+        snapshot, offered, cap=max(1, size), config=config, conv_id=conv_id
+    )
+    if report["cap_skipped"] != 0:
+        raise RuntimeError(
+            f"uncapped_pool skipped {report['cap_skipped']} candidates at its own "
+            f"computed closure size {size}; the monotonicity invariant is broken"
+        )
+    report["uncapped"] = True
     return pool, scores, report
