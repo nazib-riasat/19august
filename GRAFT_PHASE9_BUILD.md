@@ -20,8 +20,9 @@ environment (G1) is the schedule risk and is deliberately first in the build
 order, because everything else consumes its trajectories.
 Status: **planned; §6 SIGNED 16 August 2026 (delegated). No code exists** beyond
 what Phases 3, 4, 7 and 8 already provide. Build steps 0–5 are unblocked and
-need no GPU; step 2 needs the corpora fetched; **step 6 waits on Phase-3 step 6
-freezing β**.
+need no GPU; step 2 needs the corpora fetched; **step 6's blocker lifted 15 Aug
+2026 — Phase-3 step 6 froze β = 4.0 (`artefacts/phase3_calibration.json`,
+`PHASE3_DECISIONS.md` §7); the P9.7 runner remains to be written and run**.
 
 Labels as everywhere: **[EVIDENCE]** = a named paper supports this, venue
 stated · **[HYPOTHESIS]** = this project tests it · **[ANALYSIS]** = engineering
@@ -63,7 +64,7 @@ exact `U` (fix F13).
 
 | Precondition | State (15 Aug 2026) | Blocks |
 |---|---|---|
-| **β (and `r_fail` gap) frozen by Phase-3 step 6** | calibration gate has never run; β defaults to 4.0, eligible candidates {4, 8} | **every Phase-9 training run** — the reward `R = 1[H]·exp(β·U)` is identical across arms by construction (`CLAUDE.md` §6), and training before β freezes would either waste the runs or contaminate the freeze. **Building and fixture-testing all Phase-9 code is NOT blocked** |
+| **β (and `r_fail` gap) frozen by Phase-3 step 6** | **CLEARED 15 Aug 2026** — the gate adopted β = 4.0 at rung 0 (`PHASE3_DECISIONS.md` §7); the record sits at `artefacts/phase3_calibration.json` and `training_blocked_reason()` returns `None`. *(This cell read "calibration gate has never run; β defaults to 4.0, eligible candidates {4, 8}" at the 15 Aug signature.)* | **every Phase-9 training run** — the reward `R = 1[H]·exp(β·U)` is identical across arms by construction (`CLAUDE.md` §6), and training before β freezes would either waste the runs or contaminate the freeze. **Building and fixture-testing all Phase-9 code is NOT blocked** |
 | Datasets fetched + SHA-pinned (G10) | 2Wiki and HoVer not downloaded; MuSiQue-Ans inside `data/musique/musique_v1.0.zip`, unextracted by design | build step 2 |
 | Scope-c ingestion (Gate-0 item 9: decided, not run) | not run | **Stage B only** — the conversational training track and every conversational number (G12) |
 
@@ -227,8 +228,8 @@ different comparison — `CLAUDE.md` §5's own erratum).
 
 * `u_weights` identical across every arm — or the comparison measures reward
   engineering (`CLAUDE.md` §6).
-* **β comes frozen from Phase-3 step 6** (eligible candidates {4, 8}); until it
-  runs, no Phase-9 training run starts (§0). `Target.at_beta`'s `r_fail` check
+* **β comes frozen from Phase-3 step 6** (eligible candidates {4, 8}) — frozen
+  15 Aug 2026 at 4.0 (§0's precondition table; `PHASE3_DECISIONS.md` §7). `Target.at_beta`'s `r_fail` check
   is synthetic-only, so this phase adds the real-data analogue: **measure the
   minimum valid-terminal reward over a sample of real pools at the frozen β and
   report the `r_fail` gap** — an `r_fail = 1e-6` that overlaps real valid
@@ -494,7 +495,7 @@ trainer smoke on 2-epoch budgets.
 | 3 | P9.3 featurizer + P9.4 environment | Batch shape byte-compatible with Phase 3's losses (one TB step runs on a fixture); terminal convention honoured; `delta_d` gate leak-tested both directions |
 | 4 | 9-arm training smoke | every arm trains 2 epochs on fixtures, no NaN at the reward floor; capacity match (**Phase-3** decision 11's form — not this plan's, which is the budget) recomputed at real dims and printed; **every arm's throughput measured in trajectories/second and the slowest identified, then `N_real` derived from decision 11's ladder and written into pins** — before any scored run |
 | 5 | P9.5 distillation + P9.6 portfolio | head trains with guards; ρ reported; portfolio spends ≤ 32 with the 0/1 family split; fallback counter increments on a forced dead-end fixture |
-| 6 | P9.7 Stage-A runner **[blocked on β]** | full Wikipedia-track run: training → Gate-3 table, three seeds, artefact audited (per-question rows, digest) |
+| 6 | P9.7 Stage-A runner **[β unblocked 15 Aug 2026; runner unwritten]** | full Wikipedia-track run: training → Gate-3 table, three seeds, artefact audited (per-question rows, digest) |
 | 7 | HoVer adapter (gated) | added to the table as a third training corpus or explicitly deferred with reason |
 
 Steps 0–5 are CPU + fixtures (no GPU, no downloads beyond step 2's fetch).

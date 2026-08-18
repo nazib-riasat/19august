@@ -7,8 +7,10 @@ measurement overturned** — every one before any Gate-3 number existed, and non
 of them reading a learner result, so `GRAFT_PHASE2_BUILD.md` §6b's second
 procedure is satisfied on the ordering.
 
-Date: 13 August 2026 · Status: **Stage A built, green and run; Stage B waits on
-Phase 3's matrix** (G7's two-stage exit)
+Date: 13 August 2026 · Status: **Stage A built, green and run; Stage B unblocked
+15 Aug 2026** — Phase 3's matrix ran (`PHASE3_DECISIONS.md` §7) and its 27
+checkpoints sit at `artefacts/checkpoints/`; the Stage-B composition has not yet
+run (G7's two-stage exit)
 Tests: **639 passing**, of which 44 are Phase 4's (`graft/tests/test_search.py`)
 
 Same convention as the other DECISIONS files: **[EVIDENCE]** = a named paper,
@@ -26,10 +28,10 @@ judgment made here.
 | P4.3 `search/s1_greedy.py`, `s2_beam.py` | **Done**, 0 checks each |
 | P4.4 `search/s3_submodular.py` — Eq. 1 with all five constants | **Done** |
 | P4.5 `search/s4_pcst.py` — Mapping A forest, completion, `C_e` calibration, **exact solver** | **Done** |
-| P4.6 `search/s5_portfolio.py` — checkpoint consumer, no trainer import | **Code done; no checkpoint exists** (G7) |
+| P4.6 `search/s5_portfolio.py` — checkpoint consumer, no trainer import | **Code done; checkpoints exist since 15 Aug 2026** (27 at `artefacts/checkpoints/` — G7's blocker lifted) |
 | P4.7 `search/gate3.py` — matrix, negated bootstrap, broadcast, `p*` ceiling, audits | **Done** |
 | Gate-3 **Stage A** on the 20-instance main suite, both relevance variants | **Run** — §2 |
-| Gate-3 **Stage B** | **Blocked on Phase 3 step 6**, as the plan says |
+| Gate-3 **Stage B** | **Unblocked 15 Aug 2026** (step 6 adopted and the matrix ran — `PHASE3_DECISIONS.md` §7); not yet run, and S5's arm-selection rule is unruled (§5 item 1) |
 
 ---
 
@@ -459,7 +461,7 @@ The three tests worth naming:
 
 | # | Item | Why it matters |
 |---|---|---|
-| 1 | **Stage B has not run** — no Phase-3 checkpoint exists, so S5's row is empty and this is **not** Gate 3 (G7, criterion 15) | The table is labelled Stage A and says so in its own `caveats` block |
+| 1 | **Stage B has not run** — though its blocker lifted 15 Aug 2026: Phase 3's 27 checkpoints exist and load (`PHASE3_DECISIONS.md` §7.5). S5's row is still empty, this is still **not** Gate 3 (G7, criterion 15), and **no document names which arm's checkpoints fill S5** — that ruling is owed before Stage B runs, and Gate 2 being `inconclusive` removes the obvious "winning arm" default | The table is labelled Stage A and says so in its own `caveats` block |
 | 2 | **Decision 5's live condition is predetermined** under the ruled metric (§1.3) | Phase 9 should adopt the size-controlled form; changing the gate is a §6b amendment |
 | 3 | **Decision 8's text still says "`pcst_fast`, pinned"** and "median … without exceeding" | Both overturned in §1.1/§1.2; the plan cells are annotated, but the *ruling* wants re-signing |
 | 4 | S3's `h_rejections` show the objective cannot express sub-check 9 | A real finding for the write-up, not a defect to patch |

@@ -99,7 +99,8 @@ belong here rather than in a footnote (`PHASE5_DECISIONS.md` §2.2a):
 3. **D2's claim pool is thinner than the spike suggested** — 0.895 stored
    assertions per turn, of which 68% are eligible. The pair proposer works over
    that, which is exactly what G5's recall measurement exposes. This mirrors Phase 3 exactly (built and green;
-calibration gate pending), and the same rule applies: **no
+calibration gate since run — 15 Aug 2026, `PHASE3_DECISIONS.md` §7), and the
+same rule applies: **no
 proposed-vs-baseline comparison may be inspected before the decisive run** —
 what the smoke run may verify is plumbing (losses decrease, shapes match,
 artefacts write), not rankings.

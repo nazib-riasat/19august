@@ -150,6 +150,18 @@ def run_portfolio(
     traj = sample_real(feat, env, size, rng, epsilon=0.0, greedy=int(PORTFOLIO["greedy"]))
     terminals = traj.terminals()
 
+    if ledger is not None:
+        # **Stage D's model work, metered where it happens.** `realenv.py`'s
+        # docstring already designates this module as the metering site
+        # ("portfolio.py meters; nothing here does"), and the read path's cost
+        # claim (`CLAUDE.md` §9) needs a numerator on the policy side too, not
+        # only the reader's. One unit per policy forward pass, matching
+        # `ingest/nli.py`'s convention that the meter counts *forward passes*,
+        # not items. `terminal_checks` stays at zero and must: the portfolio
+        # constructs through the masks where `stop_allowed` IS `H`, so it owes
+        # none (`PHASE9_DECISIONS.md` §1.1).
+        ledger.count("model_forwards", int(traj.lengths.sum()) + len(traj))
+
     # Valid by construction: a trajectory that took STOP did so through
     # `stop_allowed`, which *is* H. A dead-ended one is recognisable from the
     # walk without a checker call. Hence zero terminal checks -- see the module

@@ -62,6 +62,15 @@ LIVE_DOCS = (
     "GRAFT_PHASE9_BUILD.md",
     "PHASE8_DECISIONS.md",
     "PHASE9_DECISIONS.md",
+    # Added 16 Aug 2026 with the Phase-10 build — registered the same day, and the
+    # reason is written twice above already: a guard that does not read a live
+    # document cannot retire anything in it. `PHASE10_DECISIONS.md` also *wins
+    # conflicts* with its own build plan, so an unretired wording there outranks
+    # the corrected one everywhere else. That is now the third time this list has
+    # lagged the documents; the pattern is that plans land faster than registries,
+    # and the mitigation is registering the pair in the same commit as the plan.
+    "GRAFT_PHASE10_BUILD.md",
+    "PHASE10_DECISIONS.md",
     "DATASET_DECISION.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",
@@ -357,6 +366,26 @@ RETIRED: tuple[tuple[str, str, str, str | None], ...] = (
      "structurally zero by id derivation; the varying quantity is equivalent_evidence_atoms (PHASE9_DECISIONS.md 1.4)", "R23", None),
     ("+8.1% acc / +9.7% F1 macro over sparse final-answer",
      "8.1/9.7 is Graph-S3's abstract against seven baselines; its Table 3 ablation is 11.8/17.1, macro-averaged by this project (PHASE9_DECISIONS.md 7.7)", "R23", None),
+    # R24 -- Phase-3 step 6 and the Gate-2 matrix RAN 15 Aug 2026 (CPU cluster
+    # job 985953): adopted at rung 0, beta = 4.0, N = 1,997,088; matrix outcome
+    # `inconclusive` (criterion 15 and L6's band failed -- instrument clauses,
+    # so null, never a negative for C3).  Transcribed 16 Aug 2026 into
+    # GRAFT_PHASE3_BUILD.md section 6 (decision 4's cell) and
+    # PHASE3_DECISIONS.md section 7; the calibration record sits at
+    # artefacts/phase3_calibration.json and Stage-D training is unblocked.
+    # The wordings below described the gate as unrun, Stage B as waiting and
+    # Stage D as blocked, and may not reappear as normative claims.  (Historical
+    # records deliberately keep their own tense and are not matched: the Gate-0
+    # "has still never run" rows, GRAFT_PHASE2_BUILD.md's 15 Aug header, and
+    # PHASE3_DECISIONS.md's struck section-4 row.)
+    (", the calibration gate, has not run",
+     "RAN 15 Aug 2026 -- adopted rung 0: beta = 4.0, N = 1,997,088 (PHASE3_DECISIONS.md 7)", "R24", None),
+    ("waits on Phase 3's matrix",
+     "the matrix ran 15 Aug 2026; Stage B is unblocked and not yet run (PHASE4_DECISIONS.md 0)", "R24", None),
+    ("waits on Phase-3 step 6",
+     "beta froze 15 Aug 2026; what remains is the P9.7 runner (PHASE9_DECISIONS.md status)", "R24", None),
+    ("blocked on β alone",
+     "beta froze 15 Aug 2026; training_blocked_reason() returns None", "R24", None),
 )
 
 #: Pairs that must never both appear in one document — each is a contradiction

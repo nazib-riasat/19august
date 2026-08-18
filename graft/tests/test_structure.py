@@ -73,12 +73,32 @@ REPO_ROOT = PACKAGE_ROOT.parent
 #: a bare interpreter, because those are the parts whose *correctness* the
 #: write-up depends on.  ``test_the_gate_package_confines_torch_to_the_model``
 #: asserts it module by module.
+#: **Phase 10 widened it a sixth time** (`GRAFT_PHASE10_BUILD.md` gap G2):
+#: ``graft.reader`` loads the frozen 3B reader, so torch is unavoidable there.
+#: The containment is the tightest yet — torch reaches ``read.py`` and nothing
+#: else — because the parts whose *correctness* the write-up depends on are the
+#: deterministic ones: the serialiser's ordering rule, the citation resolution
+#: and the answer-equivalence arithmetic must all stay checkable on a bare
+#: interpreter, and ``verify_handoff.py`` must be able to print the stage-E
+#: fingerprint on a machine with no GPU at all.
+#: ``test_the_reader_package_confines_torch_to_read`` asserts it module by module.
+#:
+#: **One side effect of admitting a package is worth naming rather than
+#: absorbing:** ``_source_files()`` excludes ML packages from the criterion-12
+#: dataclass scan too, so ``SerialisedProof`` and ``ParsedAnswer`` stop being
+#: checked by it.  That is consistent with how ``graft.setgen``'s ``ProofExample``
+#: and ``SourceDoc`` already sit — they are *working* types inside one stage, not
+#: the persisted data model, and ``OutputRecord`` (which is persisted) stays in
+#: ``schemas.py`` where the rule wants it.  ``graft.diagnostics`` is deliberately
+#: **not** admitted: the ceiling oracles return plain dicts and import no torch,
+#: so they remain under both guards.
 ML_ALLOWED_PACKAGES = (
     "graft.setgen",
     "graft.ingest",
     "graft.graphbuild",
     "graft.retrieve",
     "graft.gate",
+    "graft.reader",
 )
 
 
@@ -143,15 +163,21 @@ def test_the_phase_0_to_2_surface_imports_no_ml_library():
 
 
 def test_the_ml_boundary_is_a_narrowing_not_a_hole():
-    """The allowance is five packages, and each was opened by a named decision.
+    """The allowance is six packages, and each was opened by a named decision.
 
     A future phase widening this list is making a decision; a future phase
     widening it *silently* is removing the guard that keeps ``H`` free of
     anything learned (v1.2 §4.4).  Phase 3 opened ``graft.setgen`` (P3.0),
     Phase 5 opened ``graft.ingest`` (decision 13), Phase 6 opened
     ``graft.graphbuild`` (decision 1), Phase 7 opened ``graft.retrieve``
-    (decision 1, gap G2) and Phase 8 opened ``graft.gate`` (decision 2, gap G3);
-    a sixth entry needs a sixth written decision.
+    (decision 1, gap G2), Phase 8 opened ``graft.gate`` (decision 2, gap G3) and
+    **Phase 10 opened ``graft.reader``** (`GRAFT_PHASE10_BUILD.md` P10.2, gap
+    G2 — the frozen 3B reader has to load somewhere); a seventh entry needs a
+    seventh written decision.
+
+    ``graft.diagnostics`` was **not** opened, and that is the load-bearing half
+    of this test: the five ceilings take their reader as an injected callable, so
+    Contribution 4's instrument stays computable on a bare interpreter.
     """
     assert ML_ALLOWED_PACKAGES == (
         "graft.setgen",
@@ -159,6 +185,7 @@ def test_the_ml_boundary_is_a_narrowing_not_a_hole():
         "graft.graphbuild",
         "graft.retrieve",
         "graft.gate",
+        "graft.reader",
     )
     for pkg in ML_ALLOWED_PACKAGES:
         importlib.import_module(pkg)
@@ -729,3 +756,59 @@ def test_gate_defines_no_cross_module_dataclass():
 def test_every_gate_module_has_a_docstring(path):
     tree = ast.parse(path.read_text(encoding="utf-8"))
     assert ast.get_docstring(tree), f"{path.relative_to(REPO_ROOT)} has no module docstring"
+
+
+def test_the_reader_package_confines_torch_to_read():
+    """Phase-10 containment: torch reaches ``reader/read.py`` and nothing else.
+
+    The tightest of the six, and for a specific reason. Everything Stage E is
+    *judged* on is deterministic — the U-shaped ordering rule, the claim-id and
+    citation resolution, the SQuAD answer equivalence, the budget arithmetic —
+    and all of it must stay runnable and testable without weights or a GPU.
+    ``verify_handoff.py`` also prints the stage-E fingerprint, and
+    `PHASE9_DECISIONS.md` §7.3 records what happens when that path is not
+    guarded: a fingerprint whose *module* imported clean while the *call* pulled
+    torch in, which nothing catches until someone runs it on a bare interpreter.
+    """
+    import ast
+
+    reader_root = PACKAGE_ROOT / "reader"
+    checked = 0
+    for path in sorted(reader_root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        names: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names += [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names.append((node.module or "").split(".")[0])
+        offending = sorted({n for n in names if n in ML_LIBRARIES})
+        if path.name == "read.py":
+            assert offending, "read.py is the reader; it should import torch"
+        else:
+            assert not offending, (
+                f"{path.name} imports {offending}; only read.py may touch an ML "
+                "library, or the deterministic surface stops being checkable "
+                "without a GPU"
+            )
+        checked += 1
+    assert checked >= 4, "the reader package was not actually scanned"
+
+
+def test_the_diagnostics_package_stays_free_of_ml_libraries():
+    """The five ceilings are diagnostics, and ceiling 5 takes its reader as an
+    injected callable precisely so this holds. A ceiling table that could only be
+    computed on a GPU box would be a ceiling table nobody recomputes."""
+    import ast
+
+    for path in sorted((PACKAGE_ROOT / "diagnostics").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            names = []
+            if isinstance(node, ast.Import):
+                names = [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [(node.module or "").split(".")[0]]
+            assert not [n for n in names if n in ML_LIBRARIES], (
+                f"{path.name} imports an ML library"
+            )

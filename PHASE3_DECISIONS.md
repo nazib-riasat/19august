@@ -4,7 +4,7 @@ Companion to `GRAFT_PHASE3_BUILD.md` (R6). That document says what Phase 3 must
 do; this one records what building it settled, what the build found that five
 rounds of reading did not, and what is **still open** and must not be lost.
 
-Date: 12 August 2026 · Status: **code complete, calibration gate not run**
+Date: 12 August 2026 · amended 16 August 2026 (§7) · Status: **code complete; calibration gate RUN and ADOPTED 15 Aug 2026 (β = 4.0, `N` = 1,997,088, rung 0); Gate-2 matrix RUN — outcome `inconclusive` (§7)**
 Tests: **590 passing** (518 at the end of Phase 2; +50 for Phase 3; +19 for the R6 review round)
 
 > **§2.2's convergence table and §2.4's capacity table were measured before the
@@ -12,7 +12,9 @@ Tests: **590 passing** (518 at the end of Phase 2; +50 for Phase 3; +19 for the 
 > (GAFlowNet's augmented term, LED's decomposition loss and its redistribution)
 > and L6's width changed. They are kept because the *reasoning* around them still
 > holds — §2.3's risk in particular — and marked rather than deleted so nobody
-> quotes them. Re-measuring is cheap and belongs with step 6.
+> quotes them. Re-measuring is cheap and belongs with step 6. *(Step 6 and the
+> matrix ran 15 Aug 2026 — §7 carries the at-scale measurements that supersede
+> both tables.)*
 
 Same convention as `PHASE0_DECISIONS.md`, `PHASE1_DECISIONS.md` and
 `PHASE2_DECISIONS.md`: **[EVIDENCE]** = a named paper, venue stated ·
@@ -29,17 +31,19 @@ Same convention as `PHASE0_DECISIONS.md`, `PHASE1_DECISIONS.md` and
 | 3 · rollout sampler | **Done**, agrees with the exact DP (criterion 3) |
 | 4 · trainer skeleton | **Done** — `graft/setgen/trainer.py` |
 | 5 · L4 + L5 | **Done and converged** on `tiny_instance()`: TV 0.028 and 0.032 at 50k trajectories, 0.0015 and 0.0053 at 200k, against decision 6's 0.10 |
-| **6 · CALIBRATION GATE** | **NOT RUN.** The script exists and is wired end to end (`scripts/phase3_calibrate.py`); the run needs 12 GPU-hours at decision 5's first rung. **`N` and β are not frozen, so §6 is not complete and no L6/L7/GAFlowNet result may be quoted** |
-| 7 · L6 + consistency | **Code done**, consistency measurable; the *band* is unmeasured until step 6 fixes `N` |
-| 8 · L7, matched L6, GAFlowNet | **Code done**, capacity matching verified; not trained at a frozen `N` |
-| 9 · L7b, L1, L2, L3 | **Code done** |
-| 10 · Gate-2 harness | **Code done** — `graft/setgen/gate2.py`, matrix + hierarchical paired bootstrap + report, runs end to end on a reduced roster |
+| **6 · CALIBRATION GATE** | **RUN 15 Aug 2026** (off-machine CPU job 985953, non-`--quick`): **adopted at rung 0 — β = 4.0, `N` = 1,997,088**, decision-6 sanity PASS. §6's decision-4 cell is filled; the record is `artefacts/phase3_calibration.json` — §7. *(The "12 GPU-hours" this row used to promise was always a CPU workload — item 12 below; the run confirmed it.)* |
+| 7 · L6 + consistency | **Code done; the band measured at the frozen `N` (§7) and FAILED** — L6 p95 0.1148 against decision 13's 0.05. An instrument clause, so it routes the verdict to `inconclusive`, never to a negative |
+| 8 · L7, matched L6, GAFlowNet | **Code done**, capacity matching verified; **trained at the frozen `N` 15 Aug 2026** (§7) |
+| 9 · L7b, L1, L2, L3 | **Code done; trained 15 Aug 2026** (§7) |
+| 10 · Gate-2 harness | **Code done** — `graft/setgen/gate2.py`, matrix + hierarchical paired bootstrap + report; **the full 27-run matrix ran 15 Aug 2026 — outcome `inconclusive` (§7)** |
 
-**The one thing to be clear about.** Every arm is implemented, tested and
-converges; the *comparison* has not been run, because running it before step 6
-would contaminate the §6b amendment procedure — β and `N` must be frozen before
-L6, L7 or GAFlowNet trains once. That is a stated ordering constraint of the
-plan, not an omission here.
+**The one thing to be clear about.** Every arm is implemented and tested; **the
+comparison has now been run (15 Aug 2026), in the required order** — the
+calibration gate adopted β and `N`, and its record was written and read back,
+before any L6/L7/GAFlowNet training started in the same job, so the substance of
+the §6b ordering constraint (freeze before the proposed method trains once) was
+honoured. The §6 *paperwork* lagged the matrix by a day — transcribed 16 Aug
+2026, stated in §7.3 rather than hidden.
 
 ---
 
@@ -352,8 +356,8 @@ terminates with probability 1.
 
 | # | Open item | Why it matters |
 |---|---|---|
-| 1 | **`N` and β are not frozen.** Step 6 has not run. | Nothing past step 7 may be quoted; §6's `[fill at step 6]` cells are still empty |
-| 2 | **§6's `[recommended]` values are not signed.** The build adopted them as written and says so here. | A value adopted by a builder is not a value signed by the project. Decisions **5, 10, 14, 15, 19 (`c₀`), 23, 25, 26** and 28. *(Decision 6 was on this list; it is **ruled and signed** — §6.8b, and its §6 row reads `[signed before calibration]`. Five decisions are ruled in total: 1, 6, 11, 29, 30.)* |
+| 1 | ~~**`N` and β are not frozen.** Step 6 has not run.~~ **CLOSED 15 Aug 2026** — adopted at rung 0: β = 4.0, `N` = 1,997,088; §6's cell is filled (§7) | Anything past step 7 quoted from the matrix must carry §7's `inconclusive` routing with it |
+| 2 | ~~**§6's `[recommended]` values are not signed.**~~ **CLOSED 15 Aug 2026** — signed as written before the gate ran (build doc §6 heading), which was the last uncontaminated moment. | A value adopted by a builder is not a value signed by the project. Decisions **5, 10, 14, 15, 19 (`c₀`), 23, 25, 26** and 28. *(Decision 6 was on this list; it is **ruled and signed** — §6.8b, and its §6 row reads `[signed before calibration]`. Five decisions are ruled in total: 1, 6, 11, 29, 30.)* |
 | 3 | **SubTB's λ is in no decision table.** Set to 0.9 — SubTB (ICML 2023)'s *hypergrid* value (Appendix A); the paper's other tasks use 1.9 and 0.99, so there is no single paper default — in `TrainSpec.subtb_lambda`. | Decision 23 freezes the optimiser, lr, batch and clipping; λ is a hyperparameter of exactly that kind and the plan does not list it. **[ANALYSIS]** as applied here. It belongs in §6 before Gate 2 is read |
 | 4 | **The terminal convention was never written down.** Plan §4.1 line 333 says "pick one and write it down"; nobody did. The code uses the **terminating-edge** convention (`F(s) ≠ R(s)` at a state that both stops and continues), verified empirically in Phase 2. | Carried from `PHASE2_DECISIONS.md`. Phase 3 now depends on it in four objectives |
 | 5 | **Gate-0 re-sign-off for the Phase-2 β amendment** is still outstanding. | Recorded in the Phase-2 handoff |
@@ -362,8 +366,8 @@ terminates with probability 1.
 | 8 | ~~**§2.3's `N`-versus-LED question.**~~ **RULED 12 Aug 2026: option 1, accept** — §6.8b. | Ruled before step 6 ran |
 | 9 | ~~**Decision 11's tolerance moved; decisions 29 and 30 are new**~~ **RULED 12 Aug 2026, §6.8b** (§6.4, §6.6, §6.10). All need the same ruling every `[recommended]` cell needs. | The 1% is unachievable by width, so the criterion became minimality plus the directional clause. Decision 30 ships its mechanism at a **default of 1.0** — the papers say 10, one measurement agrees on TV and disagrees on `log Z` error, and adopting 10 would move decision 25's tolerance to fit a change made here. All were changed **before** any L6/L7/GAFlowNet result was inspected — §6b's second procedure is satisfied on the ordering, not on the paperwork |
 | 11 | **`instance_repr` is thin for what `logZ_θ` must do** (§6.11). Recorded, not fixed. | 12 informative dims, instances 0.052–0.227 apart in L2, `log Z` spanning 0.86 nats. Widening it touches every capacity number, so it waits — but it is the next place to look if decision 30 is signed and `log Z` error stays high |
-| 12 | **Decision 5's ladder is wall-clock on a named machine**, and Phase 3 is a CPU workload (`TrainSpec.device` defaults to `"cpu"`; the sampler is numpy; the networks are ~52k-parameter MLPs). `--device` now exists on both scripts. | The GPU-day table and the README's "the CUDA build is not incidental" describe a phase that never touches CUDA. Harmless until someone budgets against it |
-| 10 | **§2.2 and §2.4's measurements are stale** and marked as such. | Every flow objective changed and L6's width changed. Re-measure with step 6 |
+| 12 | **Decision 5's ladder is wall-clock on a named machine**, and Phase 3 is a CPU workload (`TrainSpec.device` defaults to `"cpu"`; the sampler is numpy; the networks are ~52k-parameter MLPs). `--device` now exists on both scripts. **Confirmed by the run: the 15 Aug 2026 gate + matrix executed on a CPU cluster node (device `cpu`), ~15.5 h for the 27-run matrix.** The named machine the adopted ceiling refers to is now that node (§7.1) | The GPU-day table and the README's "the CUDA build is not incidental" describe a phase that never touches CUDA. Harmless until someone budgets against it |
+| 10 | **§2.2 and §2.4's measurements are stale** and marked as such. | Every flow objective changed and L6's width changed. **Re-measured at scale 15 Aug 2026 — §7's matrix is the current record** |
 
 ---
 
@@ -774,3 +778,161 @@ zeros, so it carries a dead block of its own in **every** arm.
 parameters that can never train and was under-reporting. It disturbs no match:
 both sides of a matched pair carry it, and the residual difference is 8 parameters
 between L6 at width 65 and L7 at 64.)*
+
+---
+
+## 7. Step 6 and the Gate-2 matrix — the run record (15 August 2026)
+
+**Provenance.** Both ran in one job on a CPU cluster node (Slurm job 985953;
+Python 3.11.5, torch 2.13.0, numpy 2.4.2), against repo commit `8f8ee2b`, with
+the 216 Phase-3 regression tests green on the node before anything trained.
+Exit 0. Artefacts placed into the repo 16 Aug 2026 at the paths the code reads:
+`artefacts/phase3_calibration.json` (the step-6 record — what `pins.beta_frozen`
+and `run_matrix` admissibility consult), `artefacts/gate2_report.json`, and the
+27 per-(arm, seed) checkpoints under `artefacts/checkpoints/` (format 1;
+verified loadable through `load_policy` with arm/seed/`delta_d` metadata and all
+20 environment fingerprints intact). Raw job output is kept at
+`Phase3_slurm_result/985953/`.
+
+### 7.1 The calibration gate — verdict `adopted` [MEASURED]
+
+Decision 4's ladder, in decision 4's order, non-`--quick`:
+
+| Ladder stage | Result |
+|---|---|
+| β eligibility (Phase-2 decision 19, recomputed) | **{4.0, 8.0} eligible; {1.0, 2.0} fail** the ≤ 0.5 neither-mass band (measured 0.78–0.81 and 0.68–0.71 across the 20 instances) — reproduces Phase 2's finding exactly |
+| Throughput pilot, slowest arm | **`l7b_aux` at 555.34 traj/s** — L7b slowest, as predicted; all nine rates in the record (fastest `l2_imitation` 2,295.8) |
+| `N₀` from ceiling `c₀` = 3600 s | **`N` = 1,997,088** — ceiling × slowest rate less the 52-evaluation term, rounded to a batch-32 multiple; predicted slowest run 3599.89 s, i.e. **0.11 s of sizing margin** (actual slowest run 3471 s) |
+| β sweep at `N` (L5 × 3 seeds) | **4.0 wins**: mean TV 0.0823 [0.0793 / 0.0838 / 0.0839] against 8.0's 0.1025 [0.0923 / 0.0966 / 0.1187] |
+| Decision-6 sanity at (`N`, 4.0) | **PASS** at 0.10 on the tuning suite: L4 0.0477, L5 0.0823; `ceiling_respected` true |
+| Verdict | **`adopted`, rung 0.** No escalation; every rung tried is recorded (one) |
+
+Two notes that must travel with these numbers. **The named machine of decision
+5's ceiling is now the cluster CPU node** — the measured 555 traj/s is far above
+every dev-machine projection (the handoff's "rung 0 buys `N` ≈ 4.0M" forecast
+was a different machine's arithmetic and is superseded; both were [ANALYSIS]).
+And the 0.11 s sizing margin is fragile arithmetic that happened to hold —
+worth a guard if the sizing rule is ever exercised again.
+
+### 7.2 The Gate-2 matrix — `inconclusive`, `contribution_3_supported = null` [MEASURED]
+
+27 runs (9 arms × 3 seeds, 20 main instances, 5 probe held out), 55,760 s
+(~15.5 h) on the same node. `admissible = true`; every run spent exactly `N`.
+
+| arm | final TV (mean/seeds) | best-of-K U (K=8) | gold@K | live params |
+|---|---|---|---|---|
+| l4_tb | 0.1256 | 1.8901 | 0.048 | 23,938 |
+| l5_subtb | 0.1659 | 1.8927 | 0.038 | 32,323 |
+| l6_led | 0.1672 | 1.9078 | 0.013 | 52,719 |
+| l7_checker_led | 0.1391 | 1.9171 | 0.029 | 51,972 |
+| l7b_aux | 0.1372 | 1.9158 | 0.025 | 60,682 |
+| gaflownet | **0.1238** | 1.9055 | 0.052 | 52,957 |
+| l1_supervised (TV descriptive) | 0.9568 | 1.8194 | 0.829 | 23,938 |
+| l2_imitation (TV descriptive) | 0.9448 | 1.7959 | 0.552 | 23,938 |
+| l3_grpo (TV descriptive) | 0.9814 | 1.9116 | 0.000 | 23,938 |
+
+L1–L3 TV descriptive per decision 12. `trajectories_to_threshold` is **censored
+on all 27 runs** — no arm reached 0.10 on the main suite within `N` — reported
+per decision 21 as censored, never as the budget.
+
+**Instrument clauses**, every failed clause named (criterion 10):
+
+* `every_run_spent_n` ✓ · `fail_coverage_complete` ✓ ·
+  `gaflownet_intrinsic_reached_zero` ✓ (`c_t` exactly 0.0 at the final
+  checkpoint, all seeds).
+* **`machinery_criterion_15` ✗** — at the adopted `(N, β)`, L4 reached 0.1256
+  and L5 0.1659 on the **main** suite against decision 6's 0.10. The
+  tuning-suite sanity that adopted rung 0 passed at 0.048/0.082; §6.9 predicted
+  exactly this divergence ("passing the first does not imply the second").
+* **`l6_consistency_band` ✗** — L6's decision-13 p95 is 0.1148 (worst instance,
+  seed 13) against the 0.05 band; all three L6 seeds miss individually
+  (0.1148 / 0.0821 / 0.0612).
+
+Two instrument clauses failed, so the verdict routes to **`inconclusive`** with
+`contribution_3_supported = null` — §6.9's three-outcome rule, and criterion
+12's reasoning: these are statements about the harness, not about C3. **This is
+not a negative result for Contribution 3.**
+
+**Measured but withheld from any verdict** — recorded so nobody later quotes
+them as one (they are support-rule inputs whose instrument did not work): the
+decision-20 hierarchical bootstrap gave L7 vs L6 upper-95 **−0.0220** (wins) and
+L7 vs GAFlowNet upper-95 **+0.0250** (loses, and on all three seeds
+individually); decision 15's non-inferiority margin failed at
+p95(L7) − p95(L6) = 0.5625 − 0.1148 = **0.4476** against 0.01 — the L7 figure
+driven by a single seed × instance blowup (seed 42, instance index 17, p95
+0.5625 against that arm's other seeds' 0.0532 / 0.0951).
+
+### 7.3 What the routing means, and what is now foreclosed [ANALYSIS]
+
+**The adopted β and `N` stand.** They are the output of a procedure signed
+before any learner ran (§6, "what is signed now versus later"); a matrix-stage
+instrument failure does not retro-invalidate an adopted calibration record, and
+criterion 10 asks only that a Gate-2 run match an adopted, non-`--quick` record
+— which now exists.
+
+**One ordering wrinkle, stated rather than hidden.** Criterion 11 asks for `N`
+to be "recorded in §6 before any L6/L7/GAFlowNet run". The freeze itself — the
+substantive thing the criterion protects — did precede the matrix: the
+calibration record was written and read back inside the job before any
+L6/L7/GAFlowNet training started. The §6 *transcription* lagged by a day
+(filled 16 Aug 2026). Paperwork order, not evidence order.
+
+**No instrument may now move cleanly.** §6b's second procedure requires "no
+learner results inspected beforehand", and the full matrix has been inspected.
+Decision 6's 0.10, decision 13's 0.05 band, decision 15's margin, the roster,
+`N` and the primary are frozen in the strong sense: any change is now a
+contaminated amendment — new plan version, Gate-0 re-sign-off, contamination
+stated. In particular, loosening the 0.05 band so `l6_consistency_band` passes,
+or escalating `N` because criterion 15 failed, are exactly the moves the
+procedure exists to forbid. The ladder itself is closed — rung 0 passed its own
+tuning-suite sanity and was adopted; escalation exists only inside step 6.
+
+**The genuine finding.** An `N` sized on tuning-suite convergence is ~25–65%
+short of main-suite convergence for the machinery arms — the divergence §6.9
+flagged as possible is now measured. If the owner ever rules a re-instrumented
+gate (at the §6b price, with the contamination stated), the lesson is to size
+the ladder's sanity on the main suite or carry a main-suite headroom factor.
+Recorded as the lesson, not as an amendment.
+
+### 7.4 Findings for any future reader of the report [MEASURED, flagged]
+
+1. **GAFlowNet is the best flow arm on final TV** (0.1238), ahead of L4
+   (0.1256) and both checker arms (L7 0.1391, L7b 0.1372), and it beats L7
+   per-seed on all three seeds. Behind the `inconclusive` label, the substantive
+   threat to C3 in this run is the exploration-bonus *control*, not vanilla LED.
+2. **l3_grpo collapsed seed-invariantly**: final TV bit-identical across all
+   three seeds (0.98138809…), gold@K exactly 0, final losses −5.3e5 / −1.2e5 /
+   −2.2e6 — a degenerate policy with runaway loss. Its TV was always
+   descriptive, but any later use of L3 as a baseline must know it collapsed
+   here.
+3. **l2_imitation seed 42 memorised gold** (gold exact-match 1.0, final loss
+   −0.0) while scoring the family's worst TV (0.9885) — the classic imitation
+   degenerate optimum; a caution against reading gold@K alone.
+4. **l7b_aux is also outside the 0.05 band on all three seeds** (0.0647 /
+   0.0601 / 0.0550) — unread by the verdict (only L6's band is an instrument
+   clause; only L7's is a support clause), but it travels with any L7b ablation
+   claim.
+5. **Instance index 17 is a shared pathology** — it is the blowup instance for
+   L7 seed 42 and the worst instance for several other arm × seed rows; worth
+   inspecting before any re-instrumented run.
+6. **The probe suite sits in a different regime by design** — neither-mass
+   0.64–0.68 against the main suite's ≤ 0.5 band; probe TVs (flow family
+   0.37–0.40) must never be read against main-suite bands. Main-suite audits
+   all clean: collisions 0, unconstructible terminals 0, neither-mass max
+   0.49857 — the §4 item-6 fragility unchanged, headroom 0.0014.
+
+### 7.5 What this unblocks
+
+* **Phase 4 Stage B** — the 27 checkpoints are `run_matrix`'s own; S5's rows
+  can now be filled. **Which arm(s) fill S5 has no named selection rule in any
+  document** — an open ruling for Stage B, and Gate 2 being inconclusive removes
+  the obvious "winning arm" default. Recorded in `PHASE4_DECISIONS.md` §5.
+* **Phase 9 step 6** — `artefacts/phase3_calibration.json` is in place;
+  `pins.beta_frozen()` returns frozen and `training_blocked_reason()` returns
+  `None` (verified 16 Aug 2026). Stage-D training is mechanically unblocked;
+  the P9.7 runner remains to be written.
+* **The `r_fail` re-check is discharged** — β froze at the default 4.0, so
+  every config load has already run the `r_fail_margin` check at the frozen β
+  (`Target.at_beta` / `validate_config`) and the gap did not move. Phase 9's
+  exit criterion 14 (the gap measured on *real* pools at the frozen β) remains
+  a Phase-9 step-6 artefact obligation.

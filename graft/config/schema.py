@@ -146,6 +146,25 @@ class Config:
     pool_cap: int = 64
     max_atoms: int = 16
 
+    # --- serialisation to the reader (Phase-10 gap G1) --------------------
+    # Ceiling 4 asks whether a sufficient proof "survives the evidence/token
+    # budget and serialization" (v1.2 §6.3) — and until Phase 10 there was no
+    # such budget anywhere in the project, so that ceiling had no denominator.
+    #
+    # It lives here rather than in `reader/pins.py` for the reason `CLAUDE.md`
+    # §5 gives about one value having two homes: it is a *frozen experimental
+    # condition* in the same sense as `pool_cap`, it reaches a run's identity
+    # through `config_hash`, and Phase 11's baselines must be packed to the same
+    # number ("matched-budget RAG" is defined by it).
+    #
+    # 512 is the default and the ladder {160, 512, 1024} is the reporting rule
+    # (Phase-10 §6 decision 1).  **160 is on the ladder deliberately**: it is the
+    # single budget at which arXiv 2607.00725's Table 6 shows the submodular
+    # packer winning, and `CLAUDE.md` §8 records that quoting that cell without
+    # its condition was one of this project's own caught errors.  A ceiling-4
+    # number at one budget is how that happens again.
+    serialization_budget_tokens: int = 512
+
     # --- ingestion --------------------------------------------------------
     tau_nli: float = 0.8
     support_policy: str = "strict"
@@ -182,6 +201,9 @@ class Config:
         object.__setattr__(self, "checker_budget", int(self.checker_budget))
         object.__setattr__(self, "pool_cap", int(self.pool_cap))
         object.__setattr__(self, "max_atoms", int(self.max_atoms))
+        object.__setattr__(
+            self, "serialization_budget_tokens", int(self.serialization_budget_tokens)
+        )
         object.__setattr__(self, "seeds", tuple(int(s) for s in self.seeds))
         # Read-only, because ``frozen=True`` blocks rebinding the field but not
         # mutating the dict behind it — and this dict feeds ``config_hash``,
@@ -223,6 +245,7 @@ class Config:
             "checker_budget": self.checker_budget,
             "pool_cap": self.pool_cap,
             "max_atoms": self.max_atoms,
+            "serialization_budget_tokens": self.serialization_budget_tokens,
             "tau_nli": self.tau_nli,
             "support_policy": self.support_policy,
             "source_tiers": dict(sorted(self.source_tiers.items())),

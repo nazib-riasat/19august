@@ -77,6 +77,17 @@ compare the output with a teammate's::
   it: a run at 50,000 trajectories and one at 200,000 are different experiments,
   and ``None`` marks a fingerprint taken before the budget was known.
 
+* **stage-E fingerprint** (Phase-10 exit criterion 5) — Stage E's identity: the
+  frozen reader and its dtype, the **prompt SHA**, the decoding config, the
+  serialisation ordering rule and its declared signals, the claim-id format, the
+  budget ladder, the answer-equivalence and scoring rules, the abstention
+  aggregation convention and the declined post-hoc monitor. The prompt SHA is the
+  mechanism v1.2 §3.5's "same frozen SLM, same prompt, same budget for every
+  compared system" is enforced by — Phase 11's baselines reuse the same template,
+  so one that reworded it shows up as a different fingerprint rather than as a
+  better score. ``serialization_budget_tokens`` is deliberately absent: it is the
+  config tree's and reaches identity through ``config hash``.
+
 If any of these disagree between two machines running the same commit, that is a
 real bug and worth chasing before it contaminates a result.
 
@@ -98,6 +109,7 @@ from graft.graphstore import ReplayGraphStore
 from graft.graphbuild.pins import endpoint_table_hash, stage_b_fingerprint
 from graft.gate.pins import PRIMARY_METRIC, stage_g_fingerprint
 from graft.setgen.pins import stage_d_fingerprint, training_blocked_reason
+from graft.reader.pins import PROMPT_SHA, stage_e_fingerprint
 from graft.retrieve.pins import SCORER, stage_c_fingerprint
 from graft.ingest.pins import EXTRACTOR, ingestion_fingerprint
 from graft.ledger import Ledger
@@ -208,6 +220,8 @@ def main() -> int:
     blocked = training_blocked_reason()
     print(f"stage-D print    {stage_d_fingerprint()}"
           f"   (Stage-D training: {'BLOCKED' if blocked else 'unblocked'})")
+    print(f"stage-E print    {stage_e_fingerprint()}"
+          f"   (prompt {PROMPT_SHA[:16]})")
     print(f"ingestion print  {ingestion_fingerprint()}"
           + ("" if EXTRACTOR is not None else "   (no extractor frozen yet - G2 bakeoff)"))
     print()

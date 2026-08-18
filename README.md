@@ -30,7 +30,10 @@ rung-3 boundaries, obligation slots) and Gate-0 item 8. Read
 `PHASE5_DECISIONS.md` §7 for the audit record and §1.6/§2.1a for the two
 instrument corrections before touching `graft/ingest/`.
 
-**Phase 3 is code complete and uncalibrated.** Steps 1–5 and 7–10 of
+**Phase 3 is code complete and calibrated — step 6 ran 15 Aug 2026** (CPU
+cluster job 985953): adopted at rung 0, β = 4.0, `N` = 1,997,088, and the Gate-2
+matrix ran in the same job, returning `inconclusive` on two instrument clauses
+(`PHASE3_DECISIONS.md` §7). Steps 1–5 and 7–10 of
 [`GRAFT_PHASE3_BUILD.md`](GRAFT_PHASE3_BUILD.md) §4 are built and green: the ML
 dependency boundary, the FL-GFN discharge (measured — 8,638/8,638 terminals off
 terminal identity at every eligible β), the fix-F6 adapter, the policy and its
@@ -44,17 +47,18 @@ gradient could reach. All three ran in the direction that flatters the proposed
 method. `PHASE3_DECISIONS.md` §6 has the papers, the arithmetic and what was
 *not* upheld.
 
-**Step 6, the calibration gate, has not run.** `N` and β are therefore not
-frozen, and no L6/L7/GAFlowNet result may be quoted — the plan's own ordering
-constraint, so that β and `N` are fixed before the proposed method trains once.
-Run it with:
-
-```bash
-python scripts/phase3_calibrate.py --out artefacts/phase3_calibration.json
-```
+**Step 6 has run and its record is in the repo.**
+`artefacts/phase3_calibration.json` (adopted, non-`--quick`) is what
+`pins.beta_frozen` and Gate-2 admissibility read; the matrix report and the 27
+per-(arm, seed) checkpoints are `artefacts/gate2_report.json` and
+`artefacts/checkpoints/`. **Do not overwrite the calibration record with a fresh
+run** — β and `N` are frozen, and any Gate-2 number quoted must carry §7's
+`inconclusive` routing with it.
 
 Phase 3 needs torch — see `requirements-ml.txt`, and note that the CUDA build is
-**not** incidental on a Blackwell GPU.
+**not** incidental on a Blackwell GPU. (Phase 3 itself trains on CPU —
+`TrainSpec.device` defaults to `"cpu"`, and the 15 Aug 2026 run was a CPU job;
+the CUDA note is about this machine's torch install generally.)
 
 `python scripts/verify_handoff.py --preset synthetic` prints the config, log and
 **lattice** fingerprints that must match across machines before any Gate-2 number

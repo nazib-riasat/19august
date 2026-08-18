@@ -1,8 +1,10 @@
 # PHASE9_DECISIONS.md — what the Phase-9 build decided and measured
 
 **Status: build steps 0–5 complete; step 2 (corpora) and step 4 (throughput +
-`N_real`) complete as of 16 August 2026. Step 6 — the scored Stage-A run —
-remains blocked on Phase-3 step 6 freezing β.**
+`N_real`) complete as of 16 August 2026. Step 6 — the scored Stage-A run — was
+unblocked 15 Aug 2026: Phase-3 step 6 froze β = 4.0 (`PHASE3_DECISIONS.md` §7)
+and `training_blocked_reason()` returns `None`; the P9.7 runner remains to be
+written and run.**
 
 **A second adversarial audit ran on 16 August 2026 and found five blockers —
 three in the reviewed claims, two the sweep found on its own.
@@ -460,7 +462,7 @@ before there is a result to be pleased with.
 | 3 — featurizer + environment | **done**; 542/541 dims, all nine arms take a gradient step |
 | 4 — throughput + `N_real` | **done, and re-run after the §7 audit**; `N_real = 200,000` (unchanged), slowest arm `l7b_aux` at **30.06 traj/s** (min of 3 timed repeats, stratified sample), 92% of ceiling |
 | 5 — distillation + portfolio | **done**; head ≤ cap with P6.11 guards, portfolio spends 0 checks, fallback fires |
-| 6 — Stage-A runner | **BLOCKED on β** (Phase-3 step 6). `pins.training_blocked_reason()` refuses it by name. |
+| 6 — Stage-A runner | **β unblocked 15 Aug 2026** (Phase-3 step 6 adopted; `pins.training_blocked_reason()` returns `None`). The runner itself (`scripts/phase9_gate3.py`) is unwritten — that is what remains. |
 | 7 — HoVer (gated) | not started; decision 1 gates it behind the Tier-1 pair running end to end |
 
 **Tests: 1,185 passing** (four added by the §7 audit — two capacity regressions,
