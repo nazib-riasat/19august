@@ -1,0 +1,148 @@
+GRAFT Phase 3
+Job:       985953
+User:      nahian26
+Account:   def-loutfouz_cpu
+Node:      nc10218
+Scratch:   /scratch/nahian26/graft
+Started:   2026-08-15T01:10:26-04:00
+Python module: Python 3.11.5
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/x86-64-v3, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/pyyaml-6.0.3+computecanada-cp311-cp311-linux_x86_64.whl (from -r requirements.txt (line 13))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/generic/numpy-2.4.2+computecanada-cp311-cp311-linux_x86_64.whl (from -r requirements.txt (line 14))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/pytest-9.0.2+computecanada-py3-none-any.whl (from -r requirements.txt (line 17))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/iniconfig-2.3.0+computecanada-py3-none-any.whl (from pytest->-r requirements.txt (line 17))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/packaging-26.2+computecanada-py3-none-any.whl (from pytest->-r requirements.txt (line 17))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/pluggy-1.6.0+computecanada-py3-none-any.whl (from pytest->-r requirements.txt (line 17))
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/pygments-2.20.0+computecanada-py3-none-any.whl (from pytest->-r requirements.txt (line 17))
+Installing collected packages: PyYAML, pygments, pluggy, packaging, numpy, iniconfig, pytest
+Successfully installed PyYAML-6.0.3+computecanada iniconfig-2.3.0+computecanada numpy-2.4.2+computecanada packaging-26.2+computecanada pluggy-1.6.0+computecanada pygments-2.20.0+computecanada pytest-9.0.2+computecanada
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/x86-64-v3, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/x86-64-v3/torch-2.13.0+computecanada-cp311-cp311-linux_x86_64.whl
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/filelock-3.31.1+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/typing_extensions-4.16.0+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/setuptools-84.0.0+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/sympy-1.14.0+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/networkx-3.6.1+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/jinja2-3.1.6+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/fsspec-2026.6.0+computecanada-py3-none-any.whl (from torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/mpmath-1.3.0+computecanada-py3-none-any.whl (from sympy>=1.13.3->torch)
+Processing /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic/markupsafe-3.0.3+computecanada-cp311-cp311-linux_x86_64.whl (from jinja2->torch)
+Installing collected packages: mpmath, typing-extensions, sympy, setuptools, networkx, MarkupSafe, fsspec, filelock, jinja2, torch
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 65.5.0
+    Uninstalling setuptools-65.5.0:
+      Successfully uninstalled setuptools-65.5.0
+Successfully installed MarkupSafe-3.0.3+computecanada filelock-3.31.1+computecanada fsspec-2026.6.0+computecanada jinja2-3.1.6+computecanada mpmath-1.3.0+computecanada networkx-3.6.1+computecanada setuptools-84.0.0+computecanada sympy-1.14.0+computecanada torch-2.13.0+computecanada typing-extensions-4.16.0+computecanada
+Looking in links: /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/x86-64-v3, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo2023/generic, /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+Obtaining file:///scratch/nahian26/graft/GRAFT_System
+  Installing build dependencies: started
+  Installing build dependencies: still running...
+  Installing build dependencies: still running...
+  Installing build dependencies: still running...
+  Installing build dependencies: still running...
+  Installing build dependencies: still running...
+  Installing build dependencies: still running...
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: graft
+  Building editable for graft (pyproject.toml): started
+  Building editable for graft (pyproject.toml): finished with status 'done'
+  Created wheel for graft: filename=graft-0.1.0-0.editable-py3-none-any.whl size=7088 sha256=552f47030b76a368ce37bb8c9138858f45298fbb58f6388f35a96ccb73402aa4
+  Stored in directory: /tmp/pip-ephem-wheel-cache-22sxdgvr/wheels/78/15/b6/c71c59dd2cb1892d7a6eece32575cd6eeddb0339e65e33560b
+Successfully built graft
+Installing collected packages: graft
+Successfully installed graft-0.1.0
+numpy 2.4.2
+torch 2.13.0
+PyYAML 6.0.3
+Running Phase-3 regression tests...
+........................................................................ [ 33%]
+........................................................................ [ 66%]
+........................................................................ [100%]
+216 passed in 211.41s (0:03:31)
+Verifying the synthetic handoff...
+graft            0.1.0
+python           3.11.5
+commit           8f8ee2b2a67c5e69fd14300b496e0e5d972ff9a3
+preset           synthetic  seed 13
+
+config hash      204b2fbd65c993ed5262bfae74193f9ef1110b3f3ec108deb1543272989f9b8a
+log digest       878095bbca36887e571a53222831f3fad98cec27c35c9be403c4c68d86fdd599
+graph digest     f258d5a658d8f54e45668168facf224564e67a629019e4e05256412abc73d6aa
+manifest print   09e6e1fc28858bfb8c4474e8ad0f4525a91060515e0475c5fe2dae7ae39cff9d
+stage-B print    a2520eef45b9e084631b152e95a4f2ef3ec3e950a970914e6d57dfbdda472fd1   (endpoints e983e3171663bc63)
+stage-C print    d71bda4ef5a7c73073354c130f5bc2a37f7eb522616cc6a0361215952a79a9df   (scorer declared, not built - Gate 0 unsigned)
+ingestion print  bf176a37cfb47c36552bc4e35341f418c911cdea1bc80cfa9448e179a229ceb3
+
+terminal_checks  32 (cap 32)
+graph            {'nodes': 50, 'edges': 49, 'live_edges': 48, 'assertions': 0, 'eligible_assertions': 0, 'turns': 0, 'spans': 0}
+
+lattice main     env 1114a633ba32747c8bb67b0ff78e3a9e  target(beta=4) c9a377070fbfca8605e706b7da5c91ba
+lattice probe    env 06298b85666e57432bb1fb04beadb7cf  target(beta=4) fe436ce16bf4ea0722582b0f5d8edb3f
+lattice tuning   env b07c2e4bb145d06f2ffc097963cace92  target(beta=4) 6e6f4d2899daf6b1299f8c1030cb21da
+Running the non-quick Phase-3 calibration gate...
+throughput pilot: slowest l7b_aux at 555 traj/s, eval 0.073s
+  rung 0: ceiling 3600s -> N=1,997,088; sweeping beta over [4.0, 8.0] on L5 x 3 seeds...
+  rung 0: beta=4.0; decision-6 sanity on L4/L5...
+  rung 0: sanity PASS, slowest run 3600s vs ceiling 3600s
+eligible beta: [4.0, 8.0]
+throughput:    555 traj/s (slowest arm: l7b_aux)
+    l7b_aux                555 traj/s
+    l6_led                 558 traj/s
+    l7_checker_led         580 traj/s
+    gaflownet              839 traj/s
+    l5_subtb              1224 traj/s
+    l4_tb                 1288 traj/s
+    l3_grpo               1382 traj/s
+    l1_supervised         2227 traj/s
+    l2_imitation          2296 traj/s
+rung 0  N=  1997088  beta=4.0  sanity=PASS  3600s slowest run
+verdict: adopted  -> /scratch/nahian26/graft/results/phase3/985953/phase3_calibration.json
+Checking the admissible Gate-2 matrix without training...
+calibration  /scratch/nahian26/graft/results/phase3/985953/phase3_calibration.json  (rung 0)
+N            1,997,088
+beta         4.0
+arms         9  x  seeds [13, 42, 7]  = 27 runs
+instances    20 main, 5 probe (held out)
+
+--dry-run: nothing trained.
+Running the full nine-arm, three-seed Gate-2 matrix...
+calibration  /scratch/nahian26/graft/results/phase3/985953/phase3_calibration.json  (rung 0)
+N            1,997,088
+beta         4.0
+arms         9  x  seeds [13, 42, 7]  = 27 runs
+instances    20 main, 5 probe (held out)
+
+arm                    live   final TV   best-of-K   gold@K   traj-to-thr
+-- flow family — exact TV is the primary metric
+l4_tb                 23938   0.1256      1.8901    0.048   censored, censored, censored
+l5_subtb              32323   0.1659      1.8927    0.037   censored, censored, censored
+l6_led                52719   0.1672      1.9078    0.013   censored, censored, censored
+l7_checker_led        51972   0.1391      1.9171    0.029   censored, censored, censored
+l7b_aux               60682   0.1372      1.9158    0.025   censored, censored, censored
+gaflownet             52957   0.1238      1.9055    0.052   censored, censored, censored
+-- L1-L3 — exact TV is DESCRIPTIVE (decision 12)
+l1_supervised         23938   0.9568      1.8194    0.829   censored, censored, censored
+l2_imitation          23938   0.9448      1.7959    0.552   censored, censored, censored
+l3_grpo               23938   0.9814      1.9116    0.000   censored, censored, censored
+
+outcome: inconclusive
+contribution_3_supported: None
+  the instrument did not work: ['machinery_criterion_15', 'l6_consistency_band']
+  this is NOT a negative result for Contribution 3 (criterion 12).
+
+55760s  ->  /scratch/nahian26/graft/results/phase3/985953/gate2_report.json
+Gate-2 outcome: inconclusive
+Contribution 3 supported: None
+Phase-3 computation completed.
+Calibration: /scratch/nahian26/graft/results/phase3/985953/phase3_calibration.json
+Report:      /scratch/nahian26/graft/results/phase3/985953/gate2_report.json
+Checkpoints: /scratch/nahian26/graft/results/phase3/985953/checkpoints
+Next manual step: review the report and transcribe the adopted N, beta, and Gate-2 outcome into the Phase-3 decision documents.
+Phase 3 job exit=0 at 2026-08-15T22:35:46-04:00
+Results: /scratch/nahian26/graft/results/phase3/985953

@@ -1,0 +1,502 @@
+{
+  "adopted": {
+    "N": 1997088,
+    "beta": 4.0,
+    "ceiling_s": 3600.0,
+    "rung": 0
+  },
+  "device": "cpu",
+  "eligibility": {
+    "candidates": [
+      1.0,
+      2.0,
+      4.0,
+      8.0
+    ],
+    "eligible": [
+      4.0,
+      8.0
+    ],
+    "note": "Eligibility precedes selection. If no candidate is eligible the environment cannot be built at any declared beta, which is a regeneration under GRAFT_PHASE2_BUILD.md 6b -- not a shrug.",
+    "per_instance": [
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7791, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6762, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4630848841063351,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.16784645537864287,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7997, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7012, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4893548658508937,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.1817387427968449,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7843, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6887, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.48931610442207807,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.19617519016879792,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7804, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6795, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.47018326523037623,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.17540729240923858,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.783, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.685, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.479127421554972,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.18146652846619354,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8019, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6999, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.480086447426908,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.17215883907149693,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8011, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7046, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.496039224344096,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.188373521425987,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7821, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6836, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.47845343501265947,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.18350960082396023,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8017, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6994, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.47861503075250994,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.1700244532904318,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8059, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7094, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.49857630494943234,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.18781280336488734,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.798, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6912, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.46588776698210155,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.16534391883549673,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8008, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7041, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.496631948348462,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.19137004758390283,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8044, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.706, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.49156678624976397,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.1804111124454273,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7824, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6838, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4776476876988701,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.18063545485751,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8033, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7031, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.48526929455315726,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.17430044432946787,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.8037, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7042, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4877390452858621,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.1769976768599911,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7839, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6873, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4842894272227256,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.1867133951984828,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7832, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6852, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.47882213272229757,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.179811650331245,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.783, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6848, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.47764453719470945,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.17824302576813875,
+        "ok": true
+      },
+      {
+        "beta": 1.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.7991, expected <= 0.5 of p* on terminals completing no designed proof, at beta=1.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 2.0,
+        "ok": false,
+        "reason": "neither_mass: measured 0.6936, expected <= 0.5 of p* on terminals completing no designed proof, at beta=2.0 (G10). The distractor tail is what exact TV would then be measuring."
+      },
+      {
+        "beta": 4.0,
+        "neither": 0.4691298607488192,
+        "ok": true
+      },
+      {
+        "beta": 8.0,
+        "neither": 0.16527081601898078,
+        "ok": true
+      }
+    ]
+  },
+  "evaluation_cost_s": 0.07333008013665676,
+  "quick": false,
+  "rungs": [
+    {
+      "N": 1997088,
+      "beta": 4.0,
+      "beta_sweep": {
+        "max_run_s": 1759.561001708731,
+        "per_beta": {
+          "4.0": {
+            "max_run_s": 1759.561001708731,
+            "mean_tv": 0.08232761538184319,
+            "per_seed_tv": [
+              0.07930178948764667,
+              0.08382368957181238,
+              0.08385736708607049
+            ]
+          },
+          "8.0": {
+            "max_run_s": 1707.433787720278,
+            "mean_tv": 0.10254856942340995,
+            "per_seed_tv": [
+              0.09229029265238976,
+              0.09660778251190565,
+              0.11874763310593443
+            ]
+          }
+        },
+        "winner": 4.0
+      },
+      "ceiling_respected": true,
+      "ceiling_s": 3600.0,
+      "max_s_per_run": 3599.8882305664565,
+      "measured_s_per_run": 1759.561001708731,
+      "predicted_for": "l7b_aux",
+      "predicted_slowest_arm_s": 3599.8882305664565,
+      "rung": 0,
+      "sanity": {
+        "arms": {
+          "l4_tb": {
+            "max_run_s": 1577.386508077383,
+            "mean_tv": 0.047734720449379986,
+            "per_seed_tv": [
+              0.050336188568175066,
+              0.050251118573335495,
+              0.04261685420662938
+            ]
+          },
+          "l5_subtb": {
+            "max_run_s": 1719.5310001280159,
+            "mean_tv": 0.08232761538184319,
+            "per_seed_tv": [
+              0.07930178948764667,
+              0.08382368957181238,
+              0.08385736708607049
+            ]
+          }
+        },
+        "max_run_s": 1719.5310001280159,
+        "passed": true,
+        "threshold": 0.1
+      }
+    }
+  ],
+  "slowest_arm": "l7b_aux",
+  "throughput_per_arm": {
+    "gaflownet": 839.0726592912159,
+    "l1_supervised": 2226.7681418701613,
+    "l2_imitation": 2295.842702349419,
+    "l3_grpo": 1381.6883562979065,
+    "l4_tb": 1288.1849914965405,
+    "l5_subtb": 1224.1747024737733,
+    "l6_led": 558.0126726575747,
+    "l7_checker_led": 579.8920288177344,
+    "l7b_aux": 555.3408201828057
+  },
+  "throughput_traj_per_s": 555.3408201828057,
+  "verdict": "adopted"
+}
