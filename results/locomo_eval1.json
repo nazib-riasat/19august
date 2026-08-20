@@ -1,0 +1,488 @@
+{
+  "what_this_is_not": "NOT MET. Plan \u00a77 Gate 4 item 4 requires re-running system baselines rather than quoting published numbers; this phase quotes them, at the project owner's instruction, on a three-day deadline. Meeting it costs ~8-15 h GPU for the full-context and matched-budget-RAG adapters (GRAFT_PHASE11_BUILD.md \u00a77).",
+  "phase": 11,
+  "stage": "C (the assembler)",
+  "metric": "token_f1+bleu1",
+  "honesty_stamp": {
+    "policy_trained": false,
+    "head_trained": true,
+    "selection": "training_free_relevance",
+    "gate_source": "none_recorded_for_post_hoc",
+    "scorer_source": "distilled_head",
+    "token_counter": "reader_tokenizer",
+    "ordering": "u_shaped_inference_computable",
+    "is_wiring_test": true,
+    "notes": [
+      "Stage-D policy untrained: Phase-9 step 6 has not run",
+      "obligations deterministic (empty); LLM parsing deferred by name -- fix F7 forbids the extractor and reader being co-resident, so it is a separate stage-sequential pass, not a flag on this one",
+      "gate NOT applied; features recorded per question. Post-hoc thresholding additionally needs the MuSiQue gate RETRAINED (seeded, minutes of CPU) or a persisted checkpoint -- scripts/phase8_gate.py saves none (PHASE11_DECISIONS.md 1.8) -- then reweighted to prevalence 0.2246",
+      "gold proof atoms are Tier A (LoCoMo evidence-derived closed superset), not H-minimised",
+      "utility head trained, dev rho vs exact U = 0.7560234998369398"
+    ],
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+  },
+  "corpus_check": {
+    "counts": {
+      "adversarial": 446,
+      "multi_hop": 282,
+      "open_domain": 96,
+      "single_hop": 841,
+      "temporal": 321
+    },
+    "total": 1986,
+    "full_corpus": true,
+    "adversarial_check": "conclusive -- adversarial count matches the independently recorded 446"
+  },
+  "scores": {
+    "per_category": {
+      "single_hop": {
+        "n": 841,
+        "answered": 683,
+        "coverage": 0.812128418549346,
+        "f1_over_all": 0.3422483510955902,
+        "bleu1_over_all": 0.2990212702361318,
+        "f1_over_answered": 0.4214214689185818,
+        "bleu1_over_answered": 0.36819456554697927
+      },
+      "multi_hop": {
+        "n": 282,
+        "answered": 219,
+        "coverage": 0.776595744680851,
+        "f1_over_all": 0.21618048682893742,
+        "bleu1_over_all": 0.15155778777684153,
+        "f1_over_answered": 0.27836939399890576,
+        "bleu1_over_answered": 0.19515660343867267
+      },
+      "temporal": {
+        "n": 321,
+        "answered": 278,
+        "coverage": 0.8660436137071651,
+        "f1_over_all": 0.339547679734596,
+        "bleu1_over_all": 0.289331316431206,
+        "f1_over_answered": 0.3920676445856306,
+        "bleu1_over_answered": 0.33408400206624866
+      },
+      "open_domain": {
+        "n": 96,
+        "answered": 55,
+        "coverage": 0.5729166666666666,
+        "f1_over_all": 0.07251073874525886,
+        "bleu1_over_all": 0.05169457164423838,
+        "f1_over_answered": 0.1265641985371791,
+        "bleu1_over_answered": 0.09023052505176153
+      }
+    },
+    "overall": {
+      "n": 1540,
+      "answered": 1235,
+      "coverage": 0.801948051948052,
+      "f1_over_all": 0.30178545238409243,
+      "bleu1_over_all": 0.2545806596583898,
+      "f1_over_answered": 0.37631546289190476,
+      "bleu1_over_answered": 0.31745280637564394
+    },
+    "metric": "token_f1+bleu1",
+    "views": "over_all scores an abstention 0 and is the reference-comparable view; over_answered excludes abstentions (Phase-10 decision 7) and is a GRAFT-internal diagnostic that must travel with coverage",
+    "adversarial_excluded": true
+  },
+  "adversarial": {
+    "n": 446,
+    "abstained": 164,
+    "abstention_accuracy": 0.36771300448430494,
+    "abstain_by_cause": {
+      "fallback": 164
+    },
+    "scored_with_f1": false,
+    "why": "unanswerable questions are scored by whether the system declined, not by F1 against a gold non-answer; no published row reports this category (Mem-T \u00a7A.1, Mem0, A-Mem all discard it)"
+  },
+  "comparison": {
+    "gate4": "NOT MET. Plan \u00a77 Gate 4 item 4 requires re-running system baselines rather than quoting published numbers; this phase quotes them, at the project owner's instruction, on a three-day deadline. Meeting it costs ~8-15 h GPU for the full-context and matched-budget-RAG adapters (GRAFT_PHASE11_BUILD.md \u00a77).",
+    "baselines_rerun": false,
+    "metric": "token_f1+bleu1",
+    "graft": {
+      "method": "GRAFT",
+      "backbone": "Qwen/Qwen2.5-3B-Instruct",
+      "f1": {
+        "single_hop": 0.3422483510955902,
+        "multi_hop": 0.21618048682893742,
+        "temporal": 0.339547679734596,
+        "open_domain": 0.07251073874525886
+      },
+      "bleu1": {
+        "single_hop": 0.2990212702361318,
+        "multi_hop": 0.15155778777684153,
+        "temporal": 0.289331316431206,
+        "open_domain": 0.05169457164423838
+      },
+      "overall_f1": 0.30178545238409243,
+      "overall_bleu1": 0.2545806596583898,
+      "source": "measured in this run",
+      "arxiv": "n/a",
+      "table": "n/a",
+      "metric": "token_f1+bleu1",
+      "locomo_exposure": "zero_shot",
+      "embedder": "BAAI/bge-small-en-v1.5@5c38ec7c",
+      "question_subset": "answerable_only_adversarial_reported_separately",
+      "notes": "abstentions scored 0; coverage 0.801948051948052; serialization budget 512 tokens",
+      "view": "over_all"
+    },
+    "reference": [
+      {
+        "method": "VANILLA",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 40.68,
+          "multi_hop": 23.23,
+          "temporal": 18.97,
+          "open_domain": 13.87
+        },
+        "bleu1": {
+          "single_hop": 31.54,
+          "multi_hop": 16.76,
+          "temporal": 13.42,
+          "open_domain": 10.7
+        },
+        "overall_f1": 31.5,
+        "overall_bleu1": 23.94,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "RAG",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 49.45,
+          "multi_hop": 23.5,
+          "temporal": 43.07,
+          "open_domain": 20.23
+        },
+        "bleu1": {
+          "single_hop": 44.94,
+          "multi_hop": 17.13,
+          "temporal": 37.35,
+          "open_domain": 14.94
+        },
+        "overall_f1": 41.59,
+        "overall_bleu1": 36.45,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": "beats four of the eight training-free memory systems; not a strawman"
+      },
+      {
+        "method": "MemGPT",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 14.0,
+          "multi_hop": 16.68,
+          "temporal": 12.56,
+          "open_domain": 11.61
+        },
+        "bleu1": {
+          "single_hop": 11.77,
+          "multi_hop": 13.99,
+          "temporal": 10.94,
+          "open_domain": 9.16
+        },
+        "overall_f1": 14.05,
+        "overall_bleu1": 11.84,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "MemoryBank",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 26.65,
+          "multi_hop": 25.52,
+          "temporal": 9.15,
+          "open_domain": 16.42
+        },
+        "bleu1": {
+          "single_hop": 17.72,
+          "multi_hop": 19.44,
+          "temporal": 7.44,
+          "open_domain": 12.39
+        },
+        "overall_f1": 22.34,
+        "overall_bleu1": 15.66,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "Mem0",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 47.28,
+          "multi_hop": 35.4,
+          "temporal": 46.84,
+          "open_domain": 26.64
+        },
+        "bleu1": {
+          "single_hop": 40.72,
+          "multi_hop": 27.36,
+          "temporal": 39.48,
+          "open_domain": 21.04
+        },
+        "overall_f1": 43.71,
+        "overall_bleu1": 36.78,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "MemoryOS",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 48.35,
+          "multi_hop": 35.24,
+          "temporal": 40.98,
+          "open_domain": 22.08
+        },
+        "bleu1": {
+          "single_hop": 42.57,
+          "multi_hop": 27.3,
+          "temporal": 32.68,
+          "open_domain": 17.93
+        },
+        "overall_f1": 42.83,
+        "overall_bleu1": 36.26,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "LightMem",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 43.78,
+          "multi_hop": 30.78,
+          "temporal": 44.71,
+          "open_domain": 18.93
+        },
+        "bleu1": {
+          "single_hop": 38.84,
+          "multi_hop": 25.8,
+          "temporal": 40.72,
+          "open_domain": 14.42
+        },
+        "overall_f1": 40.01,
+        "overall_bleu1": 35.27,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "A-Mem",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 44.62,
+          "multi_hop": 27.24,
+          "temporal": 43.85,
+          "open_domain": 15.4
+        },
+        "bleu1": {
+          "single_hop": 38.26,
+          "multi_hop": 21.07,
+          "temporal": 35.97,
+          "open_domain": 12.71
+        },
+        "overall_f1": 39.43,
+        "overall_bleu1": 33.04,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": ""
+      },
+      {
+        "method": "GAM",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 32.23,
+          "multi_hop": 32.23,
+          "temporal": 26.26,
+          "open_domain": 18.45
+        },
+        "bleu1": {
+          "single_hop": 25.54,
+          "multi_hop": 28.66,
+          "temporal": 22.52,
+          "open_domain": 14.47
+        },
+        "overall_f1": 30.17,
+        "overall_bleu1": 24.81,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": "loses 23.31 overall F1 against its own gpt-4o-mini run (53.48) on nothing but a backbone change -- the paper's own evidence that cross-backbone comparison on this benchmark is unsafe"
+      },
+      {
+        "method": "Mem-T (w/o training)",
+        "backbone": "Qwen3-4B",
+        "f1": {
+          "single_hop": 53.97,
+          "multi_hop": 38.44,
+          "temporal": 53.99,
+          "open_domain": 26.44
+        },
+        "bleu1": {
+          "single_hop": 49.15,
+          "multi_hop": 31.7,
+          "temporal": 48.08,
+          "open_domain": 23.37
+        },
+        "overall_f1": 49.38,
+        "overall_bleu1": 44.11,
+        "source": "Mem-T: Densifying Rewards for Long-Horizon Memory Agents (Yue et al., 2026)",
+        "arxiv": "arXiv:2601.23014v2",
+        "table": "Table 2",
+        "metric": "token_f1+bleu1",
+        "locomo_exposure": "zero_shot",
+        "embedder": "BGE-M3",
+        "question_subset": "answerable_only_adversarial_discarded",
+        "notes": "THE COMPARABLE ROW -- see COMPARABLE_ROW"
+      }
+    ],
+    "non_comparability": {
+      "gate4": "NOT MET. Plan \u00a77 Gate 4 item 4 requires re-running system baselines rather than quoting published numbers; this phase quotes them, at the project owner's instruction, on a three-day deadline. Meeting it costs ~8-15 h GPU for the full-context and matched-budget-RAG adapters (GRAFT_PHASE11_BUILD.md \u00a77).",
+      "baselines_rerun": false,
+      "declared_differences": {
+        "reader_backbone": {
+          "graft": "Qwen2.5-3B-Instruct (bf16, pinned by model_id and revision)",
+          "reference": "Qwen3-4B",
+          "why_it_matters": "the reference table's own GAM row moves 23.31 overall F1 on a backbone change alone, which is wider than the spread between its best and worst memory system"
+        },
+        "embedder": {
+          "graft": "bge-small-en-v1.5 (pinned by revision)",
+          "reference": "BGE-M3"
+        },
+        "locomo_exposure": {
+          "graft": "zero-shot; Stage D trains on 2Wiki + MuSiQue-Ans, Stage B on LongMemEval, the gate on MuSiQue-Full, the reader on nothing",
+          "reference": "in-domain for the trained rows -- LoCoMo split 1:1:8 (\u00a74.1)",
+          "measured_effect": "+9.27 overall F1, 49.38 -> 58.65, the paper's own numbers"
+        },
+        "question_subset": {
+          "graft": "all categories; the 446 adversarial reported separately",
+          "reference": "adversarial discarded (\u00a7A.1), as in Mem0 and A-Mem"
+        }
+      },
+      "venue_tier": "Provisional (arXiv preprint) -- may frame a comparison, may not carry a claim alone (CLAUDE.md \u00a73)"
+    },
+    "reading": "GRAFT is measured; every reference number is quoted from arXiv:2601.23014v2 Table 2 on a different backbone. Differences in backbone, embedder, LoCoMo exposure and question subset are declared and were not controlled. No claim of superiority is licensed by this table."
+  },
+  "cost": {
+    "graft": {
+      "llm_calls_per_query": 1.0,
+      "llm_tokens_per_query": 933.5377643504531,
+      "wall_clock_ms_per_query": 1033.1324269889224,
+      "serialization_budget_tokens": 512
+    },
+    "reference": {
+      "llm_calls_per_query": "<=6 plus construction",
+      "llm_tokens_per_query": 9000,
+      "source": "arXiv:2601.23014v2 \u00a74.3 (~9k at 6 steps, ~21k at 10)"
+    },
+    "token_ratio": 9.64,
+    "budget_ladder": [
+      160,
+      512,
+      1024
+    ],
+    "excludes": "ingestion, which is an offline per-turn cost (PHASE5_DECISIONS.md \u00a72) and is reported on its own axis; and the dense channel's corpus encode, which is index construction amortised over every query"
+  },
+  "ingestion_cost": {
+    "measured_turns_per_hour": 135.67,
+    "output_tokens_per_turn": 220,
+    "axis": "offline, per turn; never folded into per-query inference cost"
+  },
+  "ceilings": null,
+  "reference_sha": "f84c22ac3474426e15aad9a78f6ed3582cd3d81330566c3c5f285e9e74e58f08",
+  "claims": {
+    "primary": [
+      "cost per query, in LLM calls and total tokens, at three budgets",
+      "the five-ceiling decomposition, which needs no baseline",
+      "abstention accuracy on the 446 adversarial questions, which no published row reports"
+    ],
+    "secondary_with_caveats": [
+      "F1 and BLEU-1 by category against the untrained reference row"
+    ],
+    "not_claimable": "that GRAFT beats any system in the reference table. The backbone differs, the LoCoMo exposure differs, the question subset differs, and no baseline was re-run."
+  },
+  "run": {
+    "utility_head": {
+      "checkpoint": "artefacts/utility_head.pt",
+      "trained": true,
+      "dev_spearman_vs_exact_u": 0.7560234998369398,
+      "reading": "DISTILL['report_rho']: a ranking claim without this rho cannot be read, because 'the sampler won' and 'the scorer was nearly perfect' are different findings"
+    },
+    "conversations": 10,
+    "questions": 1986,
+    "wall_clock_s": 2833.4,
+    "questions_per_hour": 2523.3,
+    "smoke": false,
+    "reader": {
+      "model_id": "Qwen/Qwen2.5-3B-Instruct",
+      "dtype": "bfloat16",
+      "device": "cuda",
+      "prompt_sha": "8121eb222b44638e5a2445324c2c306edffa071e63cd0ed7f672f5771faadf88",
+      "decoding": {
+        "do_sample": false,
+        "max_new_tokens": 128,
+        "num_beams": 1,
+        "temperature": null,
+        "top_p": null
+      },
+      "peak_vram_gb": 6.286,
+      "slot": "reader:Qwen/Qwen2.5-3B-Instruct",
+      "abstain_string": "INSUFFICIENT EVIDENCE"
+    },
+    "corpus_sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+    "channel_index_builds": 10,
+    "channel_index_builds_avoided": 1976
+  }
+}

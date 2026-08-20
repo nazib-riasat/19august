@@ -113,6 +113,52 @@ def default_obligations(question_id: str) -> Obligations:
     )
 
 
+def next_iteration(results_dir: "Path") -> int:
+    """The next free iteration number under results/, by scanning what exists.
+
+    Owner's convention (19 Aug 2026): every eval lands in the project's
+    ``results/`` folder as ``locomo_eval{N}.json`` + ``locomo_eval_rows{N}.jsonl``.
+    Run 3's artefacts were moved there as iteration 1, so numbering continues
+    from what the folder actually holds rather than from memory.
+    """
+    import re
+    top = 0
+    if results_dir.is_dir():
+        for f in results_dir.glob("locomo_eval*.json"):
+            m = re.match(r"locomo_eval(\d+)\.json$", f.name)
+            if m:
+                top = max(top, int(m.group(1)))
+    return top + 1
+
+
+def resolve_out_paths(args, repo: "Path") -> tuple["Path", "Path", int]:
+    """``(artefact_path, rows_path, iteration)`` under results/, auto-numbered.
+
+    **Resume survives the numbering**: if the newest iteration has rows but no
+    final artefact, that run crashed mid-way -- reuse its number so the rows
+    resume, exactly as before. ``--fresh`` always claims a new number. Explicit
+    ``--out``/``--rows`` bypass the scheme entirely (tests use this).
+    """
+    results = repo / "results"
+    results.mkdir(exist_ok=True)
+    explicit_out = args.out != "artefacts/locomo_eval.json"
+    explicit_rows = args.rows != "artefacts/locomo_eval_rows.jsonl"
+    if explicit_out or explicit_rows:
+        return repo / args.out, repo / args.rows, -1
+    n = next_iteration(results)
+    prev_rows = results / f"locomo_eval_rows{n - 1}.jsonl"
+    prev_json = results / f"locomo_eval{n - 1}.json"
+    if not args.fresh and n > 1 and prev_rows.is_file() and not prev_json.is_file():
+        n -= 1  # crashed run: resume its rows under its own number
+    rows = results / f"locomo_eval_rows{n}.jsonl"
+    # --fresh reclaims a crashed iteration's number; its stale rows must go, or
+    # the restart appends onto them (run-3's rows file carried 150 stale subset
+    # rows for exactly this reason).
+    if args.fresh and rows.is_file():
+        rows.unlink()
+    return results / f"locomo_eval{n}.json", rows, n
+
+
 def pick_run_dir(requested: str, repo: "Path") -> str:
     """Prefer the Stage-B log when the caller asked for the plain default.
 
@@ -615,7 +661,9 @@ def main() -> int:
     if args.questions is not None:
         questions = questions[: args.questions]
 
-    rows_path = REPO / args.rows
+    out_path, rows_path, iteration = resolve_out_paths(args, REPO)
+    if iteration > 0:
+        print(f"results iteration {iteration}: {out_path.name} / {rows_path.name}")
     rows_path.parent.mkdir(parents=True, exist_ok=True)
     done: dict[str, dict] = {}
     if rows_path.is_file() and not args.fresh:
@@ -986,7 +1034,7 @@ def main() -> int:
         "channel_index_builds": channel_cache.builds,
         "channel_index_builds_avoided": max(0, len(results) - channel_cache.builds),
     }
-    out = REPO / args.out
+    out = out_path
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report_body, indent=2), encoding="utf-8")
 
