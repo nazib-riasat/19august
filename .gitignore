@@ -74,3 +74,8 @@ data/musique/
 *.bak[0-9]
 
 data/phase9/raw/
+
+# The LoCoMo evaluation corpus (CC BY-NC 4.0, ~2.8 MB). Fetched per machine from
+# the snap-research/locomo release; pinned by SHA in graft/ingest/locomo.py, so
+# the identity travels in code and the bytes do not travel in git.
+data/locomo/

@@ -258,8 +258,39 @@ def _check_finite(value: float, name: str) -> float:
     return value
 
 
+def _reject_bare_str(value: Any, field: str) -> Any:
+    """Refuse a bare ``str`` where a sequence of strings is meant.
+
+    Every string-sequence field here is coerced with ``tuple(...)`` or
+    ``frozenset(...)``, and both iterate a ``str`` **character by character**
+    rather than raising.  ``Obligations(scope="conv-26")`` therefore stores
+    ``('c', 'o', 'n', 'v', '-', '2', '6')`` and nothing complains: `H`'s scope
+    sub-check then compares real conversation ids against one-character strings,
+    never matches, and the fail-closed guard these fields exist to carry is
+    defeated silently.  The same shape reaches ``ProofSet.atoms``,
+    ``Assertion.spans``, ``Edge.provenance``, ``Violation.atoms`` and
+    ``OutputRecord.citations``, all of which are id lists whose members are
+    resolved by lookup — so a per-character explosion reads downstream as
+    "missing" rather than as "malformed input".
+
+    ``TypeError``, not ``ValueError``: the argument is the wrong *type* for the
+    field, not a bad value of the right one.
+    """
+    if isinstance(value, str):
+        raise TypeError(
+            f"{field} takes a sequence of strings, got a bare string {value!r}; "
+            "a str would explode into characters"
+        )
+    return value
+
+
+def _str_tuple(value: Any, field: str) -> tuple[str, ...]:
+    """``tuple(value)``, with a bare ``str`` refused rather than exploded."""
+    return tuple(_reject_bare_str(value, field))
+
+
 def _freeze_mapping(data: Mapping[str, Any]) -> Mapping[str, Any]:
-    """A read-only copy, so ``frozen=True`` means what it says.
+    """A read-only copy of the **top level**; nested values stay mutable.
 
     ``@dataclass(frozen=True)`` blocks *rebinding* a field; it does nothing about
     mutating the object a field points at.  A plain dict inside a frozen
@@ -279,6 +310,18 @@ def _freeze_mapping(data: Mapping[str, Any]) -> Mapping[str, Any]:
     limitation is that it cannot be pickled — if a later phase needs to pickle a
     ``Config`` or a ``ProofSet`` (a dataloader with worker processes, say), the
     transport is ``to_dict()`` / ``from_dict()``, which already exist.
+
+    **The freeze is one level deep, and that is deliberate.**  A list or dict
+    nested inside a value — ``Node.payload["aliases"]``, say — is copied by
+    reference and remains mutable, both through the proxy and through the
+    caller's original object.  Deep-freezing would mean recursively rebuilding
+    every payload on every construction, and nothing in the codebase mutates a
+    nested payload value: the write path builds each payload immediately before
+    handing it over and never touches it again.  So treat "nested values are not
+    mutated" as a **convention this function does not enforce**, not as a
+    guarantee.  If a later phase starts editing nested payload structures in
+    place, this is the function to change — and the cost of the change is one
+    recursive copy per construction on a path that includes Phase 2's DP keys.
     """
     return MappingProxyType(dict(data))
 
@@ -366,7 +409,7 @@ class Obligations:
     scope: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "scope", tuple(self.scope))
+        object.__setattr__(self, "scope", _str_tuple(self.scope, "Obligations.scope"))
         # Phase-1 gap G5.  `|constraint|` is the denominator of
         # `temporal_correctness`, and an empty interval has measure zero.  It is
         # also not an answerable question: no instant satisfies it.  Rejecting it
@@ -423,7 +466,7 @@ class Obligations:
             time_constraint=None if tc is None else Interval.from_dict(tc),
             needs_source=bool(data.get("needs_source", False)),
             aggregate=bool(data.get("aggregate", False)),
-            scope=tuple(data.get("scope", ())),
+            scope=_str_tuple(data.get("scope", ()), "Obligations.scope"),
         )
 
 
@@ -565,7 +608,9 @@ class ProofSet:
     bindings: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "atoms", frozenset(self.atoms))
+        object.__setattr__(
+            self, "atoms", frozenset(_reject_bare_str(self.atoms, "ProofSet.atoms"))
+        )
         object.__setattr__(self, "bindings", _freeze_mapping(self.bindings))
 
     def __len__(self) -> int:
@@ -594,7 +639,7 @@ class ProofSet:
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "ProofSet":
         return cls(
-            atoms=frozenset(data.get("atoms", ())),
+            atoms=frozenset(_reject_bare_str(data.get("atoms", ()), "ProofSet.atoms")),
             bindings=dict(data.get("bindings", {})),
         )
 
@@ -776,7 +821,7 @@ class Violation:
     atoms: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "atoms", tuple(self.atoms))
+        object.__setattr__(self, "atoms", _str_tuple(self.atoms, "Violation.atoms"))
 
     def to_dict(self) -> dict[str, Any]:
         return {"check": self.check, "message": self.message, "atoms": list(self.atoms)}
@@ -786,7 +831,7 @@ class Violation:
         return cls(
             check=data["check"],
             message=data["message"],
-            atoms=tuple(data.get("atoms", ())),
+            atoms=_str_tuple(data.get("atoms", ()), "Violation.atoms"),
         )
 
 
@@ -985,7 +1030,7 @@ class Assertion:
             raise ValueError(f"kind must be one of {ASSERTION_KINDS}, got {self.kind!r}")
         if self.eligibility not in ELIGIBILITY:
             raise ValueError(f"eligibility must be one of {ELIGIBILITY}, got {self.eligibility!r}")
-        object.__setattr__(self, "spans", tuple(self.spans))
+        object.__setattr__(self, "spans", _str_tuple(self.spans, "Assertion.spans"))
         if not self.spans:
             raise ValueError(
                 f"assertion {self.assertion_id} has no spans; an assertion without "
@@ -1009,7 +1054,7 @@ class Assertion:
             assertion_id=data["assertion_id"],
             kind=data["kind"],
             text_norm=data["text_norm"],
-            spans=tuple(data["spans"]),
+            spans=_str_tuple(data["spans"], "Assertion.spans"),
             flags=AssertionFlags.from_dict(data["flags"]),
             t_created=data["t_created"],
             # Fail closed on a record written before the field existed, too.
@@ -1094,7 +1139,9 @@ class Edge:
     def __post_init__(self) -> None:
         if self.etype not in EDGE_TYPES:
             raise ValueError(f"etype must be one of {EDGE_TYPES}, got {self.etype!r}")
-        object.__setattr__(self, "provenance", tuple(self.provenance))
+        object.__setattr__(
+            self, "provenance", _str_tuple(self.provenance, "Edge.provenance")
+        )
         if not self.provenance:
             raise ValueError(f"edge {self.edge_id} has no provenance spans")
         if self.superseded_by is not None and self.t_invalid is None:
@@ -1128,7 +1175,7 @@ class Edge:
             src=data["src"],
             dst=data["dst"],
             t_created=data["t_created"],
-            provenance=tuple(data["provenance"]),
+            provenance=_str_tuple(data["provenance"], "Edge.provenance"),
             t_invalid=data.get("t_invalid"),
             superseded_by=data.get("superseded_by"),
         )
@@ -1172,7 +1219,9 @@ class OutputRecord:
                     f"abstain_cause {self.abstain_cause!r} set on a {self.outcome!r} "
                     "record; only an abstention has a cause"
                 )
-        object.__setattr__(self, "citations", tuple(self.citations))
+        object.__setattr__(
+            self, "citations", _str_tuple(self.citations, "OutputRecord.citations")
+        )
         object.__setattr__(self, "ledger_snapshot", _freeze_mapping(self.ledger_snapshot))
 
     def to_dict(self) -> dict[str, Any]:
@@ -1191,7 +1240,7 @@ class OutputRecord:
         ps = data.get("proofset")
         return cls(
             outcome=data["outcome"],
-            citations=tuple(data.get("citations", ())),
+            citations=_str_tuple(data.get("citations", ()), "OutputRecord.citations"),
             answer_text=data.get("answer_text"),
             proofset=None if ps is None else ProofSet.from_dict(ps),
             ledger_snapshot=data.get("ledger_snapshot", {}),

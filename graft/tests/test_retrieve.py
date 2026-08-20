@@ -1196,3 +1196,61 @@ def test_no_channel_module_mentions_a_gold_field(path):
     names |= {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
     offending = sorted(n for n in names if n in GOLD_FIELDS)
     assert not offending, f"{path.name} references gold field(s) {offending}"
+
+
+# --------------------------------------------------------------------------
+# criterion 3 of `GRAFT_PHASE11_BUILD.md` Stage A — Stage C's cost reaches the
+# same per-query snapshot as generation
+# --------------------------------------------------------------------------
+
+
+def test_assemble_opens_its_own_ledger_stage(snap):
+    """Retrieval cost has to sit beside generation cost in one snapshot, or the
+    read path reports only half of what a retrieval-augmented competitor's
+    per-query figure includes.  ``timings_ms`` is the per-*channel* breakdown and
+    stays; this is the per-*stage* total, and neither substitutes for the other.
+    """
+    from graft.ledger import Ledger
+
+    ledger = Ledger.from_config(Config())
+    channels = {"bm25": {"n_v1": 2.0, "n_v2": 1.0}}
+    with ledger.query_scope("q1"):
+        assemble(snap, channels, ledger=ledger)
+        snapshot = ledger.snapshot()
+
+    assert "stage_c" in snapshot["stages"], "Stage C unaccounted in the ledger"
+    assert snapshot["stages"]["stage_c"]["wall_clock_ms"] >= 0
+    # And the per-channel breakdown is untouched by the ledger being wired.
+    _, _, report = assemble(snap, channels, ledger=ledger, stage=None)
+    assert set(report["timings_ms"]) == {"fuse", "temporal", "pool"}
+
+
+def test_a_caller_owning_a_wider_stage_passes_stage_none(snap):
+    """Ledger stages do not nest, so a caller that wants the channel queries
+    inside its own Stage C boundary says so explicitly rather than relying on
+    ``assemble`` to detect it.  A silent check here would make the nesting rule
+    depend on call order."""
+    from graft.ledger import Ledger
+
+    ledger = Ledger.from_config(Config())
+    channels = {"bm25": {"n_v1": 2.0}}
+    with ledger.query_scope("q1"):
+        with ledger.stage("stage_c"):
+            assemble(snap, channels, ledger=ledger, stage=None)
+        snapshot = ledger.snapshot()
+    assert snapshot["stages"]["stage_c"]["wall_clock_ms"] >= 0
+
+
+def test_the_dense_channel_meters_its_question_encode_but_not_the_index(snap):
+    """The question encode is a per-query GPU cost and is counted.  ``_build``'s
+    corpus encode is index construction amortised over every later query, and
+    charging it per query would make the first question look many times the cost
+    of the second -- it belongs on the offline axis with ingestion."""
+    from graft.ledger import Ledger
+
+    ledger = Ledger.from_config(Config())
+    channel = DenseChannel(snap, StubEmbedder(), ledger=ledger)
+    # Constructing the channel embedded the corpus and must have charged nothing.
+    assert ledger.snapshot()["totals"]["model_forwards"] == 0
+    channel.query("where was she born")
+    assert ledger.snapshot()["totals"]["model_forwards"] == 1

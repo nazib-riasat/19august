@@ -587,3 +587,19 @@ def test_class_weights_are_reported_and_are_weights_not_resampling():
 
     skewed, report = class_weights([1.0] * 9 + [0.0])
     assert skewed == pytest.approx(1 / 9)
+
+
+def test_the_locomo_prevalence_is_available_but_outside_the_fingerprint():
+    """Added 19 Aug 2026. A new evaluation target's base rate changes neither the
+    trained model nor any number the MuSiQue Stage-A run reported, so folding it
+    into `frozen_values` would move the stage-G fingerprint and retrospectively
+    mark `PHASE8_DECISIONS.md` §2's numbers as a different gate's -- churn with no
+    measurement behind it.
+
+    It still has to exist: a threshold picked at a 0.06 base rate and applied
+    where the rate is 0.2246 is the mistake PREVALENCES exists to prevent, one
+    dataset on.
+    """
+    assert gpins.EVAL_PREVALENCES["locomo"] == 0.2246
+    assert "locomo" not in gpins.frozen_values()["prevalences"]
+    assert gpins.frozen_values()["prevalences"] == {"constructed": 0.5, "natural": 0.06}

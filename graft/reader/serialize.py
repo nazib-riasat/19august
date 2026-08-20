@@ -162,6 +162,60 @@ def atom_quote(atom: Any, snapshot: Any, max_chars: int = 400) -> tuple[str, tup
     return quoted, tuple(span_ids)
 
 
+def atom_date(span_ids: Sequence[str], snapshot: Any) -> str:
+    """The calendar date of the turn this atom is sourced from, or ``""``.
+
+    **Added 20 Aug 2026, on a measured gap.**  The evidence block carried no time
+    reference of any kind, so a question like "when did X happen" was
+    unanswerable *from the evidence given* however good retrieval was: the answer
+    was not in the reader's context. Measured on the 1,986-question run, temporal
+    scored **0.026 F1** against 0.084 single-hop — the outlier the rest of the
+    table could not explain.
+
+    This is provenance the graph already stores (``Turn.ts``), rendered rather
+    than derived, so it adds no claim the log cannot back. Date only, not the
+    time: LoCoMo's temporal questions are day-grained, and a full ISO timestamp
+    costs roughly triple the tokens for resolution nothing asks about.
+
+    Edge atoms are deliberately left undated -- they render as ``(etype -> name)``
+    and assert a relation, not an event, so a date on one would invite the reader
+    to read a relation as having happened on a day.
+    """
+    for span_id in span_ids:
+        span = snapshot.span(span_id)
+        if span is None:
+            continue
+        turn = snapshot.turn(span.turn_id)
+        if turn is None or not turn.ts:
+            continue
+        return format_date(str(turn.ts))
+    return ""
+
+
+def format_date(ts: str) -> str:
+    """ISO timestamp -> ``"13 October 2023"``, or ``""`` when it will not parse.
+
+    **The prompt's own rule 4 says "day month year, for example: 8 May 2023",
+    and run 2 fed the reader ISO.**  It copied the format it was shown straight
+    into its answers, so a correct date scored near zero token-F1 against a gold
+    written "9 October 2022".  Evidence and instruction have to agree about
+    format or the instruction is the thing that loses.
+
+    ``%d`` is zero-padded and ``%-d`` is not portable to Windows, so the day is
+    built from the integer.
+    """
+    from datetime import datetime
+
+    text = (ts or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text[:10]
+    return f"{parsed.day} {parsed.strftime('%B')} {parsed.year}"
+
+
 @dataclass(frozen=True)
 class SerialisedProof:
     """What the reader is shown, and what ceiling 4 measures.
@@ -328,12 +382,14 @@ class ProofSerializer:
         rendered: dict[str, str] = {}
         for atom_id in ordered:
             atom = self.pool[atom_id]
-            quoted, _spans = atom_quote(atom, self.snapshot)
+            quoted, spans = atom_quote(atom, self.snapshot)
             if atom.kind == "edge" and atom.refs:
                 src = ids.get(atom.refs[0])
                 if src:
                     quoted = f"[{src}] {quoted}"
-            rendered[atom_id] = f"[{ids[atom_id]}] {quoted}"
+            when = atom_date(spans, self.snapshot) if atom.kind != "edge" else ""
+            prefix = f"[{ids[atom_id]}]" + (f" ({when})" if when else "")
+            rendered[atom_id] = f"{prefix} {quoted}"
 
         # -- budget, then close under references ----------------------------
         kept: list[str] = []

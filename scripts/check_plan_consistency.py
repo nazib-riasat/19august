@@ -71,6 +71,15 @@ LIVE_DOCS = (
     # and the mitigation is registering the pair in the same commit as the plan.
     "GRAFT_PHASE10_BUILD.md",
     "PHASE10_DECISIONS.md",
+    # Added 19 Aug 2026 with the Phase-11 build — registered the same day, which
+    # is the fourth time this note has been written and the first time the lag was
+    # zero. The comment above predicted the pattern ("plans land faster than
+    # registries") and named the mitigation; this pair is it being applied rather
+    # than restated. `PHASE11_DECISIONS.md` wins conflicts with its own build
+    # plan, so an unretired wording there would outrank the corrected one
+    # everywhere else.
+    "GRAFT_PHASE11_BUILD.md",
+    "PHASE11_DECISIONS.md",
     "DATASET_DECISION.md",
     "PHASE0_DECISIONS.md",
     "PHASE1_DECISIONS.md",

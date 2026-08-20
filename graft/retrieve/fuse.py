@@ -154,6 +154,8 @@ def assemble(
     cap: int | None = None,
     config: Config | None = None,
     conv_id: str | None = None,
+    ledger: Any = None,
+    stage: str | None = "stage_c",
 ) -> tuple[Any, dict[str, float], dict[str, Any]]:
     """The whole read path: fuse → temporal filter → close → cap.
 
@@ -177,7 +179,26 @@ def assemble(
     * ``timings_ms`` — wall-clock per stage, because exit criterion 14 asks for
       per-channel latency and the temporal filter (one of the five training-free
       channels) runs only in here, so it had no timing row anywhere.
+    **``ledger`` and ``stage``** put Stage C's cost in the same per-query
+    snapshot as generation, which is what makes the read path's cost claim
+    comparable to a published one: a system that reports only its generation
+    latency is not reporting what a retrieval-augmented competitor reports.
+    ``timings_ms`` stays as it is — it is the per-*channel* breakdown, and the
+    ledger is the per-*stage* total; neither substitutes for the other.
+
+    ``stage=None`` means the caller has already opened a stage and wants the
+    channel queries counted inside it too.  Ledger stages do not nest, so this
+    is an explicit parameter rather than a silent check: a caller that owns a
+    wider Stage C boundary says so.
     """
+    if ledger is not None and stage is not None:
+        with ledger.stage(stage):
+            return assemble(
+                snapshot, channels,
+                constraint=constraint, weights=weights, cap=cap,
+                config=config, conv_id=conv_id, ledger=ledger, stage=None,
+            )
+
     mark = time.perf_counter()
     fused, fusion_report = fuse(channels, weights)
     fuse_ms = (time.perf_counter() - mark) * 1000.0

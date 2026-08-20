@@ -1,8 +1,40 @@
-# Session handoff — GRAFT, Phases 0–9 (+2.5)
+# Session handoff — GRAFT, Phases 0–11 (+2.5)
 
-**Rewritten 11 Aug 2026; amended 13–16 Aug 2026 (last: Phase 9 built and twice
-audited).** Read this plus `CLAUDE.md` and you can continue without re-deriving
-anything.
+**Rewritten 11 Aug 2026; amended 13–16 Aug 2026; amended 19 Aug 2026 (last:
+Phases 10 and 11 built, LoCoMo loaded and verified).** Read this plus `CLAUDE.md`
+and you can continue without re-deriving anything.
+
+**19 August 2026 — read this before §1, which predates it.** The project is now
+built through **Phase 11**, and the remaining work is *runs*, not code:
+
+* **LoCoMo is in place and verified.** `data/locomo/locomo10.json`, SHA pinned in
+  `graft/ingest/locomo.py`, checked on every load. `scripts/locomo_ingest.py
+  probe` reported **zero findings**: 10 conversations, 1,986 questions, 446
+  adversarial, 5,882 turns, every timestamp parsed. The 446 independently
+  **verified** the category mapping in `graft/baselines/categories.py`, which had
+  been an unverified convention hours earlier.
+* **Phase 11 exists**: `GRAFT_PHASE11_BUILD.md` + `PHASE11_DECISIONS.md`. It is a
+  **reference-table comparison, not Gate 4** — published Mem-T numbers
+  (arXiv 2601.23014v2 Table 2) are quoted rather than re-run, at the project
+  owner's instruction on a three-day deadline. Read `GRAFT_PHASE11_BUILD.md` G1.
+* **The end-to-end runner now exists.** `scripts/phase10_read.py` drives the read
+  path over *hand-built fixtures*, which is what made R1–R3 wiring tests;
+  `scripts/locomo_eval.py` drives it over a real ingested graph, and
+  `graft/tests/test_locomo_eval.py` exercises the whole join on a stub reader.
+* **The critical path changed.** It is **no longer P9.7.** The Phase-9 policy
+  ladder (~2 h per arm per seed) answers Gate 3 and is *not* needed for an
+  end-to-end number. What Stage D needs to rank at all is the **distilled utility
+  head** (`PHASE10_DECISIONS.md` §1.4), and `scripts/train_head.py` fits it in
+  **minutes of CPU**. Both are deferred-or-cheap; the real cost is ingestion.
+* **Run order and costs** are in `GRAFT_PHASE11_BUILD.md` §9, with a
+  per-conversation stopping table. Headline: ~3.1 GPU h per conversation,
+  ~35 min per 1,000 questions of reader time, and both stages resume per unit.
+* **Suite: 1,304 passed, 0 failed;** `scripts/check_plan_consistency.py` clean
+  over 32 live documents.
+
+Sections §1–§7 below are the 11–16 August state and are still accurate about
+Phases 0–9. Where they say the critical path is P9.7, the bullet above supersedes
+them.
 
 **If you read only one paragraph.** Every phase through 9 is built and green.
 **Phase-3 step 6, the calibration gate, RAN 15 Aug 2026** (CPU cluster job

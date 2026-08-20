@@ -100,6 +100,34 @@ You need **Python 3.11** (3.12 works; 3.13+ does not — PyTorch has no wheels f
 it, and Phase 3 would fail after everything else installed cleanly). Check what
 you have with `py -0p` on Windows or `python3.11 --version` elsewhere.
 
+### Datasets are fetched per machine, never committed
+
+Every corpus is gitignored and pinned by SHA in code, so the *identity* travels
+in git and the bytes do not. A fresh clone has no data and must fetch it.
+
+**LoCoMo** — the evaluation corpus (`CC BY-NC 4.0`, non-commercial; thesis use is
+fine, a commercial derived dataset is not). Download `locomo10.json` from the
+[snap-research/locomo](https://github.com/snap-research/locomo) release and put
+it at `data/locomo/locomo10.json`, then check it:
+
+```bash
+python scripts/locomo_ingest.py probe    # seconds, no GPU, no model load
+python scripts/locomo_ingest.py plan     # per-conversation turns and hours
+```
+
+`probe` verifies every structural assumption in `graft/ingest/locomo.py` against
+the counts recorded in `DATASET_DECISION.md` — 10 conversations, 1,986 questions,
+446 adversarial, 5,882 turns — and reports the file's SHA against the pin. **Run
+it before any GPU time**: ingesting LoCoMo costs ~43 GPU hours on the dev card,
+and a structural mismatch discovered at hour 30 is the expensive failure. It
+reports every mismatch at once rather than the first.
+
+**2Wiki and MuSiQue-Ans** — the Stage-D training corpora, under
+`data/phase9/raw/`. LoCoMo is **never** trained on, in any component;
+`scripts/train_head.py` refuses LoCoMo examples structurally rather than by
+convention, because a head fitted on them would void the zero-shot declaration
+invisibly — the weights look identical either way.
+
 ### Never copy `.venv` between machines
 
 A virtual environment records the absolute path of the interpreter that created

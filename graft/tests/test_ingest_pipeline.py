@@ -617,3 +617,87 @@ def test_a_torn_summary_cache_is_a_cache_miss_not_a_crash(tmp_path):
     summary._memory[("q1", 10)] = "- rebuilt"
     summary.flush()
     assert RollingSummary(None, cache_dir=tmp_path, every=10)._memory == {("q1", 10): "- rebuilt"}
+
+
+# --------------------------------------------------------------------------
+# batched extraction — the throughput path, added 19 Aug 2026
+# --------------------------------------------------------------------------
+
+
+def test_batch_size_one_routes_to_the_audited_single_stream_path(log):
+    """`extract_slice_batched(batch_size=1)` must be the *same code*, not a
+    one-row lookalike: the default has to be the path that produced
+    `PHASE5_DECISIONS.md` §2's frozen record."""
+    calls = []
+    pipeline = _pipeline(log)
+    original = pipeline.extract_slice
+    pipeline.extract_slice = lambda t, c=None: calls.append(("single", len(t)))
+    pipeline.extract_slice_batched(TURNS, "c1", batch_size=1)
+    assert calls == [("single", len(TURNS))]
+    pipeline.extract_slice = original
+
+
+def test_a_batched_slice_builds_the_same_graph_as_a_single_stream_one(tmp_path):
+    """**The decisive correctness test.** Batching is only a throughput change if
+    the graph is identical. Turn N's prompt depends on the raw turn list and the
+    summary chain, never on turn N-1's extraction, which is why this can hold at
+    all."""
+    counts = {}
+    digests = {}
+    for name, batch in (("single", 1), ("batched", 3)):
+        handle = EventLog.open(tmp_path / f"{name}.jsonl")
+        try:
+            p = IngestPipeline(handle, CFG, ReplayExtractor(RECORDED), StubVerifier(1.0))
+            p.extract_slice_batched(TURNS, "c1", batch_size=batch)
+            p.verify_and_gate()
+            snap = ReplayGraphStore(handle).at()
+            counts[name] = snap.counts()
+            # **The digest, not the counts.** A first version of this test compared
+            # `snap.assertion_ids()`, which does not exist -- so the content
+            # comparison was silently a no-op and only the counts were checked.
+            # Two different graphs can share counts; they cannot share a digest.
+            digests[name] = snap.state_digest()
+        finally:
+            handle.close()
+    assert counts["single"] == counts["batched"], counts
+    assert digests["single"] == digests["batched"], "batching changed the graph"
+
+
+def test_a_batched_slice_still_skips_already_ingested_turns(tmp_path):
+    """Crash-resume is turn-granular and must survive batching: storage stays per
+    turn through `_ingest_turn`, so `turn.add` is still appended last."""
+    handle = EventLog.open(tmp_path / "resume.jsonl")
+    try:
+        p1 = IngestPipeline(handle, CFG, ReplayExtractor(RECORDED), StubVerifier(1.0))
+        p1.extract_slice_batched(TURNS, "c1", batch_size=2)
+        first = ReplayGraphStore(handle).at().counts()
+
+        p2 = IngestPipeline(handle, CFG, ReplayExtractor(RECORDED), StubVerifier(1.0))
+        p2.extract_slice_batched(TURNS, "c1", batch_size=2)
+        assert p2.skipped == len(TURNS), f"re-run skipped {p2.skipped} of {len(TURNS)}"
+        assert ReplayGraphStore(handle).at().counts() == first
+    finally:
+        handle.close()
+
+
+def test_an_extractor_without_extract_batch_is_refused_not_downgraded(log):
+    """A run that quietly fell back to single-stream would look like a hardware
+    problem: 4x the expected wall clock with nothing in the log to explain it."""
+
+    class NoBatch:
+        def extract(self, turn, context):
+            return ReplayExtractor(RECORDED).extract(turn, context)
+
+    p = IngestPipeline(log, CFG, NoBatch(), StubVerifier(1.0))
+    with pytest.raises(TypeError, match="no extract_batch"):
+        p.extract_slice_batched(TURNS, "c1", batch_size=4)
+
+
+def test_the_batched_grammar_processor_refuses_a_row_count_mismatch():
+    """A shared bitmask row would mask every sequence with the first one's allowed
+    set -- silent, and it would corrupt every extraction in the batch."""
+    from graft.ingest.extractor import BatchedGrammarLogitsProcessor
+
+    # Validated before the xgrammar import, so this holds without the backend.
+    with pytest.raises(ValueError, match="batch_size must be"):
+        BatchedGrammarLogitsProcessor(object(), 0)

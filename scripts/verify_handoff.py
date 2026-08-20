@@ -173,6 +173,22 @@ def lattice_fingerprints() -> list[tuple[str, str, str]]:
 
 
 def main() -> int:
+    # **Measured, after a first version of this comment overstated it.**  These
+    # docstrings carry U+2192 and U+03B2, Windows consoles default to cp1252, and
+    # `--help` died on the description before printing a word of it -- that part
+    # is reproduced, on six runners.
+    #
+    # The guard also covers `print` of *data*, but the original justification
+    # ("a curly apostrophe would kill the run") was **wrong**: U+2019 and U+2014
+    # are cp1252 0x92/0x97 and encode fine.  What LoCoMo actually holds outside
+    # cp1252 is 18 occurrences of 11 characters -- 8 zero-width spaces and 9
+    # emoji -- across 7 turns and 1 gold answer.  And no current print path in
+    # these runners emits corpus text, so this is insurance against a future
+    # debug print, not a live crash averted.  `scripts/phase3_calibrate.py` set
+    # the convention; extended here 19 Aug 2026.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preset", default="default", help="config preset to fingerprint")
     parser.add_argument("--seed", type=int, default=13)

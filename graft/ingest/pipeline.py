@@ -196,20 +196,109 @@ class IngestPipeline:
             self.extract_seconds += report.seconds
             self.reports.append(report)
 
-    def _ingest_turn(
-        self, conv_id: str, turns: Sequence[Turn], ix: int, turn: Turn
-    ) -> TurnReport:
-        started = time.perf_counter()
+    def extract_slice_batched(
+        self,
+        turns: Sequence[Turn],
+        conv_id: str | None = None,
+        *,
+        batch_size: int = 8,
+    ) -> None:
+        """:meth:`extract_slice`, generating ``batch_size`` turns per model call.
 
+        **Why this is a win and not just a rearrangement**, measured 19 Aug 2026:
+        the grammar work that looks like it should dominate costs 0.43 s of a
+        26.5 s turn (1.6%) -- ``apply_token_bitmask_inplace`` 0.29 ms/step,
+        ``fill_next_token_bitmask`` 1.70 ms/step. The other 98% is streaming
+        6.18 GB of weights per decode step, and a batch amortises that one read
+        across ``batch_size`` sequences.
+
+        **Everything that made the single-stream path crash-safe is preserved.**
+        Storage is still per turn through :meth:`_ingest_turn`, so ``turn.add`` is
+        still appended last and a killed run still resumes at turn granularity --
+        at worst one *batch* of extractions is recomputed, not the conversation.
+        Contexts are built before generating, from the raw turn list, which is
+        what makes the batch independent.
+
+        ``batch_size=1`` routes to :meth:`extract_slice` rather than taking a
+        one-row batched path, so the default is the audited code and not a
+        lookalike.
+        """
+        if batch_size <= 1:
+            self.extract_slice(turns, conv_id)
+            return
+        if not hasattr(self.extractor, "extract_batch"):
+            raise TypeError(
+                f"{type(self.extractor).__name__} has no extract_batch; batched "
+                "ingestion refuses rather than silently running single-stream, "
+                "because a run that quietly took 4x longer would look like a "
+                "hardware problem"
+            )
+
+        already = ingested_turn_ids(self.log)
+        conv_id = conv_id or (turns[0].conv_id if turns else "")
+
+        pending: list[tuple[int, Turn]] = []
+        for ix, turn in enumerate(turns):
+            if turn.turn_id in already:
+                self.skipped += 1
+                self.reports.append(TurnReport(turn.turn_id, skipped=True))
+                continue
+            pending.append((ix, turn))
+
+        for lo in range(0, len(pending), int(batch_size)):
+            chunk = pending[lo : lo + int(batch_size)]
+            contexts = [self._context_for(conv_id, turns, ix, t) for ix, t in chunk]
+            extractions = self.extractor.extract_batch([t for _, t in chunk], contexts)
+            for (ix, turn), context, extraction in zip(chunk, contexts, extractions):
+                report = self._ingest_turn(
+                    conv_id, turns, ix, turn, extraction=extraction, context=context
+                )
+                self.extract_seconds += report.seconds
+                self.reports.append(report)
+
+    def _context_for(
+        self, conv_id: str, turns: Sequence[Turn], ix: int, turn: Turn
+    ) -> ExtractionContext:
+        """The extraction context for one turn.
+
+        Lifted out of :meth:`_ingest_turn` unchanged so the batched path can build
+        N contexts before generating. It reads only the **raw** turn list and the
+        summary chain, which is exactly why batching extraction is sound: no
+        turn's prompt depends on another turn's extraction output.
+        """
         if self.summary is not None:
             summary_text, window = self.summary.context_for(
                 conv_id, turns, ix, self.context_turns
             )
         else:
             summary_text, window = "", context_window(turns, ix, self.context_turns)
-        context = ExtractionContext(summary=summary_text, window=window, session_date=turn.ts)
+        return ExtractionContext(
+            summary=summary_text, window=window, session_date=turn.ts
+        )
 
-        extraction = self.extractor.extract(turn, context)
+    def _ingest_turn(
+        self,
+        conv_id: str,
+        turns: Sequence[Turn],
+        ix: int,
+        turn: Turn,
+        extraction: Any = None,
+        context: ExtractionContext | None = None,
+    ) -> TurnReport:
+        """Ingest one turn, optionally with its extraction already computed.
+
+        ``extraction``/``context`` are how the batched path reuses this method
+        verbatim: everything after generation -- grounding, span storage, the
+        report, and the deliberately-last ``turn.add`` that makes crash-resume
+        work -- is identical whether the generation was batched or not. Passing
+        neither is the original single-stream behaviour, byte for byte.
+        """
+        started = time.perf_counter()
+
+        if context is None:
+            context = self._context_for(conv_id, turns, ix, turn)
+        if extraction is None:
+            extraction = self.extractor.extract(turn, context)
         offsets = context.offsets(turn)
 
         report = TurnReport(

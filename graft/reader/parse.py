@@ -30,6 +30,7 @@ decision, and plan §4.2 needs abstention to be a decision.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
@@ -43,6 +44,7 @@ __all__ = [
     "normalise_answer",
     "answers_equivalent",
     "token_f1",
+    "bleu1",
     "CitationError",
 ]
 
@@ -144,6 +146,44 @@ def token_f1(predicted: str, gold: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
+def bleu1(predicted: str, gold: str) -> float:
+    """Brevity-penalised clipped unigram precision — the reference table's "B1".
+
+    Added for `GRAFT_PHASE11_BUILD.md` G3: Mem-T (arXiv 2601.23014v2) Table 2
+    reports F1 **and** BLEU-1, and a comparison that quotes one column of a
+    two-column table invites the reader to assume the other agrees.
+
+    **It shares :func:`normalise_answer` with :func:`token_f1` deliberately.**  A
+    second normalisation path would re-open `PHASE10_DECISIONS.md` §1.1 — where
+    SQuAD normalisation stripped the punctuation out of ``[c1]`` and left the
+    bare token ``c1`` counting as an answer word, a defect that could only ever
+    mark a *correct* answer wrong and fired on every cited answer.
+
+    Why this differs from F1 and why both are reported: F1 is symmetric in
+    precision and recall, while BLEU-1 is precision with a one-sided length
+    penalty, so a long prediction containing the gold scores well on recall and
+    badly here.  On short extractive answers they mostly agree; where they part,
+    the prediction is verbose.
+    """
+    from collections import Counter
+
+    p_tokens = normalise_answer(predicted).split()
+    g_tokens = normalise_answer(gold).split()
+    if not p_tokens or not g_tokens:
+        return float(p_tokens == g_tokens)
+
+    clipped = sum((Counter(p_tokens) & Counter(g_tokens)).values())
+    precision = clipped / len(p_tokens)
+    if precision == 0.0:
+        return 0.0
+    # Brevity penalty on the *candidate* being shorter than the reference.  Without
+    # it a one-word prediction that happens to be a gold word scores 1.0, which is
+    # exactly the degenerate answer a minimality-focused system might produce.
+    ratio = len(g_tokens) / len(p_tokens)
+    penalty = 1.0 if len(p_tokens) > len(g_tokens) else math.exp(1.0 - ratio)
+    return penalty * precision
+
+
 @dataclass(frozen=True)
 class ParsedAnswer:
     """What the reader said, split into the two things ALCE scores separately."""
@@ -178,9 +218,36 @@ def parse_answer(generation: str) -> ParsedAnswer:
     measured the consequence and :func:`normalise_answer` now records it.
     """
     text = (generation or "").strip()
+    # The prompt ends with "Answer:", and an instruct model frequently echoes
+    # that prefix back. Left in place it becomes a token ("answer") that
+    # normalise_answer does not strip -- articles yes, this word no -- so every
+    # echoed prefix would cost F1 precision for a formatting artefact. Stripped
+    # here because this is answer *extraction*; the scoring rule is untouched.
+    if text[:7].casefold() == "answer:":
+        text = text[7:].strip()
     cites = tuple(dict.fromkeys(m.group(1).lower() for m in _CITE.finditer(text)))
     stripped = _WS.sub(" ", _CITE.sub(" ", text)).strip()
-    abstained = stripped.casefold().startswith(INSUFFICIENT.casefold())
+    # **Wrapping brackets come off before the abstention match** *(20 Aug 2026)*.
+    # The reader emits `[INSUFFICIENT EVIDENCE]` about as often as the bare
+    # string; `_CITE` only matches `[cN]`, so the brackets survived, `startswith`
+    # failed, and a correct abstention was recorded as an *answer* -- then scored
+    # 0 against gold. One-directional, exactly like the `[c1]` defect §1.1
+    # records: it can only ever turn a right decision into a wrong score.
+    # Measured on the 1,986-question run: 13 records.
+    unwrapped = stripped
+    while len(unwrapped) > 1 and unwrapped[0] == "[" and unwrapped[-1] == "]":
+        unwrapped = unwrapped[1:-1].strip()
+    abstained = unwrapped.casefold().startswith(INSUFFICIENT.casefold())
+    # **An answer that normalises to nothing is not an answer** *(20 Aug 2026)*.
+    # 172 of the run's 1,009 "answers" (17%) were citations-only (`[c8][c10]`) or
+    # a bare `[?]`: after citation-stripping the scored string is empty, so they
+    # could only ever score F1 0. Counting them as answers inflated the answered
+    # denominator and hid a real failure mode inside the F1 mean, where an
+    # abstention is at least attributable. `normalise_answer` is the authority on
+    # "what will be scored", so it is what decides -- the metric rule itself is
+    # untouched.
+    if not abstained and not normalise_answer(text):
+        abstained = True
     return ParsedAnswer(
         answer_text=text,
         citations=() if abstained else cites,

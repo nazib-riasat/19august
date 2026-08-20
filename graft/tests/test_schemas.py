@@ -26,6 +26,7 @@ from graft.schemas import (
     OutputRecord,
     ProofSet,
     SourceSpan,
+    Violation,
 )
 from graft.tests.generators import GENERATORS
 
@@ -337,3 +338,122 @@ def test_non_finite_values_are_rejected_before_they_reach_the_log():
         Interval(start=float("nan"))
     with pytest.raises(ValueError):
         CandidateAtom(atom_id="a", kind="node", feat=np.array([float("inf")], dtype=np.float32))
+
+
+# -- a bare string is not a sequence of strings -----------------------------
+
+TS = "2026-08-08T00:00:00+00:00"
+
+#: (id, constructor call, from_dict call) for every field coerced with
+#: ``tuple(...)`` or ``frozenset(...)``.  Both iterate a ``str`` character by
+#: character instead of raising, so ``scope="conv-26"`` used to store seven
+#: one-character scopes and `H`'s scope check then compared against ``'c'``,
+#: ``'o'``, ``'n'`` ... and silently never matched.  These fields all carry
+#: fail-closed guards; a per-character explosion defeats every one of them by
+#: looking like an ordinary lookup miss.
+BARE_STRING_SITES = [
+    (
+        "Obligations.scope",
+        lambda: Obligations(scope="conv-26"),
+        lambda: Obligations.from_dict({"scope": "conv-26"}),
+    ),
+    (
+        "ProofSet.atoms",
+        lambda: ProofSet(atoms="abc"),
+        lambda: ProofSet.from_dict({"atoms": "abc"}),
+    ),
+    (
+        "Violation.atoms",
+        lambda: Violation(check="closure", message="m", atoms="a1"),
+        lambda: Violation.from_dict({"check": "closure", "message": "m", "atoms": "a1"}),
+    ),
+    (
+        "Assertion.spans",
+        lambda: Assertion(
+            assertion_id="a",
+            kind="claim",
+            text_norm="x",
+            spans="s1",
+            flags=AssertionFlags(asserted_by="user"),
+            t_created=TS,
+        ),
+        lambda: Assertion.from_dict(
+            {
+                "assertion_id": "a",
+                "kind": "claim",
+                "text_norm": "x",
+                "spans": "s1",
+                "flags": AssertionFlags(asserted_by="user").to_dict(),
+                "t_created": TS,
+            }
+        ),
+    ),
+    (
+        "Edge.provenance",
+        lambda: Edge(
+            edge_id="e", etype="same_as", src="a", dst="b", t_created=TS, provenance="s1"
+        ),
+        lambda: Edge.from_dict(
+            {
+                "edge_id": "e",
+                "etype": "same_as",
+                "src": "a",
+                "dst": "b",
+                "t_created": TS,
+                "provenance": "s1",
+            }
+        ),
+    ),
+    (
+        "OutputRecord.citations",
+        lambda: OutputRecord(outcome="answer", citations="c1"),
+        lambda: OutputRecord.from_dict({"outcome": "answer", "citations": "c1"}),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "field_name, construct",
+    [(name, ctor) for name, ctor, _ in BARE_STRING_SITES],
+    ids=[name for name, _, _ in BARE_STRING_SITES],
+)
+def test_bare_string_is_refused_by_the_constructor(field_name, construct):
+    with pytest.raises(TypeError, match="explode into characters"):
+        construct()
+
+
+@pytest.mark.parametrize(
+    "field_name, revive",
+    [(name, from_dict) for name, _, from_dict in BARE_STRING_SITES],
+    ids=[name for name, _, _ in BARE_STRING_SITES],
+)
+def test_bare_string_is_refused_by_from_dict(field_name, revive):
+    """``from_dict`` coerces before ``__post_init__`` runs, so a guard on the
+    constructor alone would never see the string.  Both doors need the check."""
+    with pytest.raises(TypeError, match="explode into characters"):
+        revive()
+
+
+def test_the_error_names_the_field_it_came_from():
+    """A ``TypeError`` from six call sites is only actionable if it says which."""
+    with pytest.raises(TypeError, match=r"Obligations\.scope"):
+        Obligations(scope="conv-26")
+    with pytest.raises(TypeError, match=r"Edge\.provenance"):
+        Edge(edge_id="e", etype="same_as", src="a", dst="b", t_created=TS, provenance="s")
+
+
+def test_real_sequences_are_untouched():
+    """The guard rejects ``str`` only; every other iterable still coerces."""
+    assert Obligations(scope=["c1", "c2"]).scope == ("c1", "c2")
+    assert Obligations(scope=("c1",)).scope == ("c1",)
+    assert Violation(check="closure", message="m", atoms=iter(["a1"])).atoms == ("a1",)
+    assert ProofSet(atoms=["a1", "a2"]).atoms == frozenset({"a1", "a2"})
+
+
+def test_proof_set_keeps_the_frozenset_fast_path():
+    """``frozenset(fs) is fs`` in CPython, and ``ProofSet`` is a dict key in
+    Phase 2's DP and Phase 4's beam dedup.  Guarding via a ``tuple`` round-trip
+    would have re-hashed every atom on every construction; the check returns the
+    value unchanged so the identity path survives."""
+    atoms = frozenset({"a1", "a2"})
+    assert ProofSet(atoms=atoms).atoms is atoms

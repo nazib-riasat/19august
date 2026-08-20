@@ -33,6 +33,7 @@ __all__ = [
     "FEATURE_BLOCKS",
     "THRESHOLD_RULE",
     "PREVALENCES",
+    "EVAL_PREVALENCES",
     "TRAINING_GATE",
     "CLASS_HANDLING",
     "ABSTAIN_CAUSES",
@@ -141,6 +142,33 @@ TARGET_RISK = 0.03
 #: curves ship**. Reweighting rather than resampling: no data is discarded and no
 #: extra data is needed.
 PREVALENCES: dict[str, float] = {"constructed": 0.5, "natural": 0.06}
+
+#: **Evaluation-target base rates — deliberately NOT in the stage-G fingerprint.**
+#: Added 19 Aug 2026 for the LoCoMo evaluation.
+#:
+#: LoCoMo: 446 adversarial of 1,986 questions = 0.2246, measured by
+#: ``scripts/locomo_ingest.py probe`` and matching `DATASET_DECISION.md` §1.2's
+#: independently recorded 446.
+#:
+#: **Why separate from** :data:`PREVALENCES`. That dict is in
+#: :func:`frozen_values`, whose contract is "everything that must agree for two
+#: gate numbers to compare". A new evaluation target's base rate changes neither
+#: the trained model nor any number the MuSiQue Stage-A run reported, so folding
+#: it in would move the stage-G fingerprint and retrospectively mark
+#: `PHASE8_DECISIONS.md` §2's recorded numbers as a different gate's -- churn with
+#: no measurement behind it. It would also mean every future evaluation dataset
+#: invalidates the trained gate's identity, which is the wrong dependency.
+#:
+#: **Why it is needed at all.** A threshold picked against a 0.06 base rate and
+#: applied where the base rate is 0.2246 is exactly the mistake
+#: :data:`PREVALENCES` exists to prevent, one dataset further on. LoCoMo's
+#: unanswerable share is nearly 4x LongMemEval's.
+#:
+#: **This is one published dataset statistic, not label access.** The threshold
+#: must still be chosen on MuSiQue dev *reweighted* to this prevalence -- never by
+#: reading LoCoMo's own risk-coverage curve, which would be fitting to evaluation
+#: data and is the leak SubgraphRAG exposed in RoG (`DATASET_DECISION.md` §5).
+EVAL_PREVALENCES: dict[str, float] = {"locomo": 0.2246}
 
 #: Decision 8. Class weights, **not** resampling — the Gate-0 item-6 rule, and
 #: the weights are reported. Evaluation keeps natural prevalence; no

@@ -14,6 +14,9 @@ every write path:
 * every **eligible** assertion of a turn links to that turn's first mention's
   entity.  Crude on purpose: the point is that ``about_entity`` edges exist, so
   the pair proposer has anchors and D2 items exist, not that the links are good;
+* an eligible assertion in a turn with **no mention** is committed as a
+  standalone assertion-backed node, with no ``about_entity`` edge (see the
+  coverage note below);
 * pairs are proposed **at link time against the constructor's own snapshot**,
   which is the G5 ordering ("the anchor for a claim is its D1 output") and the
   G12 leak guard in one move — a proposal can only see what construction has
@@ -26,6 +29,37 @@ the graph had zero edges and "exercises every component" was false.  This module
 is the fix: items are built during construction, at the position their
 candidates were actually drawn from, and the committed graph carries the edges
 Phase 7 is promised.)*
+
+**Coverage: every eligible assertion becomes a node** *(decided 19 Aug 2026,
+before any end-to-end evaluation number existed — a declared construction
+policy, not a response to a result).*
+
+The first version iterated turns drawn from ``mention_records``, so a turn with
+no mention was never visited and its assertions were silently unreachable, and
+a second guard dropped a turn's assertions outright when no entity was resolved.
+Measured on the LoCoMo Stage-A log: of **2,268** eligible assertions, only
+**866** sat in a turn carrying a mention and **850** became nodes — the other
+**1,402** were never considered, because 1,413 of 5,882 turns carry a mention at
+all.  Retrieval cannot return what construction never committed, so roughly
+two-thirds of the support-gated evidence was unreachable by arithmetic rather
+than by any retrieval or reader property.
+
+Two changes, together: turn order now comes from ``turn.add`` (the write path's
+own order, so G12's "candidates see only the past" is unchanged), and an
+assertion with no available entity anchor is committed standalone.  An edge-less
+assertion-backed node is a **legal pool shape** — ``CandidateAtom`` forbids
+``refs`` on node atoms, which is exactly what makes nodes-first construction
+always valid — so such a node is retrievable, closes trivially, and is
+``H``-selectable.  What it is not is *anchored*: ``pairs_for`` requires a shared
+entity anchor and returns nothing without one, so no D2 item is fabricated from
+an anchor that does not exist, and the D2 supervision this stand-in produces is
+unchanged in kind.
+
+The cost is honest and worth stating: these nodes carry no relational structure,
+so the entity channel and the 2-hop expansion cannot reach them and only the
+lexical and dense channels can.  That is strictly better than unreachable, and
+it is **not** a claim that the stand-in links well — it does not.  Linking is
+what Gate 1's learned decoders are for.
 
 **Why candidates here cannot leak the future** (G12, exit criterion 14): the
 loop processes turns in Stage-A order and computes a mention's candidates
@@ -41,7 +75,12 @@ from typing import Any, Callable, Mapping, Sequence
 
 from graft.eventlog import EventLog
 from graft.graphbuild.candidates import candidates_for, normalise_name, pairs_for
-from graft.graphbuild.commit import Committer, corruption_audit, entity_node
+from graft.graphbuild.commit import (
+    Committer,
+    claim_node,
+    corruption_audit,
+    entity_node,
+)
 from graft.graphbuild.items import (
     MentionRecord,
     assertions_by_turn,
@@ -73,27 +112,33 @@ def construct(
     committer = Committer(log)
     by_turn = assertions_by_turn(log)
 
-    # Mentions grouped by turn, in Stage-A order — mention.add events land
-    # during their turn's processing, so record order is turn order.
-    turn_order: list[str] = []
     mentions_of_turn: dict[str, list[MentionRecord]] = {}
     for record in mention_records(log):
-        if record.turn_id not in mentions_of_turn:
-            turn_order.append(record.turn_id)
-            mentions_of_turn[record.turn_id] = []
-        mentions_of_turn[record.turn_id].append(record)
+        mentions_of_turn.setdefault(record.turn_id, []).append(record)
+
+    # **Every turn in Stage-A order, not only the turns that carry a mention**
+    # (widened 19 Aug 2026 — see the module docstring's coverage note).  The
+    # order comes from `turn.add` so it is the write path's own, and a turn with
+    # neither a mention nor an eligible assertion costs one dict lookup.
+    turn_order: list[str] = [
+        event.payload["turn_id"] for event in log.replay() if event.op == "turn.add"
+    ]
 
     d1: list[dict[str, Any]] = []
     d2: list[dict[str, Any]] = []
     pair_seen: set[tuple[str, str]] = set()
 
     for turn_id in turn_order:
+        mentions = mentions_of_turn.get(turn_id, ())
+        assertions = by_turn.get(turn_id, ())
+        if not mentions and not assertions:
+            continue
         turn = final.turn(turn_id)
         if turn is None:
             continue
         turn_entity: str | None = None
 
-        for record in mentions_of_turn[turn_id]:
+        for record in mentions:
             snapshot = committer.snapshot()
             stage_b_seq = snapshot.snapshot_id
             candidates = candidates_for(record, snapshot, k, embed=embed)
@@ -126,15 +171,31 @@ def construct(
         # Link the turn's eligible assertions to its first mention's entity, then
         # propose pairs at link time — anchors exist only for already-linked
         # claims, so the proposal sees exactly the constructor's past (G5, G12).
-        if turn_entity is None:
-            continue
-        for aid in by_turn.get(turn_id, ()):
+        for aid in assertions:
             assertion = final.assertion(aid)
             if assertion is None or assertion.eligibility != "eligible":
                 continue
-            outcome = committer.link_existing(
-                aid, assertion.kind, turn_entity, turn.ts, list(assertion.spans)
-            )
+            if turn_entity is not None:
+                outcome = committer.link_existing(
+                    aid, assertion.kind, turn_entity, turn.ts, list(assertion.spans)
+                )
+            else:
+                # **Standalone, rather than dropped** (19 Aug 2026).  An
+                # assertion the support gate passed is evidence; whether the
+                # extractor also produced a *mention* in the same turn is a
+                # property of the extractor, not of the claim's admissibility.
+                # An edge-less assertion-backed node is a legal pool shape —
+                # nodes reference nothing, which is the invariant that makes
+                # nodes-first construction always valid — so it is retrievable
+                # and `H`-selectable without an anchor.  It carries no
+                # `about_entity` edge, so `pairs_for` returns nothing for it and
+                # no D2 item is invented out of an anchor that does not exist.
+                outcome = committer.submit(
+                    Commit(
+                        nodes=[claim_node(aid, assertion.kind)],
+                        label=f"standalone:{aid}",
+                    )
+                )
             if not outcome.accepted:
                 continue
             snapshot = committer.snapshot()

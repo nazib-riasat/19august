@@ -55,11 +55,24 @@ class DenseChannel:
         conv_id: str | None = None,
         *,
         config: Config | None = None,
+        ledger: Any = None,
     ) -> None:
         self.snapshot = snapshot
         self.embedder = embedder
         self.conv_id = conv_id
         self.config = config or Config()
+        # Stage C's per-query GPU cost -- the question encode in `query`, which
+        # is what a competitor's retrieval-inclusive per-query figure is
+        # implicitly charging for. Counted inside the channel rather than by the
+        # caller for the reason `graft/ledger.py` gives about `terminal_checks`:
+        # caller-side counting always drifts.
+        #
+        # `_build`'s corpus encode is deliberately NOT counted here. It is index
+        # construction, amortised over every query against the snapshot, and
+        # charging it per query would make the first question look 100x the cost
+        # of the second. It belongs with ingestion on the offline axis
+        # (`GRAFT_PHASE11_BUILD.md` G7), not on this one.
+        self.ledger = ledger
         self.node_ids: tuple[str, ...] = ()
         self._matrix: np.ndarray | None = None
         self._build()
@@ -87,6 +100,8 @@ class DenseChannel:
         k = int(self.config.pool_cap if top_k is None else top_k)
         k = max(1, min(k, len(self.node_ids)))
         query = _unit(np.asarray(self.embedder.embed([text]), dtype=np.float32))[0]
+        if self.ledger is not None:
+            self.ledger.count("model_forwards", 1)
         scores = self._matrix @ query
         order = sorted(range(len(self.node_ids)), key=lambda i: (-float(scores[i]), self.node_ids[i]))
         return {self.node_ids[i]: float(scores[i]) for i in sorted(order[:k], key=lambda i: self.node_ids[i])}

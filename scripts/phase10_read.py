@@ -244,6 +244,16 @@ def run(*, smoke: bool, questions: int, out_path: Path, contested: bool) -> int:
             reader.__exit__(None, None, None)
 
     summary = aggregate(results)
+    # `aggregate` refuses a ledger that was wired and spent nothing; the runner
+    # owns the stricter half -- an artefact must not carry a query that had no
+    # ledger at all. Two authorities, deliberately: unit tests legitimately run
+    # the read path unledgered, and a persisted artefact never may.
+    if summary["cost"]["queries_unledgered"]:
+        raise SystemExit(
+            f"{summary['cost']['queries_unledgered']} of {len(results)} queries ran "
+            "without a ledger; the artefact's cost axis would be unauditable "
+            "(PHASE10_DECISIONS.md §5 A1)"
+        )
     elapsed = time.perf_counter() - started
 
     def _ceiling_mean(name: str) -> Any:

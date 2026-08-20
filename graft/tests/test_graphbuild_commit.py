@@ -707,3 +707,91 @@ def test_d1_report_refuses_mismatched_lengths():
     gold = [{"action": "NON_ENTITY"}] * 4
     with pytest.raises(ValueError, match="one prediction per gold item"):
         d1_report([{"action": "NON_ENTITY"}] * 2, gold)
+
+
+# -- construction coverage (19 Aug 2026) --------------------------------------
+
+
+def _mentionless_log(tmp_path):
+    """A turn carrying an eligible assertion and **no mention at all**.
+
+    The common LoCoMo shape: measured on the Stage-A log, 1,413 of 5,882 turns
+    carry a mention, so most eligible assertions live in a turn like this one.
+    """
+    handle = EventLog.open(tmp_path / "nomention.jsonl")
+    handle.append("span.add", SourceSpan("sp0", "t0", 0, 20).to_dict())
+    handle.append(
+        "assertion.add",
+        Assertion(
+            "a0", "claim", "the rent is 92000 yen", ("sp0",),
+            AssertionFlags(asserted_by="user"), T1,
+        ).to_dict(),
+    )
+    handle.append(
+        "assertion.set_eligibility", {"assertion_id": "a0", "eligibility": "eligible"}
+    )
+    handle.append(
+        "turn.add",
+        Turn("t0", "c1", "s0", "user", T1, "the rent is 92000 yen").to_dict(),
+    )
+    return handle
+
+
+def test_an_eligible_assertion_in_a_mentionless_turn_still_becomes_a_node(tmp_path):
+    """Retrieval cannot return what construction never committed.
+
+    The constructor used to draw its turn order from ``mention_records``, so a
+    turn with no mention was never visited and its support-gated evidence was
+    unreachable by arithmetic -- not by any retrieval or reader property.
+    """
+    from graft.graphbuild.standin import construct
+
+    handle = _mentionless_log(tmp_path)
+    out = construct(handle)
+
+    assert out["graph"]["nodes"] == 1, "the eligible assertion must be committed"
+    assert out["graph"]["edges"] == 0, "with no mention there is no anchor to link to"
+    assert out["corruption_audit"]["green"]
+    assert out["commit"]["refused"] == 0
+    handle.close()
+
+
+def test_a_standalone_node_is_retrievable(tmp_path):
+    """An edge-less assertion-backed node is a legal pool shape, so committing
+    one is worth something: ``eligible_nodes`` must return it."""
+    from graft.graphbuild.standin import construct
+    from graft.retrieve.pool import eligible_nodes
+
+    handle = _mentionless_log(tmp_path)
+    construct(handle)
+    snapshot = ReplayGraphStore(handle).at()
+
+    assert len(eligible_nodes(snapshot, "c1")) == 1, (
+        "a standalone claim node must be retrievable, or committing it bought nothing"
+    )
+    handle.close()
+
+
+def test_a_standalone_node_invents_no_d2_pair(tmp_path):
+    """``pairs_for`` requires a shared entity anchor.  A node with no
+    ``about_entity`` edge has none, so widening coverage must not fabricate
+    supervision out of an anchor that does not exist."""
+    from graft.graphbuild.standin import construct
+
+    handle = _mentionless_log(tmp_path)
+    out = construct(handle)
+    assert out["d2_items"] == []
+    handle.close()
+
+
+def test_anchored_assertions_still_link_rather_than_going_standalone(tmp_path):
+    """The widening must not cost the anchored path: where a mention exists the
+    assertion still gets its ``about_entity`` edge."""
+    from graft.graphbuild.standin import construct
+
+    handle = _two_turn_log(tmp_path)
+    out = construct(handle)
+    assert out["graph"]["edges"] >= 2, "anchored assertions must still link"
+    assert len(out["d2_items"]) == 1, "anchored pairs must still be proposed"
+    handle.close()
+

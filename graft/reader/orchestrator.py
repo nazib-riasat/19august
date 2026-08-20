@@ -60,7 +60,7 @@ import numpy as np
 
 from graft.canonical import digest_of
 from graft.config import Config
-from graft.ledger import Ledger
+from graft.ledger import METERS, Ledger
 from graft.reader.parse import answers_equivalent, parse_answer, resolve_citations
 from graft.reader.pins import CONTESTED, PROMPT_SHA, stage_e_fingerprint
 from graft.reader.serialize import ProofSerializer
@@ -71,8 +71,30 @@ __all__ = [
     "ReadResult",
     "answer",
     "aggregate",
+    "cost_report",
+    "UnmeteredError",
     "UnrankableError",
 ]
+
+
+class UnmeteredError(RuntimeError):
+    """A record was produced under a wired ledger and spent nothing on it.
+
+    The guard exists because of what `PHASE10_DECISIONS.md` §5 A1 actually was:
+    the read path spent no meter, and ``Ledger.stage()``'s zero-initialised
+    counters made the absence *read as a measurement of zero*.  A1 is fixed --
+    :meth:`graft.reader.read.Reader.generate` meters, and the orchestrator opens
+    a stage per phase -- but the failure mode it exposed is silent by
+    construction, so a regression would look exactly like a cheap query rather
+    than a broken instrument.
+
+    **The carve-out is the whole subtlety.**  An all-zero snapshot is *correct*
+    for a gate abstention: :func:`answer` returns before Stage D and before any
+    reader call, so nothing was spent and nothing should be.  A guard reading
+    "no all-zero snapshots" would fail on correct behaviour, get relaxed, and
+    take the real check with it.  The rule is therefore narrower: all-zero is
+    permitted only where the gate declined.
+    """
 
 
 class UnrankableError(RuntimeError):
@@ -103,12 +125,31 @@ class ReadPathStamp:
     token_counter: str
     ordering: str
     notes: tuple[str, ...] = ()
+    #: How Stage D produced its candidate set: ``"learned_portfolio"`` (the
+    #: GFlowNet sampler) or ``"training_free_relevance"`` (top-``max_atoms`` by
+    #: Stage-C fused score, closed and `H`-checked).  A separate field because
+    #: the two support different claims, and a run on the second supports no
+    #: learned-construction claim at all *(added 20 Aug 2026)*.
+    selection: str = "learned_portfolio"
+    #: Whether the **distilled utility head** carries trained weights.  A
+    #: separate field from ``policy_trained`` on purpose *(added 19 Aug 2026)*:
+    #: they are different artefacts trained by different runs, and the runner
+    #: had been setting ``policy_trained`` from the *head*, so loading a trained
+    #: head stamped the untrained Stage-D sampler as trained -- while the same
+    #: stamp's own ``notes`` said "Stage-D policy untrained".  `CLAUDE.md` §7
+    #: keeps these apart for the reason this field exists: "the sampler won" and
+    #: "the scorer was nearly perfect" are different findings.
+    head_trained: bool = False
 
     @property
     def is_wiring_test(self) -> bool:
         """True when *no* number from this run may be reported as a result."""
         return (
             not self.policy_trained
+            # A training-free selector is a legitimate baseline and an
+            # illegitimate basis for a Contribution-2/3 claim, so it trips the
+            # same flag rather than quietly passing as a normal run.
+            or self.selection != "learned_portfolio"
             or self.gate_source != "conversational"
             or self.scorer_source == "none"
             or self.token_counter != "reader_tokenizer"
@@ -117,6 +158,8 @@ class ReadPathStamp:
     def to_dict(self) -> dict[str, Any]:
         return {
             "policy_trained": self.policy_trained,
+            "head_trained": self.head_trained,
+            "selection": self.selection,
             "gate_source": self.gate_source,
             "scorer_source": self.scorer_source,
             "token_counter": self.token_counter,
@@ -184,6 +227,7 @@ def answer(
     count_tokens: Callable[[str], int] | None = None,
     query_id: str | None = None,
     contested_check: bool = True,
+    evidence_suffix: str = "",
 ) -> ReadResult:
     """``question → OutputRecord``, with per-stage ledger accounting (fix F7, G12).
 
@@ -257,6 +301,14 @@ def answer(
     from graft.setgen.portfolio import run_portfolio
 
     def _portfolio() -> Any:
+        if stamp.selection == "training_free_relevance":
+            from graft.setgen.portfolio import relevance_select
+
+            return relevance_select(
+                env,
+                atom_scores if atom_scores is not None else env.example.atom_scores,
+                ledger=ledger, config=cfg,
+            )
         return run_portfolio(
             featurizer, env,
             scorer if scorer is not None else (lambda atoms: 0.0),
@@ -283,7 +335,7 @@ def answer(
             stages=stages,
         )
 
-    if scorer is None:
+    if scorer is None and stamp.selection != "training_free_relevance":
         raise UnrankableError(
             f"Stage D returned {portfolio.distinct_valid} valid sets and no scorer "
             "was supplied. `env.utility` is NOT an acceptable substitute at "
@@ -301,12 +353,23 @@ def answer(
 
     def _read(atoms: Sequence[str]) -> tuple[Any, Any]:
         packed = serializer.serialise(ProofSet(atoms=frozenset(atoms)), obligations, scores)
+        # **Uncitable context, appended after the numbered claims** *(20 Aug
+        # 2026)*.  The caller may supply extra evidence text -- run 3 uses raw
+        # dialogue turns, which every reference system shows its reader.  It is
+        # appended *after* ``packed.text`` and carries no ``[c#]`` id, so it can
+        # inform an answer but can never be cited: ``claim_map`` is unchanged,
+        # ``resolve_citations`` is untouched, and citation precision still scores
+        # only against the claims the checker validated.  The prompt template is
+        # not involved -- evidence is data, so ``PROMPT_SHA`` does not move for
+        # this.  Budgeting the suffix is the caller's job, because only the
+        # caller knows the reader's tokenizer.
+        evidence = packed.text + (evidence_suffix or "")
         if read_fn is None:
             raise UnrankableError(
                 "no read_fn supplied; the read path cannot produce an answer "
                 "without the frozen reader"
             )
-        parsed = parse_answer(read_fn(packed.text, question))
+        parsed = parse_answer(read_fn(evidence, question))
         # `strict=False`: a hallucinated citation is a reader-ceiling FINDING, and
         # a batch run must record it rather than die on it. The count travels in
         # `unresolved`, so it lowers citation precision as it should.
@@ -370,6 +433,125 @@ def answer(
     )
 
 
+def _totals(result: ReadResult) -> dict[str, int] | None:
+    """This query's meter counts, or ``None`` when no ledger was wired.
+
+    An empty ``ledger_snapshot`` and an all-zero one are different states and the
+    difference is the point: the first says *nobody was counting*, the second
+    says *counting happened and came to nothing*.  Collapsing them is how A1
+    stayed invisible.
+
+    **``query`` first, ``totals`` only as the fallback** *(corrected 19 Aug
+    2026)*.  ``Ledger.snapshot()["totals"]`` is **cumulative over the ledger's
+    whole life**, while ``["query"]`` is the per-scope counter
+    ``query_scope`` resets.  Reading totals is therefore correct only when the
+    caller builds a fresh ledger per query — which ``phase10_read.py`` does and
+    ``locomo_eval.py`` did not.  Under one long-lived ledger the *n*-th query
+    reports the sum of the first *n*, so "tokens per query" grows without bound:
+    over LoCoMo's 1,986 questions the mean inflates by ~1000x, on the axis
+    `CLAUDE.md` §9 names as one this project can honestly win.
+
+    ``query`` is ``None`` outside a scope, so the fallback preserves the
+    fresh-ledger-per-query callers exactly, and an unscoped ledger still reports
+    what it always did.
+    """
+    snapshot = result.record.ledger_snapshot or {}
+    scoped = snapshot.get("query")
+    if isinstance(scoped, Mapping):
+        return dict(scoped)
+    totals = snapshot.get("totals")
+    return dict(totals) if isinstance(totals, Mapping) else None
+
+
+def cost_report(results: Sequence[ReadResult]) -> dict[str, Any]:
+    """Per-query cost in the units a published table can be read against.
+
+    `CLAUDE.md` §9 names latency and token cost among the axes this project can
+    honestly win on, and `GRAFT_PHASE11_BUILD.md` G7 fixes the unit: **total LLM
+    tokens per query and LLM calls per query**, both read from the ledger rather
+    than from a configured budget.  A budget is what the packer was *allowed*;
+    only the ledger says what was *spent*, and the two diverge whenever a proof
+    packs short.
+
+    **Ingestion is deliberately absent.**  It is an offline per-turn cost
+    (`PHASE5_DECISIONS.md` §2), and folding it into a per-query inference figure
+    would produce a number comparable to nothing published.
+
+    Raises :class:`UnmeteredError` on a record that had a ledger and spent
+    nothing without the gate having declined.
+    """
+    metered: list[dict[str, int]] = []
+    unledgered = 0
+    free_by_gate = 0
+    violations: list[str] = []
+
+    for i, r in enumerate(results):
+        totals = _totals(r)
+        if totals is None:
+            unledgered += 1
+            continue
+        if any(totals.get(m, 0) for m in METERS):
+            metered.append(totals)
+            continue
+        # Spent nothing.  Legitimate only on the gate route.
+        if r.record.outcome == "abstain" and r.record.abstain_cause == "gate":
+            free_by_gate += 1
+        else:
+            violations.append(
+                f"query {i}: outcome={r.record.outcome!r} "
+                f"cause={r.record.abstain_cause!r} spent nothing"
+            )
+
+    if violations:
+        raise UnmeteredError(
+            "records were produced under a wired ledger and spent no meter, "
+            "which is `PHASE10_DECISIONS.md` §5 A1 regressing: "
+            + "; ".join(violations)
+        )
+
+    def _stat(meter: str) -> dict[str, float] | None:
+        if not metered:
+            return None
+        xs = [float(t.get(meter, 0)) for t in metered]
+        return {
+            "mean": float(np.mean(xs)),
+            "median": float(np.median(xs)),
+            "max": float(np.max(xs)),
+        }
+
+    tokens_total = None
+    if metered:
+        xs = [
+            float(t.get("llm_tokens_in", 0) + t.get("llm_tokens_out", 0)) for t in metered
+        ]
+        tokens_total = {
+            "mean": float(np.mean(xs)),
+            "median": float(np.median(xs)),
+            "max": float(np.max(xs)),
+        }
+
+    return {
+        "queries_metered": len(metered),
+        # Not a violation: unit tests legitimately call the read path without a
+        # ledger.  The runner refuses on it; `aggregate` only reports it.
+        "queries_unledgered": unledgered,
+        # Spent nothing because the gate declined before Stage D -- correct, and
+        # counted so the zero is visibly explained rather than merely absent.
+        "queries_free_by_gate": free_by_gate,
+        "llm_calls_per_query": _stat("llm_calls"),
+        "llm_tokens_in_per_query": _stat("llm_tokens_in"),
+        "llm_tokens_out_per_query": _stat("llm_tokens_out"),
+        "llm_tokens_total_per_query": tokens_total,
+        "model_forwards_per_query": _stat("model_forwards"),
+        "wall_clock_ms_per_query": _stat("wall_clock_ms"),
+        "unit": (
+            "per query, read path only; total = tokens_in + tokens_out summed over "
+            "all LLM calls. Ingestion is a separate offline axis and is not here "
+            "(GRAFT_PHASE11_BUILD.md G7)."
+        ),
+    }
+
+
 def aggregate(results: Sequence[ReadResult]) -> dict[str, Any]:
     """§6 decision 7's aggregation, and the two wrong answers it avoids.
 
@@ -412,6 +594,11 @@ def aggregate(results: Sequence[ReadResult]) -> dict[str, Any]:
         "mean_citations": (sum(citations) / len(citations)) if citations else None,
         "unresolved_citations": sum(unresolved),
         "contested_extra_reader_calls": extra_calls,
+        # The cost axis, computed here so no artefact can carry a summary without
+        # it -- `CLAUDE.md` §9 claims latency and token cost, and A1 was that
+        # claim having no numerator while zero-initialised meters made the
+        # absence look like a measurement.
+        "cost": cost_report(results),
         "aggregation_rule": (
             "abstentions excluded from means and counted separately; causes never "
             "summed (Phase-10 decision 7)"

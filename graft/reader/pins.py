@@ -112,17 +112,56 @@ READER: dict[str, Any] = {
 #: correctness — and the prompt SHA would have frozen that into the stage-E
 #: fingerprint before a single run.  The citation requirement is what needs
 #: brackets; the answer does not need prose.
+#:
+#: **Amended 19 Aug 2026 — at the last §6b-clean moment.**  Three additions,
+#: made BEFORE any decisive LoCoMo run exists: only wiring-test runs R1–R3 have
+#: consumed the old SHA, and they are stamped as such.  The same change one day
+#: later, after seeing scores, would be tuning on evaluation data — which is why
+#: it happens now or never.  Each addition is format alignment, not
+#: optimisation, and the reference systems' own prompts do the same (Mem-T's
+#: FinishTool demands "the concise answer following the Final Result Format"):
+#: a frozen reader that loses token-F1 to *formatting* is measuring prose
+#: style, not memory.
+#:
+#: 1. **Format examples.**  A 3B instruct model anchors on demonstrations far
+#:    more reliably than on rules, and every reference system few-shots its
+#:    answer format.  Generic names, no corpus content, labelled as examples so
+#:    they cannot be read as evidence.
+#: 2. **A date-format rule** ("8 May 2023").  LoCoMo's 321 temporal questions
+#:    carry day-month-year golds and the corpus's own session timestamps use
+#:    that form; an ISO answer ("2023-05-08") is *correct* and scores ~0
+#:    token-F1 — the metric would be measuring a calendar convention.
+#: 3. **A multi-item rule.**  Multi-hop golds are frequently lists, and token
+#:    recall punishes an answer naming one of two cities.
+#:
+#: Cost, recorded: PROMPT_SHA moved (4a8abf10… → e023ea71…), so the stage-E
+#: fingerprint moved and R1–R3's artefacts carry the old one.  Nothing
+#: result-grade is voided — all three are stamped ``is_wiring_test``.
 PROMPT_TEMPLATE = (
     "You answer questions using only the numbered evidence provided.\n"
     "\n"
     "Rules:\n"
     "1. Use only the evidence below. Do not use outside knowledge.\n"
-    "2. Answer with the shortest phrase that answers the question — a name, a "
-    "date, or a few words. Do not write a full sentence.\n"
-    "3. After the answer, cite the evidence you used with its bracketed id, "
-    "like [c1] or [c2].\n"
-    "4. If the evidence is not sufficient to answer, reply exactly: "
+    "2. Answer with the shortest phrase that fully answers the question — a "
+    "name, a date, a place, or a few words. Never a full sentence. Do not "
+    "explain and do not repeat the question.\n"
+    "3. If the question asks for several things, give all of them, "
+    "separated by commas.\n"
+    "4. Write dates as day month year, for example: 8 May 2023.\n"
+    "5. After the answer, cite the evidence you used with its bracketed "
+    "id, like [c1] or [c1][c3].\n"
+    "6. If the evidence is not sufficient to answer, reply exactly: "
     "INSUFFICIENT EVIDENCE\n"
+    "7. Never copy an answer from the format examples below. They show "
+    "formatting only and are not evidence.\n"
+    "\n"
+    "Format examples (these are not evidence):\n"
+    "Question: Where did Maria move to?\n"
+    "Answer: Tbilisi [c2]\n"
+    "Question: When did Ben adopt the dog?\n"
+    "Answer: 3 April 2019 [c1]\n"
+    "Question: Which cities has Ana visited?\n"
+    "Answer: Oslo, Nairobi [c1][c4]\n"
     "\n"
     "Evidence:\n"
     "{evidence}\n"
@@ -130,6 +169,7 @@ PROMPT_TEMPLATE = (
     "Question: {question}\n"
     "Answer:"
 )
+
 
 #: The abstention string the prompt names and the parser matches.  One constant,
 #: two consumers — a parser looking for different words than the prompt asks for

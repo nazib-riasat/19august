@@ -356,8 +356,53 @@ def test_the_prompt_asks_for_a_phrase_not_a_sentence():
     pair would have measured verbosity rather than correctness.
     """
     assert "shortest phrase" in pins.PROMPT_TEMPLATE
-    assert "Do not write a full sentence" in pins.PROMPT_TEMPLATE
+    assert "Never a full sentence" in pins.PROMPT_TEMPLATE
     assert pins.INSUFFICIENT in pins.PROMPT_TEMPLATE
+
+
+def test_the_prompt_carries_the_three_format_alignments():
+    """Amended 19 Aug 2026, before any decisive run existed -- the last §6b-clean
+    moment. Format alignment, not optimisation: the reference systems' own
+    prompts do the same, and a frozen reader that loses token-F1 to formatting
+    is measuring prose style, not memory.
+
+    Three properties, each protecting a scoring failure that is invisible in
+    the answer's *correctness*: a date rule (an ISO date is right and scores ~0
+    against a day-month-year gold), a multi-item rule (token recall punishes
+    naming one of two cities), and format examples (a 3B model anchors on
+    demonstrations, not rules)."""
+    assert "8 May 2023" in pins.PROMPT_TEMPLATE, "date-format rule missing"
+    assert "separated by commas" in pins.PROMPT_TEMPLATE, "multi-item rule missing"
+    assert "these are not evidence" in pins.PROMPT_TEMPLATE, (
+        "format examples must be labelled so they cannot be read as evidence"
+    )
+    # The examples' citation ids must never resolve against a real pool by
+    # accident -- they are demonstrations, and the runner's resolve_citations
+    # would count a copied [c2] as unresolved, which is the correct outcome.
+    #
+    # **The example VALUES moved on 20 Aug 2026** (run-3 fix 4). Run 2 measured
+    # the reader emitting `Rome, Lisbon [c1][c4]` verbatim as an answer, so the
+    # demonstrations are now values LoCoMo cannot contain, and rule 7 says not to
+    # copy them. What this test pins is the *shape* -- one example carrying a
+    # citation -- not the particular city, so a future re-pick does not need to
+    # edit an assertion that was never about the value.
+    assert "Tbilisi [c2]" in pins.PROMPT_TEMPLATE
+    assert "Never copy an answer from the format examples" in pins.PROMPT_TEMPLATE
+
+
+def test_a_leading_answer_echo_is_stripped_before_scoring():
+    """The prompt ends with 'Answer:' and instruct models echo it. Left in, the
+    token 'answer' survives normalisation (articles are stripped, this word is
+    not) and costs F1 precision on every echoed reply -- a formatting artefact
+    scored as a wrong word. Extraction hygiene; the scoring rule is untouched."""
+    from graft.reader.parse import parse_answer
+
+    echoed = parse_answer("Answer: London [c1]")
+    plain = parse_answer("London [c1]")
+    assert echoed.answer_text == plain.answer_text == "London [c1]"
+    assert echoed.citations == ("c1",)
+    # And it must not eat a legitimate answer that merely starts with the word.
+    assert parse_answer("answering machine [c1]").answer_text == "answering machine [c1]"
 
 
 def test_the_prompt_takes_no_corpus_or_system_branch():

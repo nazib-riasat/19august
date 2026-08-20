@@ -86,12 +86,12 @@ against a caller in a hurry.
 
 ## 2. Departures from the signed §6
 
-| # | Decision as signed | What was built | Why |
+| §6 ref | Decision as signed | What was built | Why |
 |---|---|---|---|
-| 9 | answer equivalence = "SQuAD normalisation" | same, **with punctuation deleted rather than replaced by a space** | The official SQuAD script does `"".join(ch for ch in text if ch not in exclude)`. Substituting a space split one token into several and the article filter then ate any single `a` the split produced. §5 A2 |
-| 9 | pin declared order `(casefold, strip_articles, strip_punctuation, …)` | `(casefold, delete_punctuation, strip_articles, …)` | The **pin** was wrong, not the code: stripping articles first leaves `"the-dog"` intact. The pin is what the fingerprint hashes, so it had to move |
-| 2 | reader pinned by `model_id` | `model_id` **and** `revision` | A model id is a moving target; `graphbuild.pins.EMBEDDER` already pinned both. "Same frozen reader for every compared system" is unenforceable if the fingerprint binds a label rather than a checkpoint |
-| 3 | the gold ordering is a diagnostic whose **gap** measures what honesty costs | added `serialize.ordering_gap` | Both orderings existed; the gap did not, so the decision was half-kept — the harder half to notice, because the code looked complete. §5 A4 |
+| D9 | answer equivalence = "SQuAD normalisation" | same, **with punctuation deleted rather than replaced by a space** | The official SQuAD script does `"".join(ch for ch in text if ch not in exclude)`. Substituting a space split one token into several and the article filter then ate any single `a` the split produced. §5 A2 |
+| D9 | pin declared order `(casefold, strip_articles, strip_punctuation, …)` | `(casefold, delete_punctuation, strip_articles, …)` | The **pin** was wrong, not the code: stripping articles first leaves `"the-dog"` intact. The pin is what the fingerprint hashes, so it had to move |
+| D2 | reader pinned by `model_id` | `model_id` **and** `revision` | A model id is a moving target; `graphbuild.pins.EMBEDDER` already pinned both. "Same frozen reader for every compared system" is unenforceable if the fingerprint binds a label rather than a checkpoint |
+| D3 | the gold ordering is a diagnostic whose **gap** measures what honesty costs | added `serialize.ordering_gap` | Both orderings existed; the gap did not, so the decision was half-kept — the harder half to notice, because the code looked complete. §5 A4 |
 
 **No decision was overturned.** That is a change from Phase 9, where four were —
 and the reason is worth naming: Phase 10's §6 was signed against an architecture

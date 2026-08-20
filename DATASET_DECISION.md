@@ -40,7 +40,7 @@ Contribution 2's decoupled answerability gate is evaluated by a risk–coverage 
 | Dataset | Role | Volume ingested | Licence |
 |---|---|---|---|
 | **LongMemEval-S** | **Primary evaluation corpus.** Ingested; its train slice supervises D1/D2 and Stage C; its test slice is held-out end-to-end eval | Scope decision, §4 | MIT (SHA-pinned in `graft/ingest/corpus.py`) |
-| **LoCoMo** | **Secondary zero-shot evaluation.** Never trained on, in any component. Its 446 adversarial questions are the abstention testbed (§1.2) | 5,875 turns | **CC BY-NC 4.0 — non-commercial.** Thesis use fine; do not release a derived dataset commercially |
+| **LoCoMo** | **Secondary zero-shot evaluation.** Never trained on, in any component. Its 446 adversarial questions are the abstention testbed (§1.2). **MEASURED 19 Aug 2026** by `scripts/locomo_ingest.py probe`, zero findings: 10 conversations, 1,986 questions, **446 adversarial** (which independently verified `graft/baselines/categories.py`'s category mapping), 5,882 turns, every timestamp parsed, 9 of 2,815 evidence markers unresolved (0.3%, image-only turns). **SHA256 `79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4`**, pinned in `graft/ingest/locomo.py` and verified on every load | 5,875 turns as recorded here; **5,882 measured** — this loader skips turns with empty `text` (image-only turns carry a `blip_caption` instead) and the recorded figure evidently counted a slightly different set. Immaterial to any claim; recorded because an unexplained 7-turn gap later reads as a defect | **CC BY-NC 4.0 — non-commercial.** Thesis use fine; do not release a derived dataset commercially |
 | **Memora**, weekly track, 3 personas | **Tertiary eval** (FAMA directly scores whether invalidated memories leak into answers = Contribution 1's claim) **+ free `SUPERSEDES` pairs** | 7,486 turns | Apache-2.0 |
 
 ### Phase 6 — Stage B decoder supervision
@@ -115,7 +115,7 @@ Synthetic lattice            → Phase 3
 | **Phase 5** — Stage A ingestion · LongMemEval 200 q (4,384 turns) | extractor (Qwen2.5-3B bf16) + NLI | **32.3 h** | 20.7 h ⛔ | **6.9 h** |
 | ⤷ LongMemEval evidence-only (10,960) | " | 80.8 h | 51.7 h ⛔ | 17.3 h |
 | ⤷ LongMemEval evidence + 2 distractors (20,798) | " | 153.3 h | 98.1 h ⛔ | **32.9 h** |
-| ⤷ LoCoMo, entire (5,875) | " | **43.3 h** | 27.7 h ⛔ | **9.3 h** |
+| ⤷ LoCoMo, entire (5,882 measured; 5,875 as first recorded) | " | **43.3 h** | 27.7 h ⛔ | **9.3 h** |
 | ⤷ Memora weekly ×3 personas (7,486) | " | **55.2 h** | 35.3 h ⛔ | **11.8 h** |
 | ⤷ LongMemEval full haystack (246,930) | " | 1,820 h | 1,165 h ⛔ | 390 h — *not a candidate on any machine* |
 | **Phase 6** — Stage B, Gate-1 matrix (4 arms × 3 seeds) | bge-small embedder + encoders (E1 0.05M / E2 3.76M / E3 4.26M) | **~1–3 h** ~ | ~1–3 h | **~1–2 h** ~ — models are tiny; graph replay is CPU-bound |

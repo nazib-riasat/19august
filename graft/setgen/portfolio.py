@@ -213,6 +213,112 @@ def run_portfolio(
     )
 
 
+def relevance_select(
+    env: RealEnvironment,
+    atom_scores: Mapping[str, float],
+    *,
+    ledger: Ledger | None = None,
+    config: Config | None = None,
+) -> PortfolioResult:
+    """Stage D by **Stage-C relevance**, training-free: top-``max_atoms``, closed, `H`-checked.
+
+    **What this is, stated plainly so no reader has to infer it.**  This is not
+    the GFlowNet sampler and makes no learned-construction claim.  It selects the
+    highest-scoring atoms under the *question-conditioned* fused score Stage C
+    already computed, completes them under the closure rule, and asks `H`.  It is
+    the training-free relevance baseline the architecture always named -- run on
+    the live path because the Stage-D policy is untrained.
+
+    **Why it exists** *(20 Aug 2026)*.  With a randomly-initialised policy, a
+    rollout picks ~``max_atoms`` of ``pool_cap`` atoms with no view of the
+    question, so the evidence handed to the reader is close to a random subset of
+    the conversation.  The 1,986-question run shows the consequence: 977
+    abstentions, most of them the reader correctly reporting that off-topic
+    evidence does not answer the question.  Ranking cannot repair that -- the
+    scorer chooses among candidates, and every candidate was drawn blind.
+
+    **What it costs, and what it does not.**  `pool_cap` and `max_atoms` are
+    untouched, `H` still decides validity, the budget is still enforced through
+    ``would_exceed``, and the reward, the checker and the metrics are all
+    unchanged.  What is given up is that a run using this path says nothing about
+    Contribution 2 or 3 -- which was already true of a run using an untrained
+    sampler, and is now *visible* instead of implicit.  Gate 3 is the learned
+    sampler's exam and is deferred by name (`CLAUDE.md` §8).
+
+    Ties break toward the smaller set, the same rule
+    :func:`run_portfolio` applies, so minimality still enters the inference path.
+    """
+    cfg = config or Config()
+    pool = env.example.pool
+    ranked = sorted(
+        pool.ids(),
+        key=lambda a: (-float(atom_scores.get(a, 0.0)), len(pool[a].refs), a),
+    )
+
+    # Closure first, then the cap: an atom is legal only once everything it
+    # references is selected (fix F10), and a set that broke that would be
+    # refused by `H` for a structural reason having nothing to do with relevance.
+    chosen: list[str] = []
+    seen: set[str] = set()
+
+    def _admit(atom_id: str) -> bool:
+        """Add ``atom_id`` and its reference closure, if they fit ``max_atoms``."""
+        need: list[str] = []
+        stack = [atom_id]
+        while stack:
+            current = stack.pop()
+            if current in seen or current in need:
+                continue
+            need.append(current)
+            stack.extend(pool[current].refs)
+        if len(seen) + len(need) > cfg.max_atoms:
+            return False
+        for atom in need:
+            seen.add(atom)
+            chosen.append(atom)
+        return True
+
+    for atom_id in ranked:
+        if len(seen) >= cfg.max_atoms:
+            break
+        _admit(atom_id)
+
+    atoms = tuple(sorted(seen))
+    if not atoms:
+        return PortfolioResult(
+            (), (), portfolio=(), attempted=1, terminal_checks=0, fallback=True,
+            extra={"selection": "relevance", str(PORTFOLIO["fallback_counter"]): 1},
+        )
+
+    # One terminal check, enforced before it is spent. Unlike the sampled
+    # portfolio this set is *not* valid by construction -- nothing walked the
+    # masks -- so it owes `H` exactly one call and the ledger must permit it.
+    spent = 0
+    if ledger is not None and ledger.would_exceed("terminal_checks", 1):
+        return PortfolioResult(
+            (), (), portfolio=(atoms,), attempted=1, terminal_checks=0,
+            fallback=True, budget_exhausted=True,
+            extra={"selection": "relevance", str(PORTFOLIO["fallback_counter"]): 1},
+        )
+    state = env.checker(atoms)
+    ok = bool(state.ok())
+    spent = 1
+    if ledger is not None:
+        ledger.count("terminal_checks", 1)
+
+    if not ok:
+        return PortfolioResult(
+            (), (), portfolio=(atoms,), attempted=1, terminal_checks=spent,
+            fallback=True,
+            extra={"selection": "relevance", str(PORTFOLIO["fallback_counter"]): 1},
+        )
+    return PortfolioResult(
+        [atoms], [0.0], portfolio=[atoms], attempted=1, terminal_checks=spent,
+        fallback=False,
+        extra={"selection": "relevance", str(PORTFOLIO["fallback_counter"]): 0},
+    )
+
+
 def audit_validity(
     result: PortfolioResult, env: RealEnvironment, ledger: Ledger | None = None
 ) -> dict[str, Any]:

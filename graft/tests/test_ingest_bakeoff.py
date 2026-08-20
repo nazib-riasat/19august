@@ -523,3 +523,132 @@ def test_the_nli_verifier_runs_unmetered_without_a_ledger():
     verifier._entail_ix = 1
     verifier.load = lambda: None
     assert len(verifier.score([("p", "h")] * 3)) == 3
+
+
+# -- batched token accounting (19 Aug 2026) -----------------------------------
+#
+# The batched path had no test that drove `_generate_batch`, and it reported a
+# **re-tokenised** count while metering the tensor length.  These fakes make the
+# two disagree on purpose: `_ReTokShort` returns 1 for any string it is asked to
+# encode, so a test that passes here can only be reading the tensor.
+
+
+class _BatchTok:
+    """A batch-capable tokenizer whose *re-tokenisation is deliberately wrong*.
+
+    Encoding a bare string returns a single token regardless of content.  Real
+    tokenisers are merely not round-trip stable; this one is grossly unstable,
+    which is what makes the assertion below decisive rather than lucky.
+    """
+
+    eos_token_id = 0
+    eos_token = "<eos>"
+
+    def __init__(self, replies: list[str]) -> None:
+        self.replies = replies
+        self.pad_token = "<pad>"
+        self.padding_side = "right"
+
+    def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+        return " ".join(m["content"] for m in messages)
+
+    def __call__(self, text, return_tensors=None, padding=False, add_special_tokens=True):
+        class _Enc(dict):
+            def to(self, device):
+                return self
+
+        if isinstance(text, str):  # the re-tokenisation the fix removed
+            return _Enc(input_ids=torch.zeros((1, 1), dtype=torch.long))
+        n = len(text)
+        # Left-padded: row r carries r real tokens of prompt, the rest padding.
+        width = n + 1
+        ids = torch.zeros((n, width), dtype=torch.long)
+        mask = torch.zeros((n, width), dtype=torch.long)
+        for r in range(n):
+            mask[r, width - (r + 1):] = 1
+        return _Enc(input_ids=ids, attention_mask=mask)
+
+    def decode(self, generated, skip_special_tokens=True):
+        return self.replies[int(generated[0].item()) - 1]
+
+
+class _BatchModel:
+    """Row ``r`` generates ``plan[r]`` real tokens, then eos padding."""
+
+    device = "cpu"
+
+    def __init__(self, plan: list[int]) -> None:
+        self.plan = list(plan)
+        self.seen_kwargs: list[dict] = []
+
+    def generate(self, **kwargs):
+        self.seen_kwargs.append(kwargs)
+        width = int(kwargs["input_ids"].shape[1])
+        n = len(self.plan)
+        longest = max(self.plan)
+        out = torch.zeros((n, width + longest), dtype=torch.long)
+        for r, n_out in enumerate(self.plan):
+            out[r, width] = r + 1          # identifies the reply for `decode`
+            out[r, width + 1:width + n_out] = 1  # filler, non-eos
+        return out
+
+
+def _batch_llm(candidate: str, replies: list[str], out_tokens: list[int], ledger=None):
+    llm = LlmExtractor(EXTRACTOR_CANDIDATES[candidate], device="cpu", ledger=ledger)
+    llm._tok = _BatchTok(replies)
+    llm._model = _BatchModel(out_tokens)
+    llm.load = lambda: None
+    return llm
+
+
+def test_the_batched_path_reports_the_length_it_metered():
+    """One generation, one number.
+
+    ``_generate_batch`` used to meter the trimmed tensor length and then store a
+    re-tokenisation of the decoded string, so ``TurnReport.tokens_out`` and the
+    ledger were two authorities on the same generation.
+    """
+    ledger = Ledger.from_config(CFG, log=None)
+    llm = _batch_llm("A", [_GOOD, _GOOD], [40, 55], ledger=ledger)
+
+    llm._generate_batch([[{"role": "user", "content": "a"}], [{"role": "user", "content": "b"}]])
+
+    reported = [n_out for _, n_out in llm._last_batch_tokens]
+    assert reported == [40, 55], "reported lengths must be the metered tensor lengths"
+    assert ledger.snapshot()["totals"]["llm_tokens_out"] == sum(reported), (
+        "the ledger and the per-turn report must not disagree about one generation"
+    )
+
+
+def test_a_capped_batched_generation_is_attributed_to_truncation():
+    """The load-bearing half.
+
+    ``extract_batch`` derives ``truncated`` from this count.  Under the
+    re-tokenised version a reply that genuinely hit ``max_new_tokens`` could
+    re-encode to under the cap and be filed as *malformed* instead — and
+    malformed-vs-truncated is the split `PHASE5_DECISIONS.md` §2 used to
+    falsify its own token-cap hypothesis.
+    """
+    # Candidate B: `repair: False`, so `extract_batch` returns the batched row
+    # instead of handing a parse failure to the single-stream repair loop --
+    # which would re-generate and test a different code path than the one at
+    # issue.
+    llm = _batch_llm("B", ["{ truncated json", _GOOD], [CAP, 40])
+
+    got = llm.extract_batch([_a_turn(), _a_turn()], [ExtractionContext(), ExtractionContext()])
+
+    assert got[0].truncated is True, "a capped generation is a truncation, not malformed output"
+    assert got[0].truncations == 1
+    assert got[0].tokens_out == CAP
+    assert got[1].truncated is False
+    assert got[1].tokens_out == 40
+
+
+def test_batched_prompt_lengths_come_from_the_attention_mask_not_the_padded_width():
+    """Padding is not work.  Left-padding makes every row the same width, so a
+    padded count would charge every turn the longest prompt in its batch."""
+    llm = _batch_llm("A", [_GOOD, _GOOD, _GOOD], [10, 10, 10])
+    llm._generate_batch([[{"role": "user", "content": "x"}] for _ in range(3)])
+
+    assert [n_in for n_in, _ in llm._last_batch_tokens] == [1, 2, 3]
+
