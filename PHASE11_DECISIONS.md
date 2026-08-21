@@ -392,6 +392,134 @@ close fully. And ceiling 5 bounds the whole table: if run 3 lands well short,
 the residual is the extraction and reader ceiling, which the decomposition
 reports rather than something further iteration removes.
 
+### 1.10 Run 4: the raw tier was half a dialogue move, and the fix was selected offline
+
+Run 3 measured **30.18 F1 / 25.46 BLEU-1** at coverage 0.802 — roughly double run
+2 on every answerable category — and the change that did it was the raw-dialogue
+tier. That makes *how well the tier retrieves* the thing worth improving next,
+and it is measurable without the reader, which is what this section is about.
+
+**The diagnosis, carried over rather than re-derived.** A CPU replay of run 3's
+corpus split the questions by whether the raw tier had shown the reader at least
+one of the question's own gold evidence turns, and read **answered-F1 0.496 with
+against 0.154 without** — a 3.2× gap on the same reader, same prompt, same
+graph. Those two numbers were measured in the session that ran the replay and
+are quoted here as handed over, not re-measured; what *is* re-measured below is
+the retrieval side of the same claim. The replay was necessary only because run
+3's rows kept `raw_turns_included` as a **count**, which is FIX 4 below.
+
+**Independent corroboration of the premise.** `scripts/raw_tier_grid.py` scores
+run 3's own configuration at **0.4344** gold-turn coverage over 1,531 answerable
+questions: the tier missed the evidence entirely on 57% of them. That is
+consistent with a large conditional gap and is measured on a different quantity
+than the replay, so the two do not lean on each other.
+
+**Why a window, and not simply more turns.** A retrieved turn is half a dialogue
+move. LoCoMo answers routinely sit in the *reply* to the turn that matched the
+question, or in the setup line before it, so a top-k of isolated turns hands the
+reader the question's vocabulary and withholds the sentence that answers it. The
+grid separates the two hypotheses cleanly, and the window is the load-bearing
+half:
+
+| k | radius | cap | gold-turn coverage | Δ vs run 3 | mean texts |
+|---|---|---|---|---|---|
+| 3 | 0 | 15 | 0.4344 | — | 3.00 |
+| 6 | 0 | 15 | 0.5291 | +0.0947 | 6.00 |
+| 3 | 1 | 15 | 0.6584 | **+0.2240** | 8.09 |
+| **6** | **1** | **15** | **0.7276** | **+0.2933** | **14.08** |
+| 6 | 1 | 12 | 0.6976 | +0.2632 | 11.34 |
+| 8 | 1 | 15 | 0.7289 | +0.2946 | 14.25 |
+| 6 | 2 | 15 | 0.7100 | +0.2756 | 13.73 |
+
+Doubling k buys +0.095; adding a ±1 window to the *original* k buys +0.224. The
+grid also says where it stops: k=8 adds 0.0013 over k=6, and radius 2 is
+**worse** than radius 1 because the cap starts dropping whole windows.
+
+**The selection rule was written into the script before the grid ran** — highest
+coverage, and among rows within 0.005 of it the one showing fewest texts — so
+the row was chosen by the rule rather than the rule by the row. It selects
+**k=6, radius 1, cap 15**, which is the configuration run 4 ships. Artefact:
+`artefacts/raw_tier_grid.json`.
+
+**This is the pre-registration, and it is the point of the section.** LoCoMo has
+no dev split and every full run costs ~50 GPU-minutes, so picking a variant by
+running the reader on each and keeping the winner would be tuning on the test
+set. Coverage is a *retrieval* property the reader never touches: a variant that
+cannot retrieve the evidence cannot be rescued by any prompt, and one that can
+may still fail for reader reasons — which is the separation the five-ceiling
+protocol exists to preserve. Nothing here moves ceiling 5.
+
+**The prerequisite the plan did not contain, found while building it.**
+`ChannelCache.turns_for` sorted a conversation's turns by `turn_id` — and turn
+ids are `locomo/{conv}/session_{n}/{ix}` **strings**, so the sort is
+lexicographic: `session_10` before `session_2`, `session_1/10` before
+`session_1/2`. Measured on the pinned corpus, conv-26's timestamps are **not
+monotone** under it. This is precisely the reordering `locomo.session_keys`
+documents guarding against, reappearing one layer up because the ids were sorted
+as text instead of the keys as integers. It was invisible in run 3, which only
+ever ranked turns by score and never read a neighbour off an index — and fatal
+the moment run 4 does, since the turn before `session_2/1` would be
+`session_2/10`. Replaced by `chrono_key` = `(ts, session_id, turn_index,
+turn_id)`, and neighbours are taken by position within a turn's **own session**
+so a window can never straddle a session boundary and splice two exchanges weeks
+apart into what reads as one. The `snap` fixture cannot catch this — its ids
+happen to sort identically both ways — so the test builds the real id shape by
+hand and asserts the old key's behaviour explicitly.
+
+**The four changes, and one consequence each.**
+
+1. **Window-expanded raw tier.** k 3→6, ±1 same-session neighbours, deduped,
+   ordered **chronologically** (a dialogue reads by clock, and the temporal
+   category needs it), capped at 15 texts with whole windows dropped
+   lowest-scored-first. The unit dropped is the window: dropping a neighbour off
+   a kept seed would leave exactly the half-move the window exists to complete.
+   Each line keeps its `(8 May 2023) Speaker:` header.
+2. **Budget rebalance.** Claims tier **512→256**, total evidence **1024→1280**.
+   Once the raw tier carries the answering text the claims are the *citation*
+   layer — they supply the `[c#]` ids `H` validated and the reader cites — so
+   half the old cap buys the raw tier double the room inside a total that barely
+   moves. Projected ~1.2k tokens/query, still ~7× under the reference system's
+   ~9k, so the cost claim is intact. **256 and 1280 are not `BUDGET_LADDER`
+   rungs**; the ladder (160/512/1024) is the declared cost-reporting axis and is
+   untouched. The old `--evidence-budget` help called 1024 "a pre-declared
+   BUDGET_LADDER rung", which conflated the total-evidence cap with the
+   claims-serialisation ladder; corrected in place.
+3. **`--fresh` truncates the rows file.** It unlinked only on the auto-numbered
+   branch and appended on the explicit one. Run 3's committed JSONL carries
+   **2,136 lines for 1,986 questions** — 150 stale rows from the pre-check
+   slice. The artefact was clean, because scoring reads the in-memory results
+   and the totals are exactly 1,540 + 446; the rows file was not, and anything
+   aggregating it by line rather than by question id reads a run that never
+   happened.
+4. **Raw-turn ids in every row, not a count.** `raw_evidence_block` now returns
+   the surviving turns, so the row carries `raw_turn_ids`. This is what turns
+   the §1.10 diagnosis from a full CPU replay into a join against
+   `locomo.evidence_turn_ids`. The general form: a diagnostic that records a
+   *cardinality* where the question will be about *identity* costs a re-run to
+   answer, and the cost is paid later, by someone who did not choose it.
+
+**Ordering interaction, recorded because it is easy to miss.**
+`raw_evidence_block` used to drop "from the tail first — the ranking already put
+the most relevant first". Once the turns are chronological the tail is the
+*latest* turn, not the least relevant one, so the same line of code would have
+started dropping by recency while its docstring claimed relevance. The block now
+takes a relevance `rank` and drops by it while keeping survivors in clock order;
+without a rank the old tail-first behaviour is preserved for the ranked-list
+callers. The test distinguishes the two rules rather than asserting the new one.
+
+**Fingerprints move again.** The claims budget is part of what the stage-E
+fingerprint covers, so **run 4 is a different instrument from run 3** and no
+number crosses between them — the same rule §1.9 applied to runs 1–2 vs run 3.
+
+**Two things run 4 does not fix, stated in advance.** Ceiling 5 — the frozen 3B
+reader — bounds the whole table, and run 2 measured it at 0.137 exact / ~0.26
+token-F1. Coverage 0.7276 is an upper bound on what the raw tier can contribute,
+not a prediction of F1. And **run 3 was executed without `--ceilings`**
+(`ceilings: null`, and 0 of 1,986 rows carry one), so the only ceiling table the
+project has was measured under `PROMPT_SHA e023ea71…` on a 1,037-question
+subset. Run 4 should carry `--ceilings`, or the decomposition that is half the
+defensible claim stays attached to a retired instrument.
+
 ## 2. Departures from the plan as written
 
 | §6 ref | As planned | What was built | Why |

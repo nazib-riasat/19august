@@ -144,7 +144,16 @@ def resolve_out_paths(args, repo: "Path") -> tuple["Path", "Path", int]:
     explicit_out = args.out != "artefacts/locomo_eval.json"
     explicit_rows = args.rows != "artefacts/locomo_eval_rows.jsonl"
     if explicit_out or explicit_rows:
-        return repo / args.out, repo / args.rows, -1
+        rows = repo / args.rows
+        # **The same unlink as the auto-numbered branch below.** Without it
+        # `--fresh --rows X` appends onto X: run 3's committed JSONL carries 150
+        # stale subset rows for exactly that reason (2,136 lines for 1,986
+        # questions). The artefact was clean -- scoring reads the in-memory
+        # results -- but anything that aggregates the rows file by line rather
+        # than by question id reads a run that never happened.
+        if args.fresh and rows.is_file():
+            rows.unlink()
+        return repo / args.out, rows, -1
     n = next_iteration(results)
     prev_rows = results / f"locomo_eval_rows{n - 1}.jsonl"
     prev_json = results / f"locomo_eval{n - 1}.json"
@@ -192,6 +201,42 @@ def require_nodes(snapshot) -> None:
             "  python scripts/locomo_stageb.py\n"
             "then re-run this eval with --run-dir artefacts/locomo_stageb."
         )
+
+
+#: The trailing integer of a turn id -- ``lme_s/c1/s2/1`` and
+#: ``locomo/conv-26/session_2/10`` both end in the index of the turn within its
+#: session, which is the only part of the id that orders anything.
+_TURN_IX = re.compile(r"(\d+)\s*$")
+
+
+def turn_index(turn) -> int:
+    """This turn's position inside its own session, or 0 if the id has no index."""
+    m = _TURN_IX.search(str(turn.turn_id))
+    return int(m.group(1)) if m else 0
+
+
+def chrono_key(turn):
+    """Sort key putting a conversation's turns in the order they were spoken.
+
+    **Not ``turn_id``, which is what this replaced.**  Ids are
+    ``locomo/{conv}/session_{n}/{ix}`` *strings*, so sorting them as text puts
+    ``session_10`` before ``session_2`` and ``session_1/10`` before
+    ``session_1/2`` -- the exact reordering `locomo.session_keys` documents
+    itself guarding against, reappearing one layer up because the ids were
+    sorted as text instead of the keys as integers.  Measured on the pinned
+    corpus: under the string sort a conversation's timestamps are **not
+    monotone**.
+
+    Harmless while the raw tier only ranked turns by score (run 3 selected the
+    same set either way), and fatal the moment a *neighbour* is read off an
+    index -- the turn before ``session_2/1`` would be ``session_2/10``.  Run 4
+    reads neighbours, so this had to be fixed before FIX 1 could be correct.
+
+    ``ts`` leads, so sessions order by clock even where their numbering does
+    not; ``session_id`` then ``turn_index`` break the tie, since LoCoMo
+    timestamps sessions rather than turns and every turn in a session shares one.
+    """
+    return (str(turn.ts), str(turn.session_id), turn_index(turn), str(turn.turn_id))
 
 
 class ChannelCache:
@@ -253,7 +298,7 @@ class ChannelCache:
             turns = [
                 t for t in self.snapshot._turns.values() if t.conv_id == conv_id
             ]
-            turns.sort(key=lambda t: t.turn_id)
+            turns.sort(key=chrono_key)
             texts = [t.text for t in turns]
             retriever = None
             if texts:
@@ -453,29 +498,107 @@ def top_raw_turns(cache, conv_id: str, question: str, embedder, k: int = 3):
     return [turns[i] for i in order[:k]]
 
 
-def raw_evidence_block(turns, count_tokens, room: int) -> tuple[str, int]:
+def expand_windows(cache, conv_id: str, seeds, radius: int = 1, cap: int = 15):
+    """``(turns, rank)`` -- each seed turn plus its +-``radius`` session neighbours.
+
+    **Why a window at all** (run 4).  A retrieved turn is half a dialogue move:
+    LoCoMo's answers routinely sit in the reply to the turn that matched the
+    question, or in the setup line before it, and a top-k of isolated turns hands
+    the reader the question's vocabulary without the sentence that answers it.
+
+    Neighbours are taken **inside one session**, by position in that session's
+    own ordered list rather than by offset into the conversation, so a window
+    never straddles a session boundary and silently joins two conversations
+    weeks apart into what reads like one exchange.
+
+    ``rank`` maps turn id -> the rank of the best seed that pulled it in (0 is
+    the most relevant), which is what lets `raw_evidence_block` drop by
+    relevance once the turns themselves are ordered by clock.  Whole windows are
+    dropped lowest-scored-first until the union fits ``cap`` -- dropping a
+    neighbour but keeping its seed would leave exactly the half-move this
+    function exists to complete.
+    """
+    turns, _, _ = cache.turns_for(conv_id)
+    if not turns or not seeds:
+        return [], {}
+
+    by_session: dict[str, list] = {}
+    for t in turns:
+        by_session.setdefault(str(t.session_id), []).append(t)
+    for group in by_session.values():
+        group.sort(key=chrono_key)
+    where = {
+        t.turn_id: (sess, i)
+        for sess, group in by_session.items()
+        for i, t in enumerate(group)
+    }
+
+    def window(seed):
+        found = where.get(seed.turn_id)
+        if found is None:  # a seed from another snapshot: keep it, expand nothing
+            return [seed]
+        sess, i = found
+        group = by_session[sess]
+        return group[max(0, i - radius): i + radius + 1]
+
+    for keep in range(len(seeds), 0, -1):
+        chosen: dict[str, object] = {}
+        rank: dict[str, int] = {}
+        for r, seed in enumerate(seeds[:keep]):
+            for t in window(seed):
+                chosen[t.turn_id] = t
+                rank[t.turn_id] = min(rank.get(t.turn_id, r), r)
+        if len(chosen) <= cap:
+            return sorted(chosen.values(), key=chrono_key), rank
+
+    # One window is already over cap (cap < 2*radius+1). Truncate it rather than
+    # returning nothing, so a small cap degrades to fewer turns, not to no tier.
+    best = window(seeds[0])[: max(0, cap)]
+    return sorted(best, key=chrono_key), {t.turn_id: 0 for t in best}
+
+
+def raw_evidence_block(turns, count_tokens, room: int, rank=None):
     """Render raw turns as uncitable context, inside ``room`` tokens.
 
-    Returns ``(text, n_included)``.  Whole turns are dropped from the tail first
-    -- a half-sentence is worse than one turn fewer, and the ranking already put
-    the most relevant first.  Carries **no ``[c#]`` id**: these are context, not
-    citable evidence, so ``claim_map`` and citation precision are untouched.
+    Returns ``(text, kept_turns)`` -- the turns, not a count, because run 3
+    recorded only the count and diagnosing which questions had their evidence
+    retrieved then cost a full CPU replay of the whole corpus (FIX 4).
+
+    ``turns`` arrive in **clock** order, which is how the reader should see a
+    dialogue, so "drop from the tail" would now drop the *latest* turn rather
+    than the least relevant one.  Given ``rank`` the drop order is by relevance
+    instead and the survivors stay chronological; without it the old tail-first
+    behaviour is kept, which is what the ranked-list callers still want.
+
+    Carries **no ``[c#]`` id**: these are context, not citable evidence, so
+    ``claim_map`` and citation precision are untouched.
     """
     from graft.reader.serialize import format_date
 
     if not turns or room <= 0:
-        return "", 0
+        return "", []
     header = (
         "\n\nRaw dialogue excerpts (context; cite only the [c#] claims above):\n"
     )
-    lines = [
-        f"({format_date(str(t.ts))}) {t.speaker}: {t.text}".strip() for t in turns
-    ]
-    for keep in range(len(lines), 0, -1):
-        block = header + "\n".join(lines[:keep])
+    order = list(turns)
+    if rank is None:
+        drop = list(range(len(order) - 1, -1, -1))
+    else:
+        # Least relevant first; among equally ranked, the later turn goes first.
+        drop = sorted(
+            range(len(order)),
+            key=lambda i: (-int(rank.get(order[i].turn_id, 1 << 30)), -i),
+        )
+    live = [True] * len(order)
+    for cut in range(len(order)):
+        kept = [t for t, alive in zip(order, live) if alive]
+        block = header + "\n".join(
+            f"({format_date(str(t.ts))}) {t.speaker}: {t.text}".strip() for t in kept
+        )
         if count_tokens(block) <= room:
-            return block, keep
-    return "", 0
+            return block, kept
+        live[drop[cut]] = False
+    return "", []
 
 
 def stage_c(snapshot, embedder, question: str, conv_id: str, config, ledger, cache=None):
@@ -587,23 +710,43 @@ def main() -> int:
         "are skipped with a reason rather than scored against nothing.",
     )
     parser.add_argument(
-        "--budget", type=int, default=None,
-        help="serialization budget in tokens; defaults to the config's 512",
+        "--budget", type=int, default=256,
+        help="serialization budget for the CLAIMS tier, in reader tokens. "
+        "**Run-4 rebalance: 256, down from the config's 512.** Once the raw tier "
+        "carries the answering text, the claims are the citation layer -- they "
+        "supply the [c#] ids `H` validated and the reader cites -- so half the "
+        "old cap buys the raw tier twice the room inside a total that barely "
+        "moves. Not a BUDGET_LADDER rung: the ladder (160/512/1024) is the "
+        "declared cost-reporting axis and is untouched.",
     )
     parser.add_argument("--fresh", action="store_true", help="ignore existing rows and restart")
     parser.add_argument(
-        "--raw-turns", type=int, default=3,
+        "--raw-turns", type=int, default=6,
         help="raw dialogue turns appended as uncitable context (0 disables). "
         "Every reference system on LoCoMo shows its reader raw conversation "
         "text; these are the turns the graph was built from, already stored as "
         "provenance.",
     )
     parser.add_argument(
-        "--evidence-budget", type=int, default=1024,
+        "--evidence-budget", type=int, default=1280,
         help="hard cap in reader tokens on the WHOLE evidence block (claims + "
         "raw turns). `--budget` caps the claims tier alone; this caps the total, "
-        "and raw turns are dropped from the tail to fit. 1024 is a pre-declared "
-        "BUDGET_LADDER rung.",
+        "and raw turns are dropped by relevance to fit. **Run-4: 1280, up from "
+        "1024**, declared as a change rather than inherited -- it is NOT a "
+        "BUDGET_LADDER rung, and the earlier help text calling 1024 one was "
+        "conflating the total-evidence cap with the claims-serialisation ladder. "
+        "At ~1.2k tokens/query the cost claim is intact: still ~7x under the "
+        "reference system's ~9k.",
+    )
+    parser.add_argument(
+        "--raw-window", type=int, default=1,
+        help="+-N same-session neighbours appended around each retrieved raw "
+        "turn (0 disables the window and reproduces run 3's isolated turns).",
+    )
+    parser.add_argument(
+        "--raw-cap", type=int, default=15,
+        help="hard cap on raw turn TEXTS after window expansion. Whole windows "
+        "are dropped lowest-scored-first, never a neighbour off a kept seed.",
     )
     parser.add_argument(
         "--selection", default="training_free_relevance",
@@ -623,8 +766,11 @@ def main() -> int:
     args = parser.parse_args()
 
     config = load_config()
-    if args.budget is not None:
-        config = config.with_overrides(serialization_budget_tokens=int(args.budget))
+    # Always applied, because the run-4 default (256) differs from the config's
+    # 512 -- `--budget` is no longer an optional override but the declared
+    # operating point, and a run whose artefact says 512 while the tier packed
+    # 256 would be a false record.
+    config = config.with_overrides(serialization_budget_tokens=int(args.budget))
 
     args.run_dir = pick_run_dir(args.run_dir, REPO)
     log_path = REPO / args.run_dir / "events.jsonl"
@@ -808,12 +954,16 @@ def main() -> int:
                 # the claims tier actually spent -- not against its cap, which it
                 # rarely reaches. `count_tokens is None` under `--smoke`, where a
                 # word count is the honest stand-in rather than a silent skip.
-                suffix, n_raw = "", 0
+                suffix, raw_kept = "", []
                 if args.raw_turns > 0:
                     counter = count_tokens or (lambda t: len(t.split()))
-                    turns = top_raw_turns(
+                    seeds = top_raw_turns(
                         channel_cache, conv_id, q["question"], embedder,
                         k=int(args.raw_turns),
+                    )
+                    turns, raw_rank = expand_windows(
+                        channel_cache, conv_id, seeds,
+                        radius=int(args.raw_window), cap=int(args.raw_cap),
                     )
                     # Against the claims tier's **cap**, not its actual spend:
                     # `answer()` serialises internally, so the runner cannot know
@@ -823,7 +973,9 @@ def main() -> int:
                     room = int(args.evidence_budget) - int(
                         config.serialization_budget_tokens
                     )
-                    suffix, n_raw = raw_evidence_block(turns, counter, max(0, room))
+                    suffix, raw_kept = raw_evidence_block(
+                        turns, counter, max(0, room), rank=raw_rank
+                    )
 
                 result = answer(
                     q["question"], env=env, featurizer=featurizer, scorer=scorer,
@@ -915,7 +1067,12 @@ def main() -> int:
                 "citations": len(result.record.citations),
                 "pool_size": len(pool.ids()),
                 "gold_atoms": len(gold_atoms),
-                "raw_turns_included": n_raw,
+                "raw_turns_included": len(raw_kept),
+                # **The ids, not just the count** (FIX 4). Run 3 kept only the
+                # count, so asking "did the raw tier actually retrieve this
+                # question's evidence?" needed a full CPU replay of the corpus.
+                # Ids make that a join against `locomo.evidence_turn_ids`.
+                "raw_turn_ids": [t.turn_id for t in raw_kept],
                 # **The whole dict, not a derived flag.**  An earlier version
                 # wrote `bool(sat.get("saturated"))`, and `saturation()` has no
                 # such key -- it returns `exercised` (the cap binds and
@@ -1031,6 +1188,15 @@ def main() -> int:
         "smoke": bool(args.smoke),
         "reader": reader_report,
         "corpus_sha256": locomo.corpus_sha256(args.corpus),
+        "raw_tier": {
+            "seeds_k": int(args.raw_turns),
+            "window_radius": int(args.raw_window),
+            "cap_texts": int(args.raw_cap),
+            "claims_budget_tokens": int(config.serialization_budget_tokens),
+            "evidence_budget_tokens": int(args.evidence_budget),
+            "ordering": "chronological; dropped by relevance rank, not by tail",
+            "citable": False,
+        },
         "channel_index_builds": channel_cache.builds,
         "channel_index_builds_avoided": max(0, len(results) - channel_cache.builds),
     }

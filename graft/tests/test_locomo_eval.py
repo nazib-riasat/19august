@@ -528,9 +528,9 @@ def test_raw_turns_are_deterministic_and_fit_the_room(runner, snap):  # noqa: F8
 
     words = lambda t: len(t.split())
     block, kept = runner.raw_evidence_block(a, words, 10_000)
-    assert kept == len(a) and words(block) <= 10_000
+    assert len(kept) == len(a) and words(block) <= 10_000
     tight, kept_tight = runner.raw_evidence_block(a, words, 25)
-    assert kept_tight < len(a), "a small room must drop turns from the tail"
+    assert len(kept_tight) < len(a), "a small room must drop turns from the tail"
     assert not tight or words(tight) <= 25
 
 
@@ -588,3 +588,144 @@ def test_the_evidence_suffix_reaches_the_reader(runner, snap):  # noqa: F811
         )
     assert seen["evidence"].endswith("MARKER-SUFFIX")
 
+
+# -- run 4: the window-expanded raw tier ------------------------------------
+
+
+def test_chrono_key_orders_sessions_by_clock_not_by_the_text_of_their_ids(runner):
+    """The prerequisite for windows, and a bug the fixture cannot catch.
+
+    Turn ids are ``locomo/{conv}/session_{n}/{ix}`` **strings**. Sorting them as
+    text puts ``session_10`` before ``session_2`` and ``session_1/10`` before
+    ``session_1/2`` -- `locomo.session_keys` documents guarding against exactly
+    this, and the raw tier reintroduced it one layer up by sorting the ids
+    instead of the keys. Measured on the pinned corpus: under the string sort
+    conv-26's timestamps are not monotone.
+
+    It was invisible for run 3, which only ever ranked turns by score, and the
+    `snap` fixture cannot see it either -- its ids happen to sort the same way
+    both ways, which is why this test builds the real id shape by hand.
+    """
+    from types import SimpleNamespace as NS
+
+    june = "2023-06-01T00:00:00+00:00"
+    november = "2023-11-01T00:00:00+00:00"
+    s2 = NS(turn_id="locomo/conv-26/session_2/0", session_id="session_2", ts=june)
+    s10 = NS(turn_id="locomo/conv-26/session_10/0", session_id="session_10", ts=november)
+
+    assert sorted([s2, s10], key=lambda t: t.turn_id)[0] is s10, (
+        "the old key really did put session_10 first -- if this ever stops "
+        "holding, the bug this test guards has changed shape"
+    )
+    assert sorted([s10, s2], key=runner.chrono_key) == [s2, s10]
+
+    second = NS(turn_id="locomo/conv-26/session_1/2", session_id="session_1", ts=june)
+    tenth = NS(turn_id="locomo/conv-26/session_1/10", session_id="session_1", ts=june)
+    assert sorted([tenth, second], key=runner.chrono_key) == [second, tenth], (
+        "within one session every turn shares the timestamp, so the index is "
+        "the only thing left to order them -- as an integer, not as text"
+    )
+
+
+def _c1_by_id(runner, snap):  # noqa: F811
+    cache = runner.ChannelCache(snap, StubEmbedder(), Config())
+    turns, _, _ = cache.turns_for("c1")
+    return cache, {t.turn_id: t for t in turns}
+
+
+def test_a_raw_window_never_crosses_a_session_boundary(runner, snap):  # noqa: F811
+    """`s1/0` is the only turn in its session. Its chronological neighbour in the
+    conversation is `s2/0`, a month later -- pulling that in would splice two
+    conversations weeks apart into what reads to the reader like one exchange."""
+    cache, by_id = _c1_by_id(runner, snap)
+
+    pair, rank = runner.expand_windows(
+        cache, "c1", [by_id["lme_s/c1/s2/0"]], radius=1, cap=15
+    )
+    assert [t.turn_id for t in pair] == ["lme_s/c1/s2/0", "lme_s/c1/s2/1"], (
+        "the seed's same-session neighbour is the whole point of the window"
+    )
+    assert rank["lme_s/c1/s2/1"] == 0, "a neighbour inherits its seed's rank"
+
+    solo, _ = runner.expand_windows(
+        cache, "c1", [by_id["lme_s/c1/s1/0"]], radius=1, cap=15
+    )
+    assert [t.turn_id for t in solo] == ["lme_s/c1/s1/0"]
+
+
+def test_the_expanded_window_is_chronological_and_deduped(runner, snap):  # noqa: F811
+    """Two seeds in one session overlap. The union must hold each turn once, in
+    clock order -- which is how a dialogue reads and what the temporal category
+    needs."""
+    cache, by_id = _c1_by_id(runner, snap)
+    seeds = [by_id["lme_s/c1/s2/1"], by_id["lme_s/c1/s2/0"], by_id["lme_s/c1/s3/0"]]
+
+    turns, rank = runner.expand_windows(cache, "c1", seeds, radius=1, cap=15)
+    ids = [t.turn_id for t in turns]
+
+    assert len(ids) == len(set(ids)), "overlapping windows must not duplicate a turn"
+    assert ids == sorted(ids, key=lambda i: str(by_id[i].ts)), "clock order"
+    assert set(ids) >= {t.turn_id for t in seeds}, "every seed survives an unfilled cap"
+    assert rank[seeds[0].turn_id] == 0 and rank[seeds[2].turn_id] == 2
+
+
+def test_the_cap_drops_whole_windows_lowest_scored_first(runner, snap):  # noqa: F811
+    """Dropping a *neighbour* off a kept seed would leave exactly the half-move
+    the window exists to complete, so the unit dropped is the window."""
+    cache, by_id = _c1_by_id(runner, snap)
+    seeds = [by_id["lme_s/c1/s2/0"], by_id["lme_s/c1/s1/0"]]  # windows of 2 and 1
+
+    capped, _ = runner.expand_windows(cache, "c1", seeds, radius=1, cap=2)
+    assert [t.turn_id for t in capped] == ["lme_s/c1/s2/0", "lme_s/c1/s2/1"], (
+        "the lower-scored window goes whole; the better seed keeps its neighbour"
+    )
+
+    tiny, _ = runner.expand_windows(cache, "c1", seeds, radius=1, cap=1)
+    assert len(tiny) == 1, "a cap below one window truncates rather than returning none"
+
+
+def test_the_raw_block_respects_its_room_and_drops_by_relevance(runner, snap):  # noqa: F811
+    """Once turns are ordered by clock, "drop from the tail" drops the *latest*
+    turn rather than the least relevant one. With a rank the drop order is
+    relevance and the survivors stay chronological."""
+    cache, by_id = _c1_by_id(runner, snap)
+
+    def words(text):
+        return len(text.split())
+
+    order = [by_id[i] for i in ("lme_s/c1/s1/0", "lme_s/c1/s2/0", "lme_s/c1/s3/0")]
+    assert [str(t.ts) for t in order] == sorted(str(t.ts) for t in order)
+    # s1/0 is the FIRST chronologically and the LEAST relevant: tail-dropping
+    # would remove s3/0 instead, so the two rules are distinguishable here.
+    rank = {"lme_s/c1/s2/0": 0, "lme_s/c1/s3/0": 1, "lme_s/c1/s1/0": 2}
+
+    block, kept = runner.raw_evidence_block(order, words, 10_000, rank=rank)
+    assert [t.turn_id for t in kept] == [t.turn_id for t in order]
+
+    survivors = [by_id["lme_s/c1/s2/0"], by_id["lme_s/c1/s3/0"]]
+    room = words(runner.raw_evidence_block(survivors, words, 10_000)[0])
+    block, kept = runner.raw_evidence_block(order, words, room, rank=rank)
+    assert [t.turn_id for t in kept] == [t.turn_id for t in survivors]
+    assert words(block) <= room, "the room is a hard cap, not a target"
+
+
+def test_fresh_truncates_the_rows_file_on_the_explicit_path_too(runner, tmp_path):
+    """Run 3's committed JSONL carries 150 stale subset rows -- 2,136 lines for
+    1,986 questions -- because `--fresh` unlinked only on the auto-numbered
+    branch and appended on the explicit one. The artefact was clean (scoring
+    reads the in-memory results), the rows file was not."""
+    from argparse import Namespace
+
+    rows = tmp_path / "rows.jsonl"
+    rows.write_text('{"question_id": "stale"}\n', encoding="utf-8")
+    explicit = dict(out="artefacts/locomo_eval.json", rows=str(rows))
+
+    _, resolved, iteration = runner.resolve_out_paths(
+        Namespace(fresh=True, **explicit), tmp_path
+    )
+    assert iteration == -1 and resolved == rows
+    assert not rows.is_file(), "--fresh must leave nothing for the run to append to"
+
+    rows.write_text('{"question_id": "resumable"}\n', encoding="utf-8")
+    runner.resolve_out_paths(Namespace(fresh=False, **explicit), tmp_path)
+    assert rows.is_file(), "without --fresh the rows must survive for the resume"
