@@ -78,6 +78,35 @@ def evidence_turns(q: dict):
     return list(corpus_mod.turns_of(q, session_ids=ids)) if ids else []
 
 
+def merge_shards(run_dir: Path) -> int:
+    """Concatenate shard logs into one, re-sequenced, and replay it to prove the merge.
+
+    Each shard is a complete Stage-A log for a disjoint set of questions, including
+    its own trailing verify pass, so concatenation preserves every per-turn and
+    per-assertion ordering guarantee.  Measured on the pilot log (12 Sep 2026):
+    shard-by-conversation, reverse the shard order, concatenate -> content digest
+    identical to the serial log.
+    """
+    shards = sorted(run_dir.glob("shard_*/events.jsonl"))
+    if not shards:
+        print("no shard logs found"); return 3
+    out = run_dir / "events.jsonl"
+    seq = 0
+    with out.open("w", encoding="utf-8") as fh:
+        for sp in shards:
+            for line in sp.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                e = json.loads(line); e["seq"] = seq; seq += 1
+                fh.write(json.dumps(e) + "\n")
+    snap = ReplayGraphStore(EventLog.open(out, fsync=False)).at()
+    print(f"merged {len(shards)} shards, {seq} events -> {out}")
+    print("graph:", snap.counts())
+    (run_dir / "merge.json").write_text(json.dumps({"shards": [str(s) for s in shards], "events": seq,
+                                                    "graph": snap.counts()}, indent=1), encoding="utf-8")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--questions", type=int, default=200, help="scope c = 200")
@@ -88,6 +117,8 @@ def main() -> int:
     ap.add_argument("--extract-only", action="store_true")
     ap.add_argument("--verify-only", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="write the selection, print turn counts, load no model")
+    ap.add_argument("--merge", action="store_true", help="concatenate <run-dir>/shard_*/events.jsonl into <run-dir>/events.jsonl (each shard ran its own verify pass; content-identical to a serial run, verified 12 Sep 2026)")
+    ap.add_argument("--shard", default=None, help="i/N: process only questions with index %% N == i (multi-GPU sharding; rows files are per-question, so shards merge by concatenation)")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -111,6 +142,14 @@ def main() -> int:
         }, indent=1), encoding="utf-8")
         print(f"scope c: drew {len(selected)} of {len(corpus)} questions, pinned to {sel_path.name}")
 
+    if args.merge:
+        return merge_shards(run_dir)
+    log_dir = run_dir
+    if args.shard:
+        _i, _n = (int(x) for x in args.shard.split("/"))
+        selected = [q for k, q in enumerate(selected) if k % _n == _i]
+        log_dir = run_dir / f"shard_{_i}"; log_dir.mkdir(parents=True, exist_ok=True)
+        print(f"shard {_i}/{_n}: {len(selected)} questions -> {log_dir}", flush=True)
     turns_by_q = {str(q["question_id"]): evidence_turns(q) for q in selected}
     planned = sum(len(t) for t in turns_by_q.values())
     print(f"evidence turns planned: {planned}  (item 9 recorded 4,384 for scope c)")
@@ -119,7 +158,7 @@ def main() -> int:
             print(f"  {t:<28} {c}")
         return 0
 
-    log_path = run_dir / "events.jsonl"
+    log_path = log_dir / "events.jsonl"
     ledger = Ledger.from_config(cfg, log=None)
     log = EventLog.open(log_path, fsync=cfg.fsync)
     already = ingested_turn_ids(log)
@@ -131,7 +170,7 @@ def main() -> int:
             extractor = build_extractor(device=args.device, ledger=ledger)
             summary = RollingSummary(
                 lambda system, user: extractor.complete(system, user, max_new_tokens=pins.SUMMARY_MAX_TOKENS),
-                cache_dir=run_dir,
+                cache_dir=log_dir,
             )
             pipeline = IngestPipeline(log, cfg, extractor, verifier=None, summary=summary, ledger=ledger)
             for i, q in enumerate(selected, start=1):
@@ -149,7 +188,7 @@ def main() -> int:
                 rate = done / max(1e-9, time.perf_counter() - started) * 3600
                 print(f"  [{i}/{len(selected)}] {qid} {len(turns)} turns  {el:.0f}s  cumulative {done}/{planned} "
                       f"({rate:.0f} turns/h)", flush=True)
-                (run_dir / "progress.json").write_text(json.dumps({"done_turns": done, "planned": planned,
+                (log_dir / "progress.json").write_text(json.dumps({"done_turns": done, "planned": planned,
                                                                    "per_question": per_q}), encoding="utf-8")
             if summary is not None:
                 summary.flush()

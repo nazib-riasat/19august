@@ -64,6 +64,7 @@ def main() -> int:
     ap.add_argument("--device", default=None)
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--fresh", action="store_true")
+    ap.add_argument("--shard", default=None, help="i/N: process only questions with index %% N == i (multi-GPU sharding; rows files are per-question, so shards merge by concatenation)")
     args = ap.parse_args()
 
     config = load_config()
@@ -72,6 +73,10 @@ def main() -> int:
     # download), not the Phase-6 decoder-corpus root the loader defaults to.
     rows_all = load_split("2wiki", args.split, root=REPO / "data" / "phase9" / "raw")
     selected = stratified_sample(list(rows_all), lambda r: str(r.get("type", "")), args.questions, int(SUBSET["seed"]))
+    if args.shard:
+        _i, _n = (int(x) for x in args.shard.split("/"))
+        selected = [q for k, q in enumerate(selected) if k % _n == _i]
+        print(f"shard {_i}/{_n}: {len(selected)} questions", flush=True)
     print(f"2Wiki {args.split}: {len(selected)} of {len(rows_all)} rows, stratified by type", flush=True)
 
     rows_path = REPO / args.rows; rows_path.parent.mkdir(parents=True, exist_ok=True)

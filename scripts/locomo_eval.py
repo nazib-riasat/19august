@@ -788,6 +788,7 @@ def build_parser() -> argparse.ArgumentParser:
         "declared cost-reporting axis and is untouched.",
     )
     parser.add_argument("--fresh", action="store_true", help="ignore existing rows and restart")
+    parser.add_argument("--shard", default=None, help="i/N: process only questions with index %% N == i (multi-GPU sharding; rows files are per-question, so shards merge by concatenation)")
     parser.add_argument(
         "--raw-turns", type=int, default=5,
         help="raw dialogue turns appended as uncitable context (0 disables). "
@@ -899,6 +900,10 @@ def main() -> int:
             questions.append(q)
     if args.questions is not None:
         questions = questions[: args.questions]
+    if args.shard:
+        _i, _n = (int(x) for x in args.shard.split("/"))
+        questions = [q for k, q in enumerate(questions) if k % _n == _i]
+        print(f"shard {_i}/{_n}: {len(questions)} questions", flush=True)
 
     out_path, rows_path, iteration = resolve_out_paths(args, REPO)
     if iteration > 0:
