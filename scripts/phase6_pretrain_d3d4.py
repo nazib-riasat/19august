@@ -205,6 +205,9 @@ def main() -> int:
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     ap.add_argument("--out", default="artefacts/phase6/d3d4_pretrain.json")
     args = ap.parse_args()
+    # 0 means uncapped (the loaders take None); the laptop default is the capped run.
+    if args.max_docs == 0: args.max_docs = None
+    if args.max_passages == 0: args.max_passages = None
 
     device = torch.device(args.device)
     emb = Embedder(device=args.device, cache_dir=REPO / "artefacts" / "phase6" / "embed_cache")
