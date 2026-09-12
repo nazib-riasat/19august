@@ -96,6 +96,7 @@ def main() -> int:
     ap.add_argument("--device", default=None)
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--fresh", action="store_true")
+    ap.add_argument("--shard", default=None, help="i/N: only questions with index %% N == i (multi-GPU sharding)")
     ap.add_argument("--max-context-tokens", type=int, default=None,
                     help="window limit in reader tokens; None = the whole conversation. Truncates from the "
                          "beginning (most recent turns kept) and stamps the run as truncated.")
@@ -113,6 +114,10 @@ def main() -> int:
     questions = [q for s in samples for q in locomo.questions_of(s)]
     if args.questions:
         questions = questions[: args.questions]
+    if args.shard:
+        _i, _n = (int(x) for x in args.shard.split("/"))
+        questions = [q for k, q in enumerate(questions) if k % _n == _i]
+        print(f"shard {_i}/{_n}: {len(questions)} questions", flush=True)
     print(f"full-context baseline: {len(questions)} questions over {len(samples)} conversations", flush=True)
 
     rows_path = REPO / args.rows; rows_path.parent.mkdir(parents=True, exist_ok=True)

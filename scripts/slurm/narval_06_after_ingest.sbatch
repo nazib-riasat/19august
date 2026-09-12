@@ -7,7 +7,7 @@
 #      separate decision (see PHASE6_DECISIONS.md §9.5).
 #SBATCH --job-name=graft_after_ingest
 #SBATCH --gpus-per-node=a100:1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=12
 #SBATCH --mem=48G
 #SBATCH --time=06:00:00
 #SBATCH --output=%x_%j.out

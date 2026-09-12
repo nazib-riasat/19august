@@ -3,7 +3,7 @@
 #   probe -> full test suite on-node -> 2-question smoke of every GPU pipeline with the real reader/extractor.
 #SBATCH --job-name=graft_preflight
 #SBATCH --gpus-per-node=a100:1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=12
 #SBATCH --mem=48G
 #SBATCH --time=01:00:00
 #SBATCH --output=%x_%j.out
