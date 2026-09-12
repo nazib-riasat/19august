@@ -32,19 +32,36 @@ echo "   at $(git -C "$REPO_DIR" rev-parse --short HEAD): $(git -C "$REPO_DIR" l
 cd "$REPO_DIR"
 
 echo "== 2. venv =="
-module load python/3.11 2>/dev/null || module load python
-python -c 'import sys; assert sys.version_info[:2] == (3, 11), sys.version'
+# Python version: 3.11 is the project pin AND is proven on this account (job 985953 ran on
+# python/3.11.5, exit 0). 3.10 is available as an EXPLICIT fallback -- PYTHON_MODULE=python/3.10 --
+# for the case where the ingest stack (transformers 5 / xgrammar / bitsandbytes) has no 3.11 wheel
+# here. It is never chosen silently: a different interpreter is a different experiment stack, and
+# pyproject pins >=3.11, so the 3.10 path installs the package with --ignore-requires-python and
+# names itself in the venv path so nobody mistakes the two.
+PYTHON_MODULE="${PYTHON_MODULE:-python/3.11}"
+module load "$PYTHON_MODULE" 2>/dev/null || module load python
+PYV=$(python -c 'import sys; print(f"{sys.version_info[0]}{sys.version_info[1]}")')
+[[ "$PYV" == "311" || "$PYV" == "310" ]] || { echo "unsupported python $PYV; use PYTHON_MODULE=python/3.11 or python/3.10"; exit 4; }
+export ENV_DIR="$GRAFT_ROOT/envs/full-py$PYV"
+echo "   python $(python --version 2>&1) -> $ENV_DIR"
 [[ -x "$ENV_DIR/bin/python" ]] || python -m venv "$ENV_DIR"
 source "$ENV_DIR/bin/activate"
 python -m pip install --quiet --upgrade pip
-# Wheelhouse first (exact pins where it has them), PyPI for the rest. Alliance
-# recommends --no-index; the ingest stack (xgrammar, bitsandbytes, transformers 5)
-# is usually not in the wheelhouse, so the fallback is expected, not a failure.
+# Wheelhouse first (exact pins where it has them), PyPI for the rest. Alliance recommends
+# --no-index; the ingest stack is usually not in the wheelhouse, so the PyPI fallback is expected.
+# A package that fails BOTH is reported by name -- that is the "python issue", and the answer
+# is to re-run with PYTHON_MODULE=python/3.10, not to guess.
 for req in requirements.txt requirements-ml.txt requirements-ingest.txt; do
     echo "   $req"
-    python -m pip install --quiet --no-index -r "$req" 2>/dev/null || python -m pip install --quiet -r "$req"
+    if ! python -m pip install --quiet --no-index -r "$req" 2>/dev/null; then
+        python -m pip install --quiet -r "$req" 2> "$GRAFT_ROOT/logs/pip_$req.err" || {
+            echo "   FAILED under python $PYV: $req"; grep -iE "no matching|could not find|error" "$GRAFT_ROOT/logs/pip_$req.err" | head -5
+            echo "   -> re-run:  PYTHON_MODULE=python/3.10 bash scripts/slurm/narval_00_setup_login.sh"; exit 5; }
+    fi
 done
-python -m pip install --quiet --no-deps -e .
+IGN=""; [[ "$PYV" == "310" ]] && IGN="--ignore-requires-python"
+python -m pip install --quiet --no-deps $IGN -e .
+echo "$PYTHON_MODULE" > "$GRAFT_ROOT/envs/PYTHON_MODULE"   # the jobs load the same module
 python - <<'PY'
 import numpy, torch, transformers, yaml
 print(f"   numpy {numpy.__version__}  torch {torch.__version__}  transformers {transformers.__version__}  cuda-build {torch.version.cuda}")

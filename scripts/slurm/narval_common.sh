@@ -17,7 +17,10 @@ set -Eeuo pipefail
 
 export GRAFT_ROOT="${SCRATCH:-$HOME/scratch}/graft"
 export REPO_DIR="$GRAFT_ROOT/19august"
-export ENV_DIR="$GRAFT_ROOT/envs/full-py311"
+# The module the setup step chose (python/3.11 unless it had to fall back to 3.10); venv path follows it.
+PYTHON_MODULE="$(cat "$GRAFT_ROOT/envs/PYTHON_MODULE" 2>/dev/null || echo python/3.11)"
+PYV="${PYTHON_MODULE##*/}"; PYV="${PYV//./}"
+export ENV_DIR="$GRAFT_ROOT/envs/full-py$PYV"
 export HF_HOME="$GRAFT_ROOT/hf"
 export PIP_CACHE_DIR="$GRAFT_ROOT/cache/pip"
 export LOG_DIR="$GRAFT_ROOT/logs"
@@ -32,7 +35,7 @@ export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-4}"
 
-module load python/3.11 2>/dev/null || module load python
+module load "$PYTHON_MODULE" 2>/dev/null || module load python
 source "$ENV_DIR/bin/activate"
 cd "$REPO_DIR"
 
