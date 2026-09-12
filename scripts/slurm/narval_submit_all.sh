@@ -10,8 +10,8 @@
 # from `sacctmgr show assoc user=$USER`. If only one allocation exists it is used for both.
 # The programme:
 #   preflight (GPU) ─┬─> ingest (GPU)  ──> after_ingest (GPU)
-#                    ├─> fullctx+2Wiki+D3D4 (GPU)
-#                    └─> ladder x27 (CPU) ──> gate3 assemble (CPU)
+#                    ├─> fullctx+D3D4 (GPU)
+#                    └─> ladder x27 (CPU) ──> distil full head + gate3 (CPU) ──> final evals (GPU)
 # Nothing full-scale starts unless preflight exits 0.
 
 set -Eeuo pipefail
@@ -48,9 +48,14 @@ fi
 if want baselines; then
     BASE=$(sub "$GPU_ACC" "$DEP" "$HERE/narval_05_fullcontext.sbatch"); echo "baselines   $BASE"
 fi
+G3=""
 if want ladder; then
     LAD=$(sub "$CPU_ACC" "$DEP" "$HERE/narval_03_ladder.sbatch"); echo "ladder x27  $LAD"
-    G3=$(sub "$CPU_ACC" "afterok:$LAD" "$HERE/narval_04_after_ladder.sbatch"); echo "gate3       $G3"
+    G3=$(sub "$CPU_ACC" "afterok:$LAD" "$HERE/narval_04_after_ladder.sbatch"); echo "gate3+head  $G3"
+fi
+if want final; then
+    FDEP=""; [[ -n "$G3" && "$G3" != "DRY" ]] && FDEP="afterok:$G3"
+    FIN=$(sub "$GPU_ACC" "$FDEP" "$HERE/narval_07_final_evals.sbatch"); echo "final evals $FIN   (LoCoMo + RAG + full 2Wiki, full-spec head)"
 fi
 echo
 echo "watch:  squeue -u $USER          logs: $SCRATCH/graft/logs + ./graft_*.out"
