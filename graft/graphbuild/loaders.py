@@ -458,11 +458,18 @@ def loader_artefact(root: Path | None = None, limit: int | None = 200) -> dict[s
     """
     out: dict[str, Any] = {"limited_to_first_n_docs": limit, "datasets": {}}
     for name, spec in DATASETS.items():
+        # `.get`, not `[]`: Phases 8/9 registered corpora here that feed no
+        # decoder (musique_full, 2wiki, musique_ans) and carry no `decoder` key.
+        # The first decisive Gate-1 run trained every arm and then died on this
+        # line while writing its artefact (12 Sep 2026) -- an hour of results
+        # lost to a KeyError in a reporting function. Fields are optional here
+        # because the registry is shared; the decoder-bearing entries below
+        # still report every key they have.
         entry: dict[str, Any] = {
-            "decoder": spec["decoder"],
-            "source": spec["source"],
-            "licence": spec["licence"],
-            "metric": spec["metric"],
+            "decoder": spec.get("decoder"),
+            "source": spec.get("source"),
+            "licence": spec.get("licence"),
+            "metric": spec.get("metric"),
         }
         try:
             if name == "dialogre":

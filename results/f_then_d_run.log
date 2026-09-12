@@ -1,0 +1,52 @@
+=== F: 2Wiki dev 500  10:19 ===
+2Wiki dev: 500 of 12576 rows, stratified by type
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:  57%|#####7    | 248/434 [00:00<00:00, 2476.47it/s]Loading weights: 100%|##########| 434/434 [00:00<00:00, 2912.13it/s]
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 3181.89it/s]
+  [1/500] 27e835ee0bb0 answer (932 q/h)
+  [26/500] 0f1044490873 answer (3153 q/h)
+  [51/500] 082925150884 answer (3494 q/h)
+  [76/500] 26af280a0bdc answer (3653 q/h)
+  [101/500] dcb25ba40bdc answer (3300 q/h)
+  [126/500] c46527f80bdb answer (3320 q/h)
+  [151/500] d7a948ef09bf answer (3305 q/h)
+  [176/500] 16e6d7e50970 abstain (3328 q/h)
+  [201/500] fffc99790867 answer (3305 q/h)
+  [226/500] 2f6ed2640bb0 answer (3309 q/h)
+  [251/500] f7aa41be0bdd answer (3328 q/h)
+  [276/500] b66d42be0bdd answer (3314 q/h)
+  [301/500] 4ca6094a0bda answer (3305 q/h)
+  [326/500] 62b11ff60bb0 answer (3330 q/h)
+  [351/500] fac4cc6208a8 abstain (3320 q/h)
+  [376/500] 3367e9a2093a answer (3323 q/h)
+  [401/500] 1f6b39480bdd answer (3340 q/h)
+  [426/500] 1fd4475c0bde answer (3347 q/h)
+  [451/500] 654d62ba0bb0 answer (3359 q/h)
+  [476/500] 664ed504085e answer (3359 q/h)
+
+2Wiki dev: F1(all)=28.21  EM=12.20  coverage=0.870  F1(answered)=32.43
+written: results/wiki2_eval.json (9.0 min)
+F exit: 0
+=== 10-minute break  10:29 ===
+=== D: LongMemEval pilot graph (10 questions)  10:39 ===
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:  98%|#########8| 426/434 [00:00<00:00, 4229.87it/s]Loading weights: 100%|##########| 434/434 [00:00<00:00, 4309.30it/s]
+wrote results\longmemeval_pilot_read.json  (31.7s)
+  questions 10  answered 5  contested 0  abstained 5
+  abstain by cause: {'fallback': 3, 'gate': 2}
+  mean proof size 9.0  mean citations 2.4
+  contested extra reader calls: 8
+
+  ceiling               mean   tier
+  1_extraction        1.0000   gate
+  2_graph             1.0000   gate
+  3_candidate         1.0000   tier_a
+  4_packing           1.0000   tier_a
+  5_reader            1.0000   tier_a
+
+  stage-E fingerprint 63c5a1ba322e1035  prompt 2dfef30b629cc170
+
+  *** WIRING TEST — no number above is a result. ***
+      - Stage-D policy untrained: Phase-9 step 6 has not run
+      - gate threshold from Phase-8 MuSiQue Stage A, not conversational
+D exit: 0

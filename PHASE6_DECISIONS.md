@@ -565,3 +565,112 @@ decoders' human files, so condition 2 is **met**); a no-finding placeholder.
 **What this leaves**: Gate 1's remaining human blocker is the Gate-0 signature
 alone. The decisive path still refuses without it, and now also carries the
 composition, ceiling and omission bookkeeping a reader of its artefact needs.
+
+## 9. Gate 1 ran — 12 September 2026 — and the proposed constructor lost
+
+**Outcome under the predeclared rule (`gate1.GATE1_RULE`): C1's learned
+construction is NOT supported on this data.** Artefact:
+`artefacts/phase6_gate1_decisive.json`. Read §9.3 before quoting §9.2.
+
+### 9.1 What was labelled, by whom, and how the three guards fired
+
+The Gate-0 human labels cover the 20 + 20 κ subset (`d1f_*`, `d2_*_final`); the
+current construction over the Phase-5 pilot graph produces **187 D1 and 120 D2
+items** (`artefacts/phase6_gate1_smoke.json`, 14 Aug), and the human D2 labels'
+item ids have **zero overlap** with them. The batch was exported with the pinned
+embedder so candidate lists match what Gate 1 scores (177 of 187 with
+candidates, equal to the smoke count) — `data/phase2_5/d1_items_gate1.jsonl`,
+`d2_items_gate1.jsonl` — and **labelled by the assistant (Claude Fable 5), not by
+a person, at the project owner's explicit instruction.** Files:
+`labels/d1_labels_claude-fable-5_gate1.jsonl` (187 → 167 after (b) below),
+`labels/d2_labels_claude-fable-5_gate1.jsonl` (120). Every row carries
+`annotator: claude-fable-5, machine_assisted: true`; the driver gates only on the
+`bootstrap` substring in the filename, so these are consumed as the label set
+while stating on each row who produced them. Distribution: D1 75 LINK / 61
+NON_ENTITY / 51 CREATE / 0 DEFER; D2 114 INDEPENDENT / 5 DUPLICATE /
+1 SUPERSEDES / **0 CONFLICT** — consistent with `chatcontext1.md` §5's finding
+that the pair proposer surfaces no CONFLICT.
+
+Three refusals, each correct, each resolved in the direction the rules require:
+
+* **(a) item-id collision.** The spike-era `d1_items.jsonl` (34 items) and the
+  new batch share positional ids `d1_0000…`; the driver refused. Only bootstrap
+  label files referenced the spike batch, which `CLAUDE.md` §2 already records
+  as archived, so both spike item files moved to `archive_pass1_v0/*_spike.jsonl`
+  and the one test that read the old path was repointed.
+* **(b) span-level disagreement with human gold.** The driver joins labels by
+  span, and on 20 spans a human-adjudicated label already existed. **The
+  assistant's label agreed on 16 of 20**; the four disagreements (d1_0009
+  `Neutral Density Filter`, d1_0121 `elbow method`, d1_0122 `customer data`,
+  d1_0175 `that one`) were resolved by dropping the assistant's row — humans are
+  gold. 16/20 raw agreement is the only measured quality figure for these labels
+  and travels with every number below.
+* **(c) a reporting crash after training.** Attempt 3 trained all twelve
+  arm×seed models and died writing the artefact: `loaders.loader_artefact`
+  indexed `spec["decoder"]`, and the corpora Phases 8/9 registered in `DATASETS`
+  (musique_full, 2wiki, musique_ans) carry no such key. Fixed to `.get`; the
+  training was repeated. The driver's `--out` default and its "smoke run" header
+  were also mode-blind, so the first decisive artefact overwrote the smoke record
+  under the smoke filename; both now depend on `--decisive`.
+
+### 9.2 The table
+
+Splits 125 / 20 / 42 (train / dev / test), candidate recall 1.0 on every split,
+seeds {13, 42, 7}, McNemar exact, α = 0.05 two-sided.
+
+| arm | end-to-end score (n = 42) | discordant vs proposed | p |
+|---|---|---|---|
+| similarity (no learning; threshold on dev) | **0.810** | 34 – 0 | 1.2e-10 |
+| E1 GraphMixer-style MLP | 0.452 | 19 – 0 | 3.8e-6 |
+| E2 HGT | 0.000 | 0 – 0 | — |
+| **proposed (E3)** | **0.000** | — | — |
+
+Both baselines beat the proposed arm on every discordant pair. D2 was trained
+and calibrated in the same run and is a secondary; its table is in the artefact.
+
+### 9.3 Why zero — checked, not assumed
+
+Every learned arm finished 20 epochs at **dev loss 1.46–1.58, above ln 4 =
+1.386**: no better than uniform. E2 and E3 collapsed to predicting DEFER on all
+42 items — the one action with zero gold — so their F1 is 0.0 on every class.
+
+**This is not an instrument defect.** Untrained E1/E2/E3 were probed in-process
+on 40 items: finite logits, non-zero variance across items, no NaN, argmax
+spread over candidate slots. The features are informative; the optimiser had 125
+items and 20 epochs at lr 1e-3, and a graph encoder does not leave initialisation
+on that. E1's MLP moved (0.45); the GNNs did not.
+
+**So the honest statement is:** at 125 training items, a threshold-tuned
+similarity linker is the best entity resolver available, and the learned
+constructor is not competitive. This is the failure `CLAUDE.md` §8 named in
+advance — GraphMixer is not a strawman — arriving at a volume 29× below what
+Gate-0 item 8 sized (3,625). Whether the negative survives at volume is
+unmeasured and would need human labels first (§9.5).
+
+### 9.4 D3/D4 pretrained the same day — heads only
+
+`scripts/phase6_pretrain_d3d4.py`: `TypedDecoder` heads over **frozen** pinned
+bge-small vectors, `pins.TRAINING` budget, calibration on dev, class weights from
+train as `train_d2` does. Volumes **capped** (Re-DocRED 600 docs, TORQUE 800
+passages) and stated in the artefact. Dev: DialogRE micro-F1 0.154 (P 0.74 /
+R 0.09); Re-DocRED accuracy 0.220 / macro-F1 0.169 over 96 relations (ECE
+0.061 → 0.049); TORQUE F1 0.368 (P 0.28 / R 0.54). The first TORQUE pass
+collapsed to the majority class (F1 0.000) under unweighted CE — the same
+class-weight omission the trainer already guards against for D2. Checkpoints
+`artefacts/phase6/d3_dialogre.pt`, `d3_redocred.pt`, `d4_torque.pt`. **These
+change no measured number**: D3/D4 edges reach neither the LoCoMo read path
+(carried by the raw-turn tier) nor the 2Wiki pipeline (edges from titles). They
+close the "two of four decoders never trained" gap in the record; that is all.
+
+### 9.5 What this leaves open
+
+* **Human labels on the gate1 batch** (~1.5 h × 2 annotators;
+  `annotate.py d1 --annotator <name> --items gate1`). Until then, Gate 1's result
+  is "learned arms vs the assistant's labels," and the artefact says so.
+* **Volume.** A Gate-1 negative at 125 items is a negative at 125 items. The
+  rerun that could flip it is at item-8 scale and needs the above first.
+* `phase6_gate1.py`'s module docstring was rewritten to the current state; the
+  15-Aug version read condition 1 "blocked" while `entry_conditions()` returned
+  all-True — stale in the direction that invites a decisive run on the wrong
+  labels.
+

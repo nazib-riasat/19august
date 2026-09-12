@@ -520,6 +520,446 @@ project has was measured under `PROMPT_SHA e023ea71…` on a 1,037-question
 subset. Run 4 should carry `--ceilings`, or the decomposition that is half the
 defensible claim stays attached to a retired instrument.
 
+### 1.11 Run 5: three system changes, and the metric block that makes a run reportable
+
+Run 4 measured **39.43 F1 / 33.70 BLEU-1** at coverage 0.925. This section
+records what changed for run 5 and — the larger half — what was added so that a
+run's numbers can be read at research-paper standard rather than quoted as bare
+means. **Nothing here has been run**: run 5 is built and awaiting the owner's go.
+
+#### The three system changes (A1–A3)
+
+**A1 — the raw tier is now k=5 with a ±2 window, cap 25.** Run 4 shipped k=6/±1
+at cap 15. The offline grid handed over for run 5 measures the new shape at
+**0.76 gold-turn coverage against 0.75** for the incumbent — a small margin, and
+recorded as such rather than dressed up.
+
+That margin is worth reading against run 4's own grid, which found radius 2
+**worse** than radius 1 (0.7100 vs 0.7276). The two do not contradict: run 4's
+row measured radius 2 *at cap 15*, where a wider window is dropped whole to fit,
+so the number described the cap and not the radius — §1.10 said as much at the
+time ("a wider window, which the cap starts to fight"). Raising the cap to 25
+lets the radius vary alone, and the deeper-but-fewer configuration then wins.
+The run-5 candidates have been added to `scripts/raw_tier_grid.py`'s `GRID`
+— `(5,2,25)`, `(6,2,25)`, `(6,1,25)`, `(4,2,25)` — so the comparison is
+reproducible rather than only reported. **The 0.76/0.75 figures are quoted as
+handed over, not re-measured here.**
+
+**A2 — one prompt rule, and it is post-hoc.** Rule 4 now reads: *"If the question
+is hypothetical or asks for a likely preference or outcome, answer with the most
+likely short inference from the evidence — still a phrase, never a sentence."*
+
+This was written **after seeing run 4's open-domain result (9.89 F1 against
+46.63 single-hop)**, and that is disclosed rather than presented as foresight.
+It is a post-hoc change, labelled run-5, and the honest reading of any
+open-domain improvement in run 5 is that a change targeted at the category
+improved the category. The rule restates the phrase contract deliberately: an
+inference licence that permitted prose would undo rule 2 for exactly the
+category it was written to help, and the test asserts the restatement rather
+than assuming it.
+
+**What run 4's intervals say about whether this can be measured at all.** The
+bootstrap CI on open-domain F1 is **9.89 [5.4, 14.9]** at n=96 — a band nearly
+ten points wide. A run-5 open-domain result inside that band is not evidence the
+rule worked. This is the first case in the project where the new B1 machinery
+changes what may be concluded, and it argues *against* the change's author.
+
+**Fingerprints move:**
+
+```
+PROMPT_SHA   8121eb22…  ->  2dfef30b…
+stage-E      9914b172…  ->  63c5a1ba…
+```
+
+Runs 1–2, run 3, run 4 and run 5 are **four different instruments**. No number
+crosses between them.
+
+**A3 — `raw_turns_included` is the ids.** Run 3 stored a count; run 4 added the
+ids under a *second* key (`raw_turn_ids`) and left `raw_turns_included` an int,
+so the field a reader reaches for first still answered "how many" when every
+question asked of it was "which". The ids are the inclusion record now and
+`raw_turns_count` rides beside them. The general form, stated because it has now
+occurred twice one key apart: **a diagnostic that records a cardinality where
+the question will be about identity costs a re-run to answer, and the cost is
+paid later, by someone who did not choose it.**
+
+*Note for anyone joining run-4 rows: they carry `raw_turn_ids` (list) and
+`raw_turns_included` (int). Run-5 rows carry `raw_turns_included` (list) and
+`raw_turns_count` (int).*
+
+#### A4 — the junk triage, which found nothing to fix
+
+All 40 `junk_answer` rows from run 4 were printed and classified. **No change
+was made, and that is the finding.** Every one is bracket-fragments-only —
+`[3][c1][c2]`, `[5],[6],[7],[8]`, `[ c5 ]`, `[č7]` — a reader emitting citation
+syntax and no answer content.
+
+The one shape that could have hidden a recoverable answer is a bare number
+followed by citations (`[27][c5]`, `[31][c2]`, `[19][c3]`): 14 rows, and if the
+number were the answer, `clean_answer` would be destroying correct output — the
+same defect the module already fixed once for `[25 May 2023][c1]`. It was
+checked against gold: **0 of 14 match.** The bare integers are citations in a
+mangled format. `clean_answer` is classifying all 40 correctly, the rate is 2.0%,
+and extending it would have been a change made because a change was expected.
+
+#### The metric block (PART B)
+
+Everything below lands in the artefact under `report_metrics`, is derived from
+the rows alone, and therefore **costs no GPU and is recomputable from a rows
+file after the fact**. Each metric ships with its definition string, because a
+number whose definition lives only in a decisions document is a number that will
+be misquoted.
+
+| | What | The refusal that makes it honest |
+|---|---|---|
+| **B1** | 95% percentile bootstrap on F1 and BLEU-1, overall and per category — 10,000 resamples, seed 13, reported as `39.43 [37.5, 41.4]` | **No comparative test is computable.** Published systems' per-item outputs do not exist, only their table means, so there is no paired sample and no variance for them. The artefact says in writing that an overlapping interval against a quoted mean *is not a test*. |
+| **B2** | Citation rate, citation resolution rate, span-grounded answer rate — ALCE's (EMNLP 2023) answer/citation separation | Span-grounding's denominator is **cited** answers, not all answers: "every citation resolves" is vacuously true of an answer citing nothing, and counting those would reward not citing. A hallucinated `[c9]` counts against resolution. NLI-backed precision is **declined, not approximated** — a resolution rate reported as precision overstates verifiability by exactly the entailment gap VeriCite measures. |
+| **B3** | Selective QA: risk–coverage, AURC, adversarial abstention at the operating point (Geifman & El-Yaniv, NeurIPS 2017) | The threshold is the **MuSiQue-dev one, transferred unchanged**. An oracle threshold chosen on LoCoMo's own curve is computed and named `oracle_threshold_leaked_do_not_report`, so the transfer gap is visible as a diagnostic and cannot be quoted as a result. |
+| **B4** | `--ceilings-sample N` — seeded (13) stratified sample across 4 categories × 10 conversations | Stratified, not uniform: ceilings 1–2 are conversation-level and the categories differ ninefold in size, so a uniform 100 would be mostly single-hop from the largest conversations and the mean would describe the sample's composition. |
+| **B5** | Cost per query, throughput, and the hardware it was measured on; Pareto pairs against the reference table | **Only Mem-T publishes a token count.** Every other row is `not_published` and is *not* estimated. GRAFT's cost advantage is the one axis it actually wins; a frontier drawn through invented denominators would put it on fabricated ground. |
+| **B6** | Corpus SHA, prompt SHA, stage-E fingerprint, config hash, seeds, decoding, determinism | Cross-machine byte-identity is **not promised**. Greedy is deterministic given identical inputs, dtype, kernels and batch composition — four conditions, one of which has already surprised this project. |
+
+**Two structural changes came out of writing this.** `scripts/phase8_gate.py`
+now persists the winning arm (`phase8_gate.pt`) and exposes `load_gate` — the
+checkpoint gap §1.8 named, which until now made "apply the gate" mean "retrain
+it first". Selection is by the **declared** primary (AURC) and the saved seed is
+the **median** of three by that primary, not the best: a best-seed checkpoint
+would make every downstream number an optimistic outlier. And the runner's
+argparse is extracted into `build_parser()`, so the run-5 defaults are asserted
+by a test rather than checked by reading — which is how run 4's
+`--evidence-budget` help came to describe a `BUDGET_LADDER` rung it was not.
+
+**The claims section is updated.** Primary is now cost, citations, the
+selective-QA curve, and the ceilings — the four axes that need no baseline or
+that no reference row reports. F1/BLEU-1 stay secondary and now travel with
+their intervals.
+
+#### What has not been run
+
+`scripts/phase8_gate.py` has not been re-run, so no `phase8_gate.pt` exists yet
+and `scripts/locomo_gate_posthoc.py` will refuse with the command to produce one.
+The B4 ceiling sample has not been run at N=100. Run 5 itself has not been run.
+The A1 token-per-query projection (~1.3k, under a 1,400 ceiling) was
+**verified on 21 Aug 2026 and missed**: measured mean 1,493 on a 20-question
+smoke, because the projection counted only the evidence block and not the ~210
+tokens of prompt scaffolding around it. See §1.12.
+
+### 1.12 The gate transfers at chance — and three defects found getting there
+
+Run 5's build (§1.11) was followed by executing the three cheap steps it
+unblocked. This is their record. **The headline is a negative result and it is
+the most informative thing in this section.**
+
+#### The gate, trained and persisted (B3-i)
+
+`scripts/phase8_gate.py`, 31.4 min CPU, 39,876 train / 4,834 dev contrast pairs
+from MuSiQue-Full, 435 features, 3 seeds × 2 models × 2 arms. Re-run once after
+a fix; both runs produced **identical** AURC to four decimals, which is the
+seeding working.
+
+| arm/model | AURC (natural) | std | contrast pair-acc | features |
+|---|---|---|---|---|
+| pool_only/lr | 0.0405 | 0.0002 | 0.7876 | 50 |
+| pool_only/mlp | 0.0395 | 0.0003 | 0.7840 | 50 |
+| with_question/lr | 0.0387 | 0.0002 | 0.8010 | 435 |
+| **with_question/mlp** | **0.0382** | 0.0006 | 0.7944 | 435 |
+
+Pair accuracy ~0.78–0.80 against a 0.5 chance line. On its own corpus the gate
+works.
+
+#### Defect 1 — the winning arm cannot be applied to LoCoMo, and the names all matched
+
+The first checkpoint saved only the winner, `with_question/mlp`. **LoCoMo eval
+rows carry all 435 feature names — including 384 `q_emb_*` columns that are
+every one exactly 0.0**, because the runner records
+`gate_blocks_present.question_embedding: False` and never populates them.
+
+The dangerous property is that a feature-*name* comparison passes cleanly. All
+435 names match, in order. Only the values are empty, so the gate would have
+read 384 zeros it was trained to use and returned entirely normal-looking
+probabilities. This is `PHASE8_DECISIONS.md` §3.3 one corpus later: a feature
+block meaning something different to its consumer than to its producer.
+
+Three fixes: **every arm is persisted** (saving only the winner made the
+applicable arm unavailable without a 32-minute retrain); each checkpoint carries
+`requires_blocks`, matched against the row's own `gate_blocks_present`; and a
+second, value-level guard that trusts the numbers rather than the flag. The
+value guard is the one that actually fired — the first checkpoint predated
+`requires_blocks` — which is why there are two.
+
+#### Defect 2 — a defect that was not one, and the correction is the point
+
+Ranking the gate on LoCoMo, `predict()` appeared to return **0.0 for all 1,986
+questions**. That was written up as a float32 sigmoid underflowing at logits of
+−81, destroying the ranking and making the reported AURC of 0.2181 a curve over
+ties.
+
+**It is false.** `predict` returns **1,974 distinct values across 1,986 rows and
+no exact zeros**; the smallest is 7.66e-36, comfortably inside float32's
+subnormal range. The "collapse" was a `:.4f` print format rendering 1.3e-14 as
+`0.0000` — in a diagnostic written to inspect the very quantity it then
+misreported. **The AURC computed before the "bug" was found was correct, and is
+unchanged after.**
+
+This is §1.1's pattern exactly, and it is recorded rather than quietly reverted
+because the failure mode is what generalises: *a formatting artefact read as a
+finding, in the tool built to look for findings.* The project has now done this
+twice. The cheap defence both times would have been to print one raw value
+beside the formatted one.
+
+The logit ranking was **kept**, with an honest justification replacing the false
+one: rank-based metrics are invariant to the monotone sigmoid, so it is
+lossless and keeps headroom off-distribution — and computing the probability in
+float64 alongside is what makes `probability_max`, and therefore the unreachable
+threshold below, visible in the artefact at all. `graft/gate/model.py` is
+correct and was not touched.
+
+#### Defect 3 — a real bug, found by the test written for the false one
+
+Writing the regression test for defect 2 exposed a genuine bug in the new
+`auroc`: with `argsort` tie-breaking, **a gate that scores every question
+identically reads as AUROC 0.0 or 1.0 depending only on input order** — a system
+with no ranking at all scoring as a perfect one. Fixed to average ranks over
+ties, so no ranking reads as exactly 0.5. That degenerate case is precisely the
+one a transfer study is most likely to hit, which is what makes it worth the
+line.
+
+#### The result: the MuSiQue gate does not transfer to LoCoMo
+
+`scripts/locomo_gate_posthoc.py` on run-4's 1,986 rows, `pool_only/mlp`, CPU,
+no reader:
+
+| | |
+|---|---|
+| **AUROC (threshold-free separation)** | **0.5050** — chance is 0.500 |
+| AURC, reweighted to prevalence 0.2246 | 0.2181 |
+| Transferred threshold (MuSiQue dev) | 0.6039 |
+| Highest probability on LoCoMo | **1.32e-14** |
+| Coverage at the transferred threshold | **0** |
+
+Two independent readings, agreeing. **AUROC 0.5050 says the gate cannot order a
+LoCoMo answerable question above an adversarial one** — 0.5 percentage points
+above chance, on 1,540 × 446 pairs. And the MuSiQue-dev threshold is not merely
+badly calibrated but **unreachable**: every LoCoMo probability is below 1.3e-14
+against a threshold of 0.60, so the gate declines all 1,986 questions and
+coverage is 0 by construction.
+
+Adversarial abstention at that point is 1.000 and false abstention is also
+1.000. Neither is a result; they are the same fact twice — the gate answers
+nothing.
+
+**This is the Wikipedia→conversation transfer claim being measured, and failing.**
+`CLAUDE.md` §7 lists it as declared and untested; Phase 9 discharged the
+*plumbing* and said explicitly that the hypothesis was untouched. This is the
+hypothesis, on the gate, and the answer is no. It is a clean negative: the gate
+is good on its own corpus (pair accuracy 0.79), the features are live and
+sensibly scaled on LoCoMo, and the failure is squarely in the transfer.
+
+**What is not claimed.** That a gate cannot work on LoCoMo — only that *this*
+one, trained on MuSiQue contrast pairs, does not. The obvious next move is the
+conversational track (Phase-8 Stage B), which trains on LongMemEval's own
+evidence-deletion pairs and is deferred by name rather than blocked. The oracle
+threshold chosen on LoCoMo's own curve is computed and stored as
+`oracle_threshold_leaked_do_not_report`, so the gap is visible as a diagnostic
+and cannot be quoted as performance.
+
+#### Step 3 — the token check failed its target, and the target was wrong
+
+The run-5 configuration was to be verified under 1,400 tokens/query on a
+20-question smoke. **Measured: mean 1,493, median 1,530, max 1,619.**
+
+The cause is arithmetic, not a leak. `--evidence-budget 1280` caps the
+*evidence block*, and it is enforced exactly; but tokens/query counts the whole
+prompt, and the instructions, format examples, the new rule 4, the question and
+the answer add ~210 tokens on top. The ~1.3k projection omitted the scaffolding.
+
+**`--evidence-budget` was left at 1280.** Lowering it to hit a derived target
+would be tuning an explicitly specified parameter to rescue an estimate, and the
+claim the target protects survives: 1,493 against the reference system's ~9,000
+is **6.0× fewer tokens**, down from run 4's 7.88× but intact. Recorded here so
+the ratio moving is on the record rather than noticed later in a table.
+
+### 1.13 Run 5 measured — and the intervals immediately earn their keep
+
+`results/locomo_eval3.json` / `locomo_eval_rows3.jsonl`, 1,986 questions,
+99.2 min, `--ceilings`, `PROMPT_SHA 2dfef30b…`, stage-E `63c5a1ba…`.
+
+| | Run 4 | **Run 5** | Δ |
+|---|---|---|---|
+| overall F1 | 39.43 | **41.52** [39.6, 43.5] | +2.09 |
+| overall BLEU-1 | 33.70 | **35.38** [33.5, 37.3] | +1.68 |
+| coverage | 0.925 | **0.942** | +0.017 |
+| single-hop F1 | 46.63 | **50.24** [47.5, 53.1] | +3.61 |
+| multi-hop F1 | 29.75 | **27.44** [23.8, 31.1] | **−2.31** |
+| temporal F1 | 37.91 | **39.55** [36.1, 43.0] | +1.64 |
+| open-domain F1 | 9.89 | **13.02** [7.6, 19.0] | +3.13 |
+| adversarial abstention | 0.193 | **0.175** | −0.018 |
+| tokens/query | 1,142 | **1,416** | ratio 7.88 → **6.35** |
+| ceiling 5 (reader) | 0.1224 | 0.1345 | +0.012 |
+
+**§1.11 predicted this section's most important sentence before the run, and it
+was right.** It said the open-domain interval was so wide that a run-5 result
+inside it would not be evidence the A2 prompt rule worked. Measured: **9.89
+[5.4, 14.9] → 13.02 [7.6, 19.0]**. The intervals overlap across more than half
+their width. **The prompt rule is not established by this run.** The point
+estimate moved in the intended direction on the category it targeted, which is
+exactly the shape of result that a post-hoc change produces whether or not it
+works, and n=96 cannot separate the two.
+
+Recorded because the discipline only counts when it costs something: the change
+was mine, the movement flatters it, and the instrument says no.
+
+**Multi-hop went down**, 29.75 → 27.44, and its intervals overlap too
+([25.9, 33.7] vs [23.8, 31.1]) — so that is not established either. It is the
+one category where a *deeper but narrower* raw tier (k 6→5, radius 1→2) has an
+obvious mechanism to hurt: a multi-hop question needs evidence from two places,
+and five seeds reach fewer places than six however deep each one goes. Worth a
+targeted grid row before k is reduced again; not worth a claim now.
+
+**What is established**: overall and single-hop. Single-hop's intervals
+([43.8, 49.5] → [47.5, 53.1]) barely overlap and its n=841 is the only category
+with the power to say so; overall F1's ([37.5, 41.4] → [39.6, 43.5]) likewise
+sit mostly apart. The gain is real and it is concentrated where the window
+mechanism should help — one retrieved turn plus its reply.
+
+#### The citation metrics, measured for the first time (B2)
+
+| | |
+|---|---|
+| citation rate | 0.774 |
+| citation resolution rate | **0.787** |
+| span-grounded answer rate | 0.735 |
+| citations emitted / unresolved | 1,932 / **411** |
+
+**411 of 1,932 citations — 21% — name no claim that was shown.** That is a
+reader-ceiling finding of exactly the kind ALCE (EMNLP 2023) is about, it is
+measured on this project's own axis rather than borrowed, and **no row in the
+reference table reports anything comparable.** It is now the strongest of the
+primary claims after cost, because it is a property of the system that a
+baseline comparison cannot take away.
+
+It also puts a number on something the five-ceiling table could not: roughly
+one answer in four is not fully traceable to evidence the checker validated,
+*even when the answer is correct*. Nothing in F1 shows this.
+
+#### Cost
+
+1,416 tokens/query against the reference system's ~9,000 — **6.35×**, down from
+run 4's 7.88×. Throughput 1,201 q/h on a single RTX 5050 Laptop, 8 GB, bf16.
+The cost claim is intact but it has now moved twice in one direction, and the
+raw tier is what is buying the accuracy. That trade is the finding, not a
+footnote: run 3 → run 5 is +11.3 F1 for +52% tokens, and every step of it came
+from showing the reader more raw dialogue.
+
+#### The ceilings are unchanged, which is the point
+
+0.674 / 1.000 / 0.737 / 0.998 / **0.1345**, on the same 1,037-question
+eligible subset as run 4. Ceilings 1–4 are identical to four decimals — they are
+properties of the graph and the packer, and neither moved because neither was
+touched. Ceiling 5 moved +0.012, within noise on 1,037 questions.
+
+**The reader remains the binding constraint**, and run 5's end-to-end 41.52
+against a reader ceiling that permits ~0.26 token-F1 on gold proofs says the
+retrieval side has now closed most of the distance it can. Further raw-tier
+work has little room left above it.
+
+### 1.14 Matched-budget RAG: the first re-run baseline — 12 Sep 2026
+
+**Gate 4 item 4 is now partially met.** `scripts/locomo_rag_baseline.py` re-runs
+matched-budget RAG rather than quoting it: same frozen reader, same
+`PROMPT_TEMPLATE` (SHA stamped), same decoding, same **1,280-token** total
+evidence budget as run 5, same retriever over raw turns (`top_raw_turns` +
+`expand_windows`, run 5's k = 5 / radius 2 / cap 25), same chronological
+ordering, same `clean_answer`, same `build_report` / `report_metrics` — all
+**imported from the runner**, so the baseline cannot drift from the system it is
+compared with. The one system difference: no graph, no claims tier, no `H`, no
+Stage D; the whole budget is raw dialogue. One design decision: RAG passages are
+numbered `[c1]…` so prompt rule 5 is satisfiable (GRAFT's raw tier is uncitable
+because its ids belong to checker-validated claims; a baseline has none).
+F1/BLEU strip citations, so this moves nothing. Three chunks with cool-downs,
+1,986/1,986 questions, 31 min GPU. `results/locomo_rag_baseline.json`.
+
+| | RAG (re-run) | GRAFT run 5 | Mem-T RAG (quoted) |
+|---|---|---|---|
+| overall F1 | 39.87 | **41.52** | 41.59 |
+| overall BLEU-1 | 33.95 | **35.38** | — |
+| tokens / query | 1,252 | 1,416 | ~9,000 |
+| adversarial abstention | 0.195 | 0.175 | — |
+
+**Paired on the same 1,540 answerable questions: +1.65 F1, 95% CI [+0.24,
++3.05], P(≤ 0) = 0.011.** GRAFT wins 267, RAG 240, tie 1,033. By category:
+single-hop **+3.86 [+1.42, +6.43]** is the only interval clearing zero;
+multi-hop +1.45 [−0.78, +3.63], temporal +0.56 [−1.95, +3.00], open-domain
++0.54 [−3.17, +4.80]. **Read: at matched budget, adding checker-validated claims
+to RAG gives a small, significant gain concentrated in single-hop, at ~13% more
+tokens. It does not measurably help the reasoning categories.**
+
+**The instrument validated itself.** The re-run RAG lands 1.7 points from
+Mem-T's published RAG row with a smaller backbone — independent evidence the
+harness scores the way the field does.
+
+**Also on 12 Sep:** Stage C's GNN scorer trained (`artefacts/stage_c_scorer.pt`,
+237,443 params, 20 epochs, dev loss 0.0046 on 2 held-out questions — on the
+**LongMemEval pilot's** distant signal, never LoCoMo; 8 training questions, so
+modest by construction); §6 of this phase signed, delegated and marked
+contaminated; Gate 1 ran and lost (`PHASE6_DECISIONS.md` §9); D3/D4 heads
+pretrained (§9.4 there).
+
+**Where the thesis now rests.** Gate 2 `inconclusive`, Gate 1 negative at 125
+items: neither learned contribution is supported. What stands was never gated on
+learning — the controlled cost result above, the five-ceiling decomposition, and
+the adversarial subset. Full-context is the baseline still owed (§5).
+
+### 1.15 A second dataset row — 2Wiki dev — and a mislabelled run caught before it was recorded (12 Sep 2026)
+
+**2WikiMultiHopQA dev, 500 questions stratified by type, full read path.**
+`scripts/wiki2_eval.py`: `wiki2.build_one` (paragraph claims, `about_entity`
+edges from titles, five-channel fused scores) -> `RealEnvironment` -> `answer()`
+with the frozen reader, the trained utility head as scorer, and Stage D by
+`training_free_relevance`. Claims tier only -- 2Wiki has no dialogue and its
+claims *are* the paragraphs. SQuAD token-F1 / EM through `normalise_answer`.
+Subset drawn by `stratified_sample` over `row["type"]` at the pinned seed, so it
+is reproducible and not a head slice. 9 min GPU. `results/wiki2_eval.json`.
+
+| | n | F1 | EM | coverage |
+|---|---|---|---|---|
+| **overall** | 500 | **28.21** | 12.20 | 0.870 |
+| bridge-comparison | 109 | 36.09 | 9.17 | 0.72 |
+| comparison | 121 | 30.24 | 6.61 | 0.83 |
+| compositional | 209 | 23.65 | 17.70 | 0.93 |
+| inference | 61 | 25.74 | 9.84 | 1.00 |
+
+820 tokens/query, 1 LLM call. **Gold-complete on 100% of pools** -- the answer
+was always in the pool, so the gap is Stage D selection plus the 3B reader, not
+retrieval. 65 abstentions, all `fallback`. The EM/F1 inversion is the readable
+part: compositional has the lowest F1 and the highest EM -- short entity answers
+the reader nails or misses -- while comparison answers earn partial credit.
+
+**What this is.** A *within-system* row. Published 2Wiki systems train on 2Wiki
+train; GRAFT's head saw 200 rows and everything else is training-free. It is not
+a controlled comparison and `is_wiring_test` stays True. **Why it matters
+anyway:** 2Wiki is the source domain of the Wikipedia->conversation transfer
+claim -- Stage D trains here -- so 28 F1 here is the floor LoCoMo's 41.5 should
+be read against.
+
+**A run mislabelled as LongMemEval, caught before it entered this record.** Item
+D of the remaining-work table was "LongMemEval eval". The only ingested
+LongMemEval graph is the 10-question Phase-5 pilot, and the runner chained under
+that label -- `scripts/phase10_read.py` -- evaluates its own **hand-built Ada
+Lovelace fixtures**, as its docstring says ("wiring this runner to [the pilot
+graph] is Stage D of the plan, blocked on scope-c"). What ran was a re-run of
+Phase 10's R3 wiring test: 10 fixtures, 5 answered, all five ceilings 1.0,
+stamped `WIRING TEST`. It is filed as `results/phase10_read_fixtures_rerun.json`
+and is **not a dataset row**. Recorded because the failure is reusable: a
+correct script under a wrong label is the `PHASE7_DECISIONS.md` §7 smoke-quoted-
+as-measured class, and the artefact name is where it was caught.
+
+**Consequence.** There is no LongMemEval row and none is reachable without
+scope-c ingestion (~32 h GPU) or a purpose-built runner over a 10-question
+graph, which would be noise. A conversational gate (Phase 8 Stage B) is blocked
+on the same ingestion. Dataset rows in hand: LoCoMo (41.52, plus the controlled
+RAG comparison of §1.14) and 2Wiki (28.21).
+
 ## 2. Departures from the plan as written
 
 | §6 ref | As planned | What was built | Why |
@@ -607,6 +1047,11 @@ exact `U`. Not a result — 63 rows, 8 examples — but the instrument runs.
 * **Phase 8 Stage B** — a conversationally *trained* gate. The recorded features
   plus `EVAL_PREVALENCES["locomo"]` make post-hoc thresholding from a
   MuSiQue-trained gate possible, which is the cheap substitute, not the same
-  thing.
+  thing. **§1.12 measured that substitute: the MuSiQue gate does not transfer**
+  (coverage 0 at the transferred threshold), so this is now the only route to an
+  adversarial-abstention number above the 0.17–0.19 the ungated runs sit at --
+  and it is blocked on scope-c ingestion (§1.15).
+* **A LongMemEval row** — blocked on the same ingestion; the 10-question pilot
+  graph is the only LongMemEval data ingested (§1.15).
 * **LLM obligation parsing** — §1.3.
 * **§6's signature** — §2's last row.

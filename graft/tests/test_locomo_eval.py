@@ -729,3 +729,45 @@ def test_fresh_truncates_the_rows_file_on_the_explicit_path_too(runner, tmp_path
     rows.write_text('{"question_id": "resumable"}\n', encoding="utf-8")
     runner.resolve_out_paths(Namespace(fresh=False, **explicit), tmp_path)
     assert rows.is_file(), "without --fresh the rows must survive for the resume"
+
+
+def test_the_row_records_which_raw_turns_were_included_not_how_many(runner, snap):  # noqa: F811
+    """A3. Run 3 stored a count. Run 4 stored ids under a *second* key and left
+    `raw_turns_included` an int, so the field a reader reaches for first still
+    answered "how many" when every question asked of it was "which".
+
+    The row field is built from `raw_evidence_block`'s survivors, so that is
+    what this asserts -- on the real fixture, not by reading the runner's source.
+    """
+    cache = runner.ChannelCache(snap, StubEmbedder(), Config())
+    seeds = runner.top_raw_turns(cache, "c1", "what is my weight", StubEmbedder(), k=5)
+    turns, rank = runner.expand_windows(cache, "c1", seeds, radius=2, cap=25)
+
+    def words(text):
+        return len(text.split())
+
+    _, kept = runner.raw_evidence_block(turns, words, 10_000, rank=rank)
+
+    included = [t.turn_id for t in kept]   # what the row stores
+    assert isinstance(included, list) and included
+    assert all(isinstance(i, str) for i in included), "turn id strings, not a count"
+    assert len(included) == len(set(included)), "an inclusion SET, not a multiset"
+    assert len(kept) == len(included), "the count rides beside the ids, not instead"
+
+
+def test_the_run5_raw_tier_defaults_are_the_ones_the_grid_selected(runner):
+    """The defaults ARE the claim: a run whose argv says nothing must be the
+    configuration PHASE11_DECISIONS.md 1.11 names, or the artefact's `raw_tier`
+    block records a run nobody chose.
+
+    This is why `build_parser` is its own function -- run 4's `--evidence-budget`
+    help described a BUDGET_LADDER rung it was not, and nothing could catch it.
+    """
+    args = runner.build_parser().parse_args([])
+    assert (args.raw_turns, args.raw_window, args.raw_cap) == (5, 2, 25)
+    assert args.budget == 256, "claims tier is the citation layer at 256"
+    assert args.evidence_budget == 1280, "total evidence cap unchanged from run 4"
+    assert args.raw_cap > 2 * args.raw_window + 1, (
+        "the cap must admit at least one whole window, or expand_windows "
+        "degrades to its truncation fallback on every question"
+    )

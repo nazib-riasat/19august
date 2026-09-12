@@ -505,5 +505,44 @@
     },
     "channel_index_builds": 10,
     "channel_index_builds_avoided": 1976
+  },
+  "regenerated": {
+    "what_happened": "the original results/locomo_eval2.json was deleted; this file was rebuilt on 21 Aug 2026 from the surviving results/locomo_eval_rows2.jsonl by re-running scripts/locomo_eval.py in resume mode (no --fresh), which skips every already-scored question and rebuilds the report from the rows",
+    "re_derived_from_rows_and_exact": [
+      "scores (all categories and overall)",
+      "adversarial abstention",
+      "the five ceilings",
+      "cost per query, from each row's ledger_snapshot",
+      "the honesty stamp, raw-tier config, comparison table and corpus SHA"
+    ],
+    "run_metadata_restored_from_the_owners_saved_copy": {
+      "fields": [
+        "run.wall_clock_s",
+        "run.questions_per_hour",
+        "run.reader.peak_vram_gb",
+        "run.channel_index_builds",
+        "run.channel_index_builds_avoided"
+      ],
+      "why": "a resume runs no questions, so these five describe the 20-second rebuild rather than the 97-minute run. They were briefly null, then restored from a copy of the original artefact the project owner had kept -- measured values from the run itself, not inferred from the log"
+    },
+    "verified_identical_to_the_original_run": {
+      "overlapping_fields_checked": 34,
+      "mismatches": 0,
+      "note": "every field present in both the rebuild and the owner's saved copy agrees exactly, including all five ceilings and cost per query to full float precision -- so the resume path reproduces the report rather than approximating it",
+      "spot_values": {
+        "f1_over_all": 0.3943187397785457,
+        "bleu1_over_all": 0.33697467255688945,
+        "coverage": 0.9246753246753247,
+        "adversarial_abstention_accuracy": 0.19282511210762332,
+        "llm_tokens_per_query_mean": 1142.3952668680765
+      }
+    },
+    "nothing_left_null": true,
+    "rows_file_integrity": {
+      "lines": 1986,
+      "distinct_question_ids": 1986,
+      "duplicates": 0,
+      "note": "no stale rows -- the run-4 --fresh truncation fix held, unlike run 3's 2,136-line JSONL"
+    }
   }
 }

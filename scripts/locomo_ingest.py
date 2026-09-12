@@ -340,6 +340,22 @@ def cmd_verify_batch(args: argparse.Namespace) -> int:
                 )
             )
         batch_s = time.perf_counter() - t0
+        # **The control** (added 12 Sep 2026; `PHASE5_DECISIONS.md`'s open item).
+        # A 0.75 single-vs-batched identity rate cannot be read without knowing
+        # what batched-vs-batched gives on the same turns: if a *second* batched
+        # pass also disagrees with the first, the 25% is batching's nondeterminism
+        # (a matmul-order effect) rather than single-vs-batched *bias*. Same
+        # turns, same contexts, same batch size, run again; the diff is the
+        # control's whole content.
+        t0 = time.perf_counter()
+        batched2: list = []
+        for lo in range(0, len(turns), args.batch_size):
+            batched2.extend(
+                extractor.extract_batch(
+                    turns[lo : lo + args.batch_size], contexts[lo : lo + args.batch_size]
+                )
+            )
+        batch2_s = time.perf_counter() - t0
     finally:
         close = getattr(extractor, "close", None)
         if callable(close):
@@ -375,6 +391,9 @@ def cmd_verify_batch(args: argparse.Namespace) -> int:
 
     rows = []
     identical = 0
+    identical_bb = sum(
+        1 for a, b in zip(batched, batched2) if fingerprint(a) == fingerprint(b)
+    )
     for i, (a, b) in enumerate(zip(single, batched)):
         same = fingerprint(a) == fingerprint(b)
         identical += int(same)
@@ -397,6 +416,18 @@ def cmd_verify_batch(args: argparse.Namespace) -> int:
         "speedup": round(speedup, 2),
         "identical_extractions": identical,
         "identical_rate": round(rate, 4),
+        # The control: batched pass 1 vs batched pass 2 on the same turns.
+        "control_batched_twice": {
+            "identical_extractions": identical_bb,
+            "identical_rate": round(identical_bb / max(len(rows), 1), 4),
+            "second_batched_seconds": round(batch2_s, 1),
+            "reading": (
+                "identical_rate near 1.0 here with a lower single-vs-batched rate means "
+                "batching is deterministic and the single-vs-batched gap is a systematic "
+                "difference between the two paths; a rate similar to single-vs-batched "
+                "means the gap is batched-mode nondeterminism, not bias"
+            ),
+        },
         "projected_full_corpus_hours": round(
             locomo.MEASURED_TURNS / MEASURED_TURNS_PER_HOUR / max(speedup, 1e-9), 1
         ),
@@ -411,6 +442,7 @@ def cmd_verify_batch(args: argparse.Namespace) -> int:
     print()
     print(f"single-stream : {single_s:7.1f} s")
     print(f"batched       : {batch_s:7.1f} s   ({speedup:.2f}x)")
+    print(f"batched twice : identical {identical_bb}/{len(rows)}  (control)")
     print(f"identical     : {identical}/{len(rows)}  ({100 * rate:.1f}%)")
     print(f"full corpus at this speedup: ~{report['projected_full_corpus_hours']} h "
           f"(vs 43.4 h single-stream)")

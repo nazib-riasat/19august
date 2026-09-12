@@ -1,0 +1,121 @@
+{
+ "what_this_is": "GRAFT end to end on 2WikiMultiHopQA dev (stratified subset). Within-system row; NOT a controlled comparison with published 2Wiki systems (they train on 2Wiki train).",
+ "dataset": {
+  "name": "2WikiMultiHopQA",
+  "split": "dev",
+  "rows_total": 12576,
+  "rows_evaluated": 500,
+  "stratified_by": "type",
+  "seed": 20260816
+ },
+ "metric": "SQuAD token-F1 and exact match via normalise_answer; abstentions score 0 in *_over_all",
+ "overall": {
+  "n": 500,
+  "f1_over_all": 0.28210189255189255,
+  "em_over_all": 0.122,
+  "f1_answered": 0.32425504891022133,
+  "coverage": 0.87,
+  "gold_complete_rate": 1.0
+ },
+ "by_type": {
+  "bridge_comparison": {
+   "n": 109,
+   "f1_over_all": 0.3609315506104497,
+   "em_over_all": 0.09174311926605505,
+   "f1_answered": 0.4979941647663166,
+   "coverage": 0.7247706422018348,
+   "gold_complete_rate": 1.0
+  },
+  "comparison": {
+   "n": 121,
+   "f1_over_all": 0.30235104656592254,
+   "em_over_all": 0.06611570247933884,
+   "f1_answered": 0.3622225409354122,
+   "coverage": 0.8347107438016529,
+   "gold_complete_rate": 1.0
+  },
+  "compositional": {
+   "n": 209,
+   "f1_over_all": 0.23646996278575225,
+   "em_over_all": 0.17703349282296652,
+   "f1_answered": 0.2547537227949599,
+   "coverage": 0.9282296650717703,
+   "gold_complete_rate": 1.0
+  },
+  "inference": {
+   "n": 61,
+   "f1_over_all": 0.2574214492247279,
+   "em_over_all": 0.09836065573770492,
+   "f1_answered": 0.2574214492247279,
+   "coverage": 1.0,
+   "gold_complete_rate": 1.0
+  }
+ },
+ "abstentions": {
+  "n": 65,
+  "by_cause": {
+   "fallback": 65
+  }
+ },
+ "cost": {
+  "queries_metered": 500,
+  "queries_unledgered": 0,
+  "queries_free_by_gate": 0,
+  "llm_calls_per_query": {
+   "mean": 1.0,
+   "median": 1.0,
+   "max": 1.0
+  },
+  "llm_tokens_in_per_query": {
+   "mean": 808.274,
+   "median": 816.5,
+   "max": 859.0
+  },
+  "llm_tokens_out_per_query": {
+   "mean": 11.838,
+   "median": 10.0,
+   "max": 48.0
+  },
+  "llm_tokens_total_per_query": {
+   "mean": 820.112,
+   "median": 829.0,
+   "max": 887.0
+  },
+  "model_forwards_per_query": {
+   "mean": 1.0,
+   "median": 1.0,
+   "max": 1.0
+  },
+  "wall_clock_ms_per_query": {
+   "mean": 1010.038,
+   "median": 890.5,
+   "max": 6640.0
+  },
+  "unit": "per query, read path only; total = tokens_in + tokens_out summed over all LLM calls. Ingestion is a separate offline axis and is not here (GRAFT_PHASE11_BUILD.md G7)."
+ },
+ "honesty_stamp": {
+  "policy_trained": false,
+  "head_trained": true,
+  "selection": "training_free_relevance",
+  "gate_source": "none",
+  "scorer_source": "distilled_head",
+  "token_counter": "reader_tokenizer",
+  "ordering": "u_shaped_inference_computable",
+  "is_wiring_test": true,
+  "notes": [
+   "2Wiki dev, stratified by type; claims tier only (paragraph claims), no raw tier",
+   "utility head dev rho vs exact U = 0.7560234998369398",
+   "within-system row; not a controlled comparison with published 2Wiki systems"
+  ],
+  "warning": "WIRING TEST — at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+ },
+ "run": {
+  "backbone": "Qwen/Qwen2.5-3B-Instruct",
+  "wall_clock_s": 537.6,
+  "smoke": false,
+  "questions_per_hour": 3348.1,
+  "prompt_sha": "2dfef30b629cc1704722185612f063358bd8633aaa4375b68c518553c5a5cc95",
+  "stage_e": "63c5a1ba322e1035801befe6ace1c0af373f067ca9554bf55bd556c5600d8aa3",
+  "head": "artefacts/utility_head.pt"
+ }
+}

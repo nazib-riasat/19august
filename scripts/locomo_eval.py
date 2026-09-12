@@ -66,9 +66,9 @@ if str(REPO) not in sys.path:
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
-from graft.config import load_config  # noqa: E402
+from graft.config import config_hash, load_config  # noqa: E402
 from graft.diagnostics import ceilings as C  # noqa: E402
-from graft.diagnostics.report import build_report  # noqa: E402
+from graft.diagnostics.report import build_report, report_metrics  # noqa: E402
 from graft.eventlog import EventLog  # noqa: E402
 from graft.gate import features as gfeatures  # noqa: E402
 from graft.gate import pins as gpins  # noqa: E402
@@ -601,6 +601,74 @@ def raw_evidence_block(turns, count_tokens, room: int, rank=None):
     return "", []
 
 
+def _citation_detail(result) -> dict:
+    """B2's three columns for one row: emitted ids, unresolved ids, spanned ids.
+
+    Read off ``result.parsed``, which the orchestrator already populated -- this
+    records what was computed rather than recomputing it, so the artefact cannot
+    disagree with the read path about what the reader cited.
+    """
+    parsed = getattr(result, "parsed", None)
+    if parsed is None:
+        return {"citation_ids": None, "citations_unresolved": None,
+                "citations_with_spans": None}
+    spans = dict(getattr(parsed, "spans", {}) or {})
+    return {
+        "citation_ids": [str(c) for c in getattr(parsed, "citations", ()) or ()],
+        "citations_unresolved": [str(c) for c in getattr(parsed, "unresolved", ()) or ()],
+        # A claim id counts as span-grounded only when provenance resolved to at
+        # least ONE span; an empty tuple means the atom carried none.
+        "citations_with_spans": sorted(c for c, sp in spans.items() if sp),
+    }
+
+
+def ceiling_sample(questions, n: int, seed: int = 13) -> set[str]:
+    """B4 -- a seeded stratified sample of question ids for the ceiling pass.
+
+    **Stratified across category x conversation**, not drawn uniformly. Ceilings
+    1 and 2 are conversation-level properties and the four categories differ by
+    a factor of nine in size, so a uniform sample of 100 is mostly single-hop
+    questions from whichever conversations are largest -- and ceiling 3's mean
+    would then describe that subset rather than the corpus.
+
+    Adversarial questions are excluded: they have no gold evidence, so the
+    ceiling pass skips them anyway and including them in the denominator would
+    shrink the real sample without saying so.
+    """
+    import numpy as np
+
+    eligible = [q for q in questions if not q.get("adversarial")]
+    if n >= len(eligible):
+        return {q["question_id"] for q in eligible}
+
+    strata: dict[tuple, list] = {}
+    for q in eligible:
+        strata.setdefault((q["category"], q["conv_id"]), []).append(q["question_id"])
+
+    rng = np.random.default_rng(seed)
+    # Proportional allocation, then a seeded round-robin for the remainder so the
+    # sample size is exact rather than "about N".
+    total = len(eligible)
+    picked: set[str] = set()
+    order = sorted(strata)
+    for key in order:
+        ids = sorted(strata[key])
+        take = int(len(ids) * n / total)
+        if take:
+            chosen = rng.choice(len(ids), size=min(take, len(ids)), replace=False)
+            picked.update(ids[int(i)] for i in chosen)
+
+    remaining = [
+        qid for key in order for qid in sorted(strata[key]) if qid not in picked
+    ]
+    if len(picked) < n and remaining:
+        extra = rng.choice(
+            len(remaining), size=min(n - len(picked), len(remaining)), replace=False
+        )
+        picked.update(remaining[int(i)] for i in extra)
+    return picked
+
+
 def stage_c(snapshot, embedder, question: str, conv_id: str, config, ledger, cache=None):
     """The five training-free channels, then assembly. Phase 7's order, imported.
 
@@ -670,23 +738,16 @@ def build_example(qid, snapshot, pool, atom_scores, report, obligations, gold_at
     )
 
 
-def main() -> int:
-    # **Measured, after a first version of this comment overstated it.**  These
-    # docstrings carry U+2192 and U+03B2, Windows consoles default to cp1252, and
-    # `--help` died on the description before printing a word of it -- that part
-    # is reproduced, on six runners.
-    #
-    # The guard also covers `print` of *data*, but the original justification
-    # ("a curly apostrophe would kill the run") was **wrong**: U+2019 and U+2014
-    # are cp1252 0x92/0x97 and encode fine.  What LoCoMo actually holds outside
-    # cp1252 is 18 occurrences of 11 characters -- 8 zero-width spaces and 9
-    # emoji -- across 7 turns and 1 gold answer.  And no current print path in
-    # these runners emits corpus text, so this is insurance against a future
-    # debug print, not a live crash averted.  `scripts/phase3_calibrate.py` set
-    # the convention; extended here 19 Aug 2026.
-    for stream in (sys.stdout, sys.stderr):
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+def build_parser() -> argparse.ArgumentParser:
+    """The CLI, as its own function so the **defaults are assertable**.
+
+    The run-5 raw-tier defaults are a claim an offline grid selected
+    (`PHASE11_DECISIONS.md` 1.11), not a convenience: a run whose argv says
+    nothing must still be the configuration that was chosen. Built inside
+    ``main`` they could only be checked by reading the source, which is how
+    run 4's ``--evidence-budget`` help came to describe a ladder rung it was
+    not.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--corpus", default="data/locomo/locomo10.json")
     parser.add_argument("--run-dir", default="artefacts/locomo", help="the ingest log's dir")
@@ -702,6 +763,13 @@ def main() -> int:
     parser.add_argument(
         "--smoke", action="store_true",
         help="stub reader, no GPU. Exercises every join; produces no result.",
+    )
+    parser.add_argument(
+        "--ceilings-sample", type=int, default=None, metavar="N",
+        help="compute the ceilings on a seeded STRATIFIED sample of N questions "
+        "instead of every eligible one. Stratified across the 4 answerable "
+        "categories x 10 conversations at seed 13, so a 100-question sample is "
+        "not 100 single-hop questions from one conversation. Requires --ceilings.",
     )
     parser.add_argument(
         "--ceilings", action="store_true",
@@ -721,7 +789,7 @@ def main() -> int:
     )
     parser.add_argument("--fresh", action="store_true", help="ignore existing rows and restart")
     parser.add_argument(
-        "--raw-turns", type=int, default=6,
+        "--raw-turns", type=int, default=5,
         help="raw dialogue turns appended as uncitable context (0 disables). "
         "Every reference system on LoCoMo shows its reader raw conversation "
         "text; these are the turns the graph was built from, already stored as "
@@ -739,12 +807,17 @@ def main() -> int:
         "reference system's ~9k.",
     )
     parser.add_argument(
-        "--raw-window", type=int, default=1,
+        "--raw-window", type=int, default=2,
         help="+-N same-session neighbours appended around each retrieved raw "
-        "turn (0 disables the window and reproduces run 3's isolated turns).",
+        "turn (0 disables the window and reproduces run 3's isolated turns). "
+        "**Run 5: 2, up from run 4's 1**, with `--raw-turns` down 6->5 and the "
+        "cap up 15->25. Run 4's grid measured radius 2 as WORSE than radius 1 "
+        "(0.7100 vs 0.7276) -- but at cap 15, where a wider window is dropped "
+        "whole to fit. Re-measured with the cap raised, the fewer-but-deeper "
+        "configuration wins: see PHASE11_DECISIONS.md 1.11.",
     )
     parser.add_argument(
-        "--raw-cap", type=int, default=15,
+        "--raw-cap", type=int, default=25,
         help="hard cap on raw turn TEXTS after window expansion. Whole windows "
         "are dropped lowest-scored-first, never a neighbour off a kept seed.",
     )
@@ -763,7 +836,27 @@ def main() -> int:
         "head is randomly initialised, best-of-K ranks by noise, and the stamp "
         "says so -- PHASE10_DECISIONS.md §1.4 is why ranking needs it at all.",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    # **Measured, after a first version of this comment overstated it.**  These
+    # docstrings carry U+2192 and U+03B2, Windows consoles default to cp1252, and
+    # `--help` died on the description before printing a word of it -- that part
+    # is reproduced, on six runners.
+    #
+    # The guard also covers `print` of *data*, but the original justification
+    # ("a curly apostrophe would kill the run") was **wrong**: U+2019 and U+2014
+    # are cp1252 0x92/0x97 and encode fine.  What LoCoMo actually holds outside
+    # cp1252 is 18 occurrences of 11 characters -- 8 zero-width spaces and 9
+    # emoji -- across 7 turns and 1 gold answer.  And no current print path in
+    # these runners emits corpus text, so this is insurance against a future
+    # debug print, not a live crash averted.  `scripts/phase3_calibrate.py` set
+    # the convention; extended here 19 Aug 2026.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    args = build_parser().parse_args()
 
     config = load_config()
     # Always applied, because the run-4 default (256) differs from the config's
@@ -891,6 +984,28 @@ def main() -> int:
         ) + (("reader is a stub",) if args.smoke else ()),
     )
 
+    # B4: the seeded stratified ceiling sample, resolved once. `None` means
+    # "every eligible question", which is what --ceilings alone has always meant.
+    # **A flag that silently does nothing is the PHASE11_DECISIONS.md 1.3
+    # defect.** `--ceilings-sample` without `--ceilings` would run the whole
+    # pass unsampled and write an artefact whose `ceiling_sampling` block says
+    # `sampled: false` -- a run the caller did not ask for, reported as one they
+    # did. Refused up front, before any model loads.
+    if args.ceilings_sample and not args.ceilings:
+        raise SystemExit(
+            "--ceilings-sample needs --ceilings: it samples the ceiling pass, "
+            "and without that pass there is nothing to sample. Add --ceilings, "
+            "or drop --ceilings-sample."
+        )
+
+    ceiling_ids = None
+    if args.ceilings and args.ceilings_sample:
+        ceiling_ids = ceiling_sample(questions, int(args.ceilings_sample), seed=13)
+        print(
+            f"ceiling sample: {len(ceiling_ids)} questions, stratified by "
+            f"category x conversation at seed 13"
+        )
+
     # One index build per conversation instead of per question -- see ChannelCache.
     channel_cache = ChannelCache(snapshot, embedder, config)
     # Uncapped per-conversation pools for the ceiling serializer, built at most
@@ -998,7 +1113,7 @@ def main() -> int:
                 # `available: False` with a reason rather than omitting a row, so
                 # a four-row table never reads as five.
                 ceilings = None
-                if args.ceilings:
+                if args.ceilings and (ceiling_ids is None or qid in ceiling_ids):
                     if not gold_atoms:
                         ceilings = {
                             "skipped": True,
@@ -1065,14 +1180,24 @@ def main() -> int:
                 # only reclassifies; it never rewrites a scoreable answer.
                 **_cleaned(result),
                 "citations": len(result.record.citations),
+                # **B2 -- which citations, and whether they resolved.** The read
+                # path already runs `resolve_citations(strict=False)` against the
+                # shown claim map and the snapshot, so `unresolved` and `spans`
+                # exist at this point and were simply discarded. A count cannot
+                # tell a resolved citation from a hallucinated one, which is the
+                # whole distinction ALCE (EMNLP 2023) is about.
+                **_citation_detail(result),
                 "pool_size": len(pool.ids()),
                 "gold_atoms": len(gold_atoms),
-                "raw_turns_included": len(raw_kept),
-                # **The ids, not just the count** (FIX 4). Run 3 kept only the
-                # count, so asking "did the raw tier actually retrieve this
-                # question's evidence?" needed a full CPU replay of the corpus.
-                # Ids make that a join against `locomo.evidence_turn_ids`.
-                "raw_turn_ids": [t.turn_id for t in raw_kept],
+                # **The ids, under the obvious name** (run 5, A3). Run 3
+                # kept only a count, so asking "did the raw tier retrieve this
+                # question's evidence?" cost a full CPU replay. Run 4 added the
+                # ids but left `raw_turns_included` an int, so the field a reader
+                # reaches for first still answered the wrong question -- the same
+                # defect one key along. The ids ARE the inclusion record now, and
+                # the count rides beside them for cheap reading.
+                "raw_turns_included": [t.turn_id for t in raw_kept],
+                "raw_turns_count": len(raw_kept),
                 # **The whole dict, not a derived flag.**  An earlier version
                 # wrote `bool(sat.get("saturated"))`, and `saturation()` has no
                 # such key -- it returns `exercised` (the cap binds and
@@ -1170,6 +1295,49 @@ def main() -> int:
             "axis": "offline, per turn; never folded into per-query inference cost",
         },
     )
+    # -- PART B: the paper-grade metric block --------------------------------
+    # Assembled through one entry point so the artefact cannot carry three of
+    # the four. Everything in it is derived from `results`, so it costs no GPU
+    # and is recomputable from the rows file alone.
+    report_body["report_metrics"] = report_metrics(
+        results,
+        cost=cost,
+        wall_clock_s=elapsed,
+        corpus_sha=locomo.corpus_sha256(args.corpus),
+        prompt_sha=rpins.PROMPT_SHA,
+        stage_e=rpins.stage_e_fingerprint(),
+        config_hash=config_hash(config),
+        decoding=dict(rpins.DECODING),
+        determinism={
+            "per_machine": (
+                "measured across two cold Stage-A runs (PHASE5_DECISIONS.md §2); "
+                "the read path is greedy and seeded per question at "
+                "config.seeds[0] + index"
+            ),
+            "batch_composition": (
+                "one question per generation call, so batch composition is "
+                "constant by construction and cannot move a logit -- the control "
+                "for the one determinism condition a batched runner would break"
+            ),
+            "cross_machine": "not promised; see what_is_not_promised",
+        },
+    )
+    report_body["report_metrics"]["ceiling_sampling"] = (
+        {
+            "sampled": True,
+            "requested": int(args.ceilings_sample),
+            "selected": len(ceiling_ids or ()),
+            "seed": 13,
+            "stratified_by": "category x conversation",
+            "reading": (
+                "ceiling means describe this sample, not the corpus; the strata "
+                "keep it from being one category from one conversation"
+            ),
+        }
+        if args.ceilings and args.ceilings_sample
+        else {"sampled": False, "reading": "ceilings computed on every eligible question"}
+    )
+
     report_body["run"] = {
         "utility_head": {
             "checkpoint": args.head,

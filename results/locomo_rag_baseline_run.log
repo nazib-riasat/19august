@@ -1,0 +1,106 @@
+=== chunk --conversations 3  19:31 ===
+RAG baseline: 497 questions over 3 conversations, evidence budget 1280
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:  68%|######7   | 293/434 [00:00<00:00, 2918.04it/s]Loading weights: 100%|##########| 434/434 [00:00<00:00, 3328.83it/s]
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 2151.47it/s]
+  [1/497] locomo/conv-26/q0 answer (882 q/h)
+  [26/497] locomo/conv-26/q25 answer (1717 q/h)
+  [51/497] locomo/conv-26/q50 answer (1532 q/h)
+  [76/497] locomo/conv-26/q75 answer (1523 q/h)
+  [101/497] locomo/conv-26/q100 answer (1459 q/h)
+  [126/497] locomo/conv-26/q125 answer (1579 q/h)
+  [151/497] locomo/conv-26/q150 answer (1611 q/h)
+  [176/497] locomo/conv-26/q175 answer (1736 q/h)
+  [201/497] locomo/conv-30/q1 answer (1864 q/h)
+  [226/497] locomo/conv-30/q26 answer (1869 q/h)
+  [251/497] locomo/conv-30/q51 answer (1862 q/h)
+  [276/497] locomo/conv-30/q76 answer (1916 q/h)
+  [301/497] locomo/conv-30/q101 abstain (1969 q/h)
+  [326/497] locomo/conv-41/q21 answer (1918 q/h)
+  [351/497] locomo/conv-41/q46 answer (1830 q/h)
+  [376/497] locomo/conv-41/q71 answer (1787 q/h)
+  [401/497] locomo/conv-41/q96 answer (1742 q/h)
+  [426/497] locomo/conv-41/q121 answer (1765 q/h)
+  [451/497] locomo/conv-41/q146 answer (1769 q/h)
+  [476/497] locomo/conv-41/q171 answer (1781 q/h)
+
+RAG baseline  F1=40.39  B1=33.73  tokens/query=1282
+written: E:\STUDY\CSE498R\results\locomo_rag_baseline.json (16.8 min)
+chunk exit: 0
+=== chunk --conversations 6  19:53 ===
+RAG baseline: 1157 questions over 6 conversations, evidence budget 1280
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:  83%|########2 | 359/434 [00:00<00:00, 3158.24it/s]Loading weights: 100%|##########| 434/434 [00:00<00:00, 3404.61it/s]
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4356.52it/s]
+  [501/1157] locomo/conv-42/q3 answer (289251 q/h)
+  [526/1157] locomo/conv-42/q28 answer (31336 q/h)
+  [551/1157] locomo/conv-42/q53 answer (20576 q/h)
+  [576/1157] locomo/conv-42/q78 answer (15872 q/h)
+  [601/1157] locomo/conv-42/q103 answer (13838 q/h)
+  [626/1157] locomo/conv-42/q128 answer (11759 q/h)
+  [651/1157] locomo/conv-42/q153 answer (10544 q/h)
+  [676/1157] locomo/conv-42/q178 answer (9773 q/h)
+  [701/1157] locomo/conv-42/q203 answer (8813 q/h)
+  [726/1157] locomo/conv-42/q228 answer (8244 q/h)
+  [751/1157] locomo/conv-42/q253 answer (7923 q/h)
+  [776/1157] locomo/conv-43/q18 answer (7164 q/h)
+  [801/1157] locomo/conv-43/q43 answer (6625 q/h)
+  [826/1157] locomo/conv-43/q68 answer (6244 q/h)
+  [851/1157] locomo/conv-43/q93 answer (5964 q/h)
+  [876/1157] locomo/conv-43/q118 answer (5774 q/h)
+  [901/1157] locomo/conv-43/q143 answer (5320 q/h)
+  [926/1157] locomo/conv-43/q168 answer (5175 q/h)
+  [951/1157] locomo/conv-43/q193 answer (5077 q/h)
+  [976/1157] locomo/conv-43/q218 answer (4940 q/h)
+  [1001/1157] locomo/conv-44/q1 answer (4786 q/h)
+  [1026/1157] locomo/conv-44/q26 answer (4616 q/h)
+  [1051/1157] locomo/conv-44/q51 answer (4354 q/h)
+  [1076/1157] locomo/conv-44/q76 answer (4233 q/h)
+  [1101/1157] locomo/conv-44/q101 answer (4015 q/h)
+  [1126/1157] locomo/conv-44/q126 abstain (3925 q/h)
+  [1151/1157] locomo/conv-44/q151 answer (3869 q/h)
+
+RAG baseline  F1=39.94  B1=34.09  tokens/query=1250
+written: E:\STUDY\CSE498R\results\locomo_rag_baseline.json (18.1 min)
+chunk exit: 0
+=== chunk --conversations 10  20:16 ===
+RAG baseline: 1986 questions over 10 conversations, evidence budget 1280
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights: 100%|##########| 434/434 [00:00<00:00, 4952.51it/s]
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4643.69it/s]
+  [1176/1986] locomo/conv-47/q18 answer (198663 q/h)
+  [1201/1986] locomo/conv-47/q43 answer (85462 q/h)
+  [1226/1986] locomo/conv-47/q68 answer (45247 q/h)
+  [1251/1986] locomo/conv-47/q93 answer (33130 q/h)
+  [1276/1986] locomo/conv-47/q118 answer (28743 q/h)
+  [1301/1986] locomo/conv-47/q143 abstain (23772 q/h)
+  [1326/1986] locomo/conv-47/q168 abstain (20875 q/h)
+  [1351/1986] locomo/conv-48/q3 answer (18346 q/h)
+  [1376/1986] locomo/conv-48/q28 answer (16152 q/h)
+  [1401/1986] locomo/conv-48/q53 answer (14795 q/h)
+  [1426/1986] locomo/conv-48/q78 answer (13465 q/h)
+  [1451/1986] locomo/conv-48/q103 answer (12489 q/h)
+  [1476/1986] locomo/conv-48/q128 answer (11555 q/h)
+  [1501/1986] locomo/conv-48/q153 answer (10794 q/h)
+  [1526/1986] locomo/conv-48/q178 answer (10185 q/h)
+  [1551/1986] locomo/conv-48/q203 answer (9581 q/h)
+  [1576/1986] locomo/conv-48/q228 answer (9091 q/h)
+  [1601/1986] locomo/conv-49/q14 abstain (8388 q/h)
+  [1626/1986] locomo/conv-49/q39 answer (7491 q/h)
+  [1651/1986] locomo/conv-49/q64 answer (6870 q/h)
+  [1676/1986] locomo/conv-49/q89 answer (6437 q/h)
+  [1701/1986] locomo/conv-49/q114 answer (6116 q/h)
+  [1726/1986] locomo/conv-49/q139 answer (5893 q/h)
+  [1751/1986] locomo/conv-49/q164 abstain (5754 q/h)
+  [1776/1986] locomo/conv-49/q189 abstain (5552 q/h)
+  [1801/1986] locomo/conv-50/q18 answer (5294 q/h)
+  [1826/1986] locomo/conv-50/q43 answer (5026 q/h)
+  [1851/1986] locomo/conv-50/q68 answer (4764 q/h)
+  [1876/1986] locomo/conv-50/q93 answer (4514 q/h)
+  [1901/1986] locomo/conv-50/q118 answer (4287 q/h)
+  [1926/1986] locomo/conv-50/q143 answer (4119 q/h)
+  [1951/1986] locomo/conv-50/q168 abstain (3986 q/h)
+  [1976/1986] locomo/conv-50/q193 answer (3868 q/h)
+
+RAG baseline  F1=39.87  B1=33.95  tokens/query=1252
+written: E:\STUDY\CSE498R\results\locomo_rag_baseline.json (30.9 min)
+chunk exit: 0

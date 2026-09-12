@@ -4,15 +4,25 @@
     python scripts/phase6_gate1.py                # reports the entry conditions
     python scripts/phase6_gate1.py --decisive     # the real Gate-1 run, when they hold
 
-**Gate 1 cannot run yet, and this script says so rather than approximating it**
-(G1).  Its four entry conditions, as of 15 Aug 2026:
+**Gate 1 cannot run decisively yet, and this script says so rather than
+approximating it** (G1).  Its four machine-checkable entry conditions all read
+**met** as of 11 Sep 2026 — ``GATE0_CONTRACT.md`` signed 15 Aug; human D1/D2
+label files present; extractor frozen (Phase-5 decision 2, candidate B); the
+pilot corpus ingested — **and that is not the same as Gate 1 being ready.**
+The human labels on disk cover the 20 + 20 κ subset from Gate-0 item 8; the
+current construction produces **187 D1 and 120 D2 items**
+(``artefacts/phase6_gate1_smoke.json``), and the D2 labels' item ids have zero
+overlap with them.  ``entry_conditions()`` checks file presence, and says so in
+its own ``detail``: volume and coverage are item 8's judgment, not a file count
+this script could know.  The batch to annotate is exported at
+``data/phase2_5/d1_items_gate1.jsonl`` / ``d2_items_gate1.jsonl``; model-produced
+labels for it exist under the ``*bootstrap*`` name and are **excluded** from the
+human set by construction.
 
-1. ``GATE0_CONTRACT.md`` signed — **blocked** on item 8's go/no-go;
-2. human D1 **and** D2 labels — **met** (the pilot batch: 40 D1 + 49 D2 labels
-   under ``*_Sabbir_pilot.jsonl``, LINK labels in the graph's own namespace);
-3. a frozen extractor — **met** (Phase-5 decision 2, candidate B);
-4. an ingested corpus — **partly met**: the live pilot's 248 turns are real
-   Stage-A output, but the item-9 scope corpus is undecided.
+*(This paragraph replaced a 15-Aug snapshot that read condition 1 as "blocked"
+and condition 4 as "partly met". Both had since flipped, and a reader running
+the script saw four greens with a narrative that said otherwise — stale in the
+direction that invites a decisive run on the wrong labels.)*
 
 **The decisive path exists** (`graphbuild.train`, built 14 Aug 2026): with all
 four conditions met, ``--decisive`` trains every arm under the shared budget at
@@ -452,7 +462,13 @@ def train_arms(log, d1_items, embedder, cfg) -> tuple[dict, list, dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", default="artefacts/phase6_gate1_smoke.json")
+    parser.add_argument(
+        "--out", default=None,
+        help="artefact path; defaults to phase6_gate1_decisive.json under --decisive "
+        "and phase6_gate1_smoke.json otherwise, so a decisive run can never "
+        "overwrite the smoke record or be filed under its name (12 Sep 2026: the "
+        "first decisive run did exactly that)",
+    )
     # **Mutually exclusive, and that is a correctness guard, not tidiness.**
     # With both flags the entry-condition block (`if not args.smoke`) was
     # skipped while `smoke = not args.decisive` evaluated to False — a full
@@ -571,7 +587,9 @@ def main() -> int:
     if hasattr(embedder, "flush"):
         embedder.flush()
 
-    out = REPO / args.out
+    out = REPO / (args.out or (
+        "artefacts/phase6_gate1_decisive.json" if args.decisive else "artefacts/phase6_gate1_smoke.json"
+    ))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(json_sanitize(artefact), indent=1, default=str, allow_nan=False),
@@ -580,7 +598,7 @@ def main() -> int:
     )
 
     audit = built["corruption_audit"]
-    print("\n=== smoke run ===")
+    print("\n=== decisive run ===" if args.decisive else "\n=== smoke run ===")
     print(f"  D1 items            {len(d1)} ({with_candidates} with candidates)")
     print(f"  D2 items            {len(d2)}")
     print(f"  commits accepted    {built['commit']['accepted']}")

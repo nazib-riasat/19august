@@ -397,7 +397,10 @@ def test_positional_item_ids_do_not_survive_a_re_derivation():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2] / "data" / "phase2_5"
-    spike = [json.loads(l) for l in (root / "d1_items.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    # The spike batch moved to the archive on 12 Sep 2026 when the Gate-1 driver
+    # refused an item-id collision between it and the current 187-item batch
+    # (`d1_items_gate1.jsonl`) -- the very collision this test documents.
+    spike = [json.loads(l) for l in (root / "archive_pass1_v0" / "d1_items_spike.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     assert spike[0]["item_id"] == "d1_0000"
     # Two different derivations, same id, different mention — that is the trap.
     assert spike[0]["mention"] == "Gitzo"

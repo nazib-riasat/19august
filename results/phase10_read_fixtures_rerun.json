@@ -1,0 +1,2339 @@
+{
+ "budget_ladder": [
+  160,
+  512,
+  1024
+ ],
+ "ceiling_means": {
+  "ceiling_1": 1.0,
+  "ceiling_2": 1.0,
+  "ceiling_3": 1.0,
+  "ceiling_4": 1.0,
+  "ceiling_5": 1.0
+ },
+ "ceilings": [
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q0"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q1"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q2"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q3"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q4"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q5"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q6"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q7"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q8"
+  },
+  {
+   "1_extraction": {
+    "assertions_eligible": 6,
+    "assertions_total": 6,
+    "available": true,
+    "ceiling": 1.0,
+    "note": "support-gate survival rate; NOT a comparison against annotated gold statements, which do not exist on conversation (CLAUDE.md \u00a77). Weaker than v1.2 \u00a76.3's question.",
+    "tier": "gate"
+   },
+   "2_graph": {
+    "available": true,
+    "ceiling": 1.0,
+    "eligible_on_graph": 6,
+    "nodes_in_scope": 6,
+    "note": "graph-construction survival of eligible assertions; NOT an oracle search for a sufficient proof.",
+    "tier": "gate"
+   },
+   "3_candidate": {
+    "available": true,
+    "ceiling": 1.0,
+    "gold": 2,
+    "hit": 2,
+    "missed": [],
+    "retrieved": 14,
+    "saturation": {
+     "candidates_in_scope": 6,
+     "closed_atoms_in_scope": 14,
+     "exercised": false,
+     "pool_cap": 64,
+     "reading": "closed candidate set fits inside pool_cap: the pool is the whole conversation, so recall is 1.0 by construction and this question does not test retrieval"
+    },
+    "tier": "tier_a"
+   },
+   "4_packing": {
+    "available": true,
+    "by_budget": {
+     "1024": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "160": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     },
+     "512": {
+      "approximate_tokens": false,
+      "dropped": 0,
+      "included": 2,
+      "survives": true,
+      "tokens": 62
+     }
+    },
+    "ceiling": true,
+    "gold_atoms": 2,
+    "survives_at": [
+     160,
+     512,
+     1024
+    ],
+    "tier": "tier_a"
+   },
+   "5_reader": {
+    "abstained": false,
+    "answer_text": "London [c1][c2]",
+    "available": true,
+    "ceiling": true,
+    "citations": 2,
+    "f1": 1.0,
+    "live_budget": 512,
+    "note": "the reader was handed the GOLD proof at an UNBOUNDED budget, so this measures the reader alone; `survives_live_budget` reports ceiling 4's separate question.",
+    "packed": {
+     "approximate_tokens": false,
+     "budget": 1000000000,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 62
+    },
+    "survives_live_budget": true,
+    "tier": "tier_a"
+   },
+   "question_id": "q9"
+  }
+ ],
+ "deferred_by_name": {
+  "ceilings_1_2_at_tier_b": "needs scope-c ingestion and gold proof annotation",
+  "conversational_gate_threshold": "Phase-8 Stage B",
+  "system_baselines": "Phase 11 \u2014 full-context, matched-budget RAG, Mem0",
+  "trained_stage_d_policy": "Phase-9 step 6"
+ },
+ "determinism_digest": "410488ba189dcac46492633ce54e9873f167ed055a037dec2443f66cb3cc0138",
+ "honesty_stamp": {
+  "budget": "ceiling 4 is reported at EVERY rung of the ladder. CLAUDE.md \u00a78 records that quoting a packing result at one cherry-picked budget was one of this project's own caught errors.",
+  "ceilings": "ceilings 1 and 2 are support-gate and graph-construction SURVIVAL rates, not oracle searches against annotated gold proofs -- that annotation does not exist on conversation (CLAUDE.md \u00a77). Each reports its tier.",
+  "no_training": "no gradient step is taken anywhere in this phase. The reader is frozen and post-hoc verification is declined (Phase-10 decision 11).",
+  "purpose": "the architecture's Phase-10 exit criterion: an end-to-end read-path smoke plus the five-ceiling table. NOT a Gate-4 result.",
+  "untrained": "the Stage-D policy is UNTRAINED (Phase-9 step 6 has not run) and the gate threshold is Phase-8's MuSiQue-trained placeholder, not a conversational one. Every record carries a ReadPathStamp saying so."
+ },
+ "manifest": {
+  "environment": {
+   "cpu_count": 16,
+   "gpu": {
+    "cuda": true,
+    "devices": [
+     "NVIDIA GeForce RTX 5050 Laptop GPU"
+    ],
+    "torch": true
+   },
+   "hostname": "DESKTOP-5R8D1VU",
+   "platform": "Windows-10-10.0.26200-SP0",
+   "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+   "utc_started": "2026-09-12T04:39:46+00:00"
+  },
+  "reproducibility": {
+   "config": {
+    "K": 8,
+    "beta": 4.0,
+    "checker_budget": 32,
+    "default_tier": "unknown",
+    "frozen_at_gate0": false,
+    "fsync": false,
+    "max_atoms": 16,
+    "pool_cap": 64,
+    "profile": "real",
+    "r_fail": 1e-06,
+    "r_fail_margin": 0.001,
+    "schema_version": "0.2.0",
+    "seeds": [
+     13,
+     42,
+     7
+    ],
+    "serialization_budget_tokens": 512,
+    "source_tiers": {
+     "corroborated": 0.75,
+     "first_party": 1.0,
+     "reported": 0.5,
+     "unknown": 0.25
+    },
+    "support_policy": "strict",
+    "tau_nli": 0.8,
+    "u_weights": {
+     "cov": 0.5,
+     "red": 0.25,
+     "size": 0.1,
+     "src": 0.25,
+     "suff": 1.0,
+     "temp": 0.5
+    }
+   },
+   "config_hash": "1f6d4276acba1ac088ae0c206fc17a1f6fbdf5a71587dd6c9d8f78580ba5ec89",
+   "git": {
+    "available": true,
+    "branch": "master",
+    "dirty": true,
+    "sha": "05fb873faf38b9a0ab0a689234a9958aba7c4d04"
+   },
+   "packages": {
+    "PyYAML": "6.0.3",
+    "numpy": "2.4.6",
+    "pytest": "9.1.1",
+    "torch": "2.11.0+cu128"
+   },
+   "python": "3.11.9",
+   "schema_version": "0.3.0",
+   "seed": 13
+  }
+ },
+ "per_question": [
+  {
+   "abstain_cause": "gate",
+   "answer_text": null,
+   "citations": 0,
+   "contested": {},
+   "gate": {
+    "answerable": false,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.2,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 0,
+     "llm_tokens_in": 0,
+     "llm_tokens_out": 0,
+     "model_forwards": 0,
+     "terminal_checks": 0,
+     "wall_clock_ms": 0
+    },
+    "query_id": "q0",
+    "stages": {},
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 0,
+     "llm_tokens_in": 0,
+     "llm_tokens_out": 0,
+     "model_forwards": 0,
+     "terminal_checks": 0,
+     "wall_clock_ms": 0
+    }
+   },
+   "outcome": "abstain",
+   "packed": null,
+   "portfolio": null,
+   "question_id": "q0",
+   "stages": {
+    "gate": {
+     "answerable": false
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": null,
+   "answer_text": "London [c1]",
+   "citations": 1,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c5],[c7]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 942,
+     "llm_tokens_out": 15,
+     "model_forwards": 46,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1122
+    },
+    "query_id": "q1",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 545,
+      "llm_tokens_out": 9,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 646
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 44,
+      "terminal_checks": 0,
+      "wall_clock_ms": 60
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 397,
+      "llm_tokens_out": 6,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 416
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 942,
+     "llm_tokens_out": 15,
+     "model_forwards": 46,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1122
+    }
+   },
+   "outcome": "answer",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 4,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 71
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12078343331813812,
+    "best_size": 4,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q1",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12078343331813812,
+     "best_size": 4,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 4,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 71
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": null,
+   "answer_text": "London [c1][c5][c9]",
+   "citations": 3,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c1]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 959,
+     "llm_tokens_out": 18,
+     "model_forwards": 47,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1177
+    },
+    "query_id": "q2",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 384,
+      "llm_tokens_out": 6,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 384
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 45,
+      "terminal_checks": 0,
+      "wall_clock_ms": 12
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 575,
+      "llm_tokens_out": 12,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 781
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 959,
+     "llm_tokens_out": 18,
+     "model_forwards": 47,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1177
+    }
+   },
+   "outcome": "answer",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 13,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 249
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12072917073965073,
+    "best_size": 13,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q2",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12072917073965073,
+     "best_size": 13,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 13,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 249
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": "fallback",
+   "answer_text": null,
+   "citations": 0,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c1]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 785,
+     "llm_tokens_out": 13,
+     "model_forwards": 41,
+     "terminal_checks": 0,
+     "wall_clock_ms": 919
+    },
+    "query_id": "q3",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 437,
+      "llm_tokens_out": 6,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 425
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 39,
+      "terminal_checks": 0,
+      "wall_clock_ms": 10
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 348,
+      "llm_tokens_out": 7,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 484
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 785,
+     "llm_tokens_out": 13,
+     "model_forwards": 41,
+     "terminal_checks": 0,
+     "wall_clock_ms": 919
+    }
+   },
+   "outcome": "abstain",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 1,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 22
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12379353493452072,
+    "best_size": 1,
+    "budget_exhausted": false,
+    "distinct_valid": 7,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q3",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "reader_declined": true,
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12379353493452072,
+     "best_size": 1,
+     "budget_exhausted": false,
+     "distinct_valid": 7,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 1,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 22
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": "fallback",
+   "answer_text": null,
+   "citations": 0,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c9],[c1],[c5],[c9],[c13]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 905,
+     "llm_tokens_out": 26,
+     "model_forwards": 57,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1626
+    },
+    "query_id": "q4",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 574,
+      "llm_tokens_out": 19,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 1129
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 55,
+      "terminal_checks": 0,
+      "wall_clock_ms": 15
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 331,
+      "llm_tokens_out": 7,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 482
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 905,
+     "llm_tokens_out": 26,
+     "model_forwards": 57,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1626
+    }
+   },
+   "outcome": "abstain",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 1,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 5
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12379353493452072,
+    "best_size": 1,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q4",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "reader_declined": true,
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12379353493452072,
+     "best_size": 1,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 1,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 5
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": "gate",
+   "answer_text": null,
+   "citations": 0,
+   "contested": {},
+   "gate": {
+    "answerable": false,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.2,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 0,
+     "llm_tokens_in": 0,
+     "llm_tokens_out": 0,
+     "model_forwards": 0,
+     "terminal_checks": 0,
+     "wall_clock_ms": 0
+    },
+    "query_id": "q5",
+    "stages": {},
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 0,
+     "llm_tokens_in": 0,
+     "llm_tokens_out": 0,
+     "model_forwards": 0,
+     "terminal_checks": 0,
+     "wall_clock_ms": 0
+    }
+   },
+   "outcome": "abstain",
+   "packed": null,
+   "portfolio": null,
+   "question_id": "q5",
+   "stages": {
+    "gate": {
+     "answerable": false
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": "fallback",
+   "answer_text": null,
+   "citations": 0,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c5],[c9],[c10],[c14]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 937,
+     "llm_tokens_out": 24,
+     "model_forwards": 61,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1495
+    },
+    "query_id": "q6",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 589,
+      "llm_tokens_out": 17,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 1062
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 59,
+      "terminal_checks": 0,
+      "wall_clock_ms": 17
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 348,
+      "llm_tokens_out": 7,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 416
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 937,
+     "llm_tokens_out": 24,
+     "model_forwards": 61,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1495
+    }
+   },
+   "outcome": "abstain",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 1,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 22
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12379353493452072,
+    "best_size": 1,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q6",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "reader_declined": true,
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12379353493452072,
+     "best_size": 1,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 1,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 22
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": null,
+   "answer_text": "London [c8][c9][c14]",
+   "citations": 3,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c5],[c6],[c7]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 1163,
+     "llm_tokens_out": 25,
+     "model_forwards": 77,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1587
+    },
+    "query_id": "q7",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 574,
+      "llm_tokens_out": 12,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 746
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 75,
+      "terminal_checks": 0,
+      "wall_clock_ms": 18
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 589,
+      "llm_tokens_out": 13,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 823
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 1163,
+     "llm_tokens_out": 25,
+     "model_forwards": 77,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1587
+    }
+   },
+   "outcome": "answer",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 14,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 263
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12102806568145752,
+    "best_size": 14,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q7",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12102806568145752,
+     "best_size": 14,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 14,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 263
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": null,
+   "answer_text": "London [c2],[c5],[c6],[c9]",
+   "citations": 4,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c1][c3]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 1007,
+     "llm_tokens_out": 24,
+     "model_forwards": 59,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1501
+    },
+    "query_id": "q8",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 446,
+      "llm_tokens_out": 9,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 567
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 57,
+      "terminal_checks": 0,
+      "wall_clock_ms": 18
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 561,
+      "llm_tokens_out": 15,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 916
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 1007,
+     "llm_tokens_out": 24,
+     "model_forwards": 59,
+     "terminal_checks": 0,
+     "wall_clock_ms": 1501
+    }
+   },
+   "outcome": "answer",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 12,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 235
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12032248079776764,
+    "best_size": 12,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q8",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12032248079776764,
+     "best_size": 12,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 12,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 235
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  },
+  {
+   "abstain_cause": null,
+   "answer_text": "London [c1]",
+   "citations": 1,
+   "contested": {
+    "contested": false,
+    "eligible": true,
+    "extra_reader_calls": 1,
+    "runner_up_answer": "London [c1]"
+   },
+   "gate": {
+    "answerable": true,
+    "arm": "pool_only",
+    "feature_names": [],
+    "p_answerable": 0.9,
+    "threshold": 0.626672089099884
+   },
+   "ledger_snapshot": {
+    "caps": {
+     "terminal_checks": 32
+    },
+    "queries_seen": 0,
+    "query": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 812,
+     "llm_tokens_out": 12,
+     "model_forwards": 57,
+     "terminal_checks": 0,
+     "wall_clock_ms": 831
+    },
+    "query_id": "q9",
+    "stages": {
+     "contested": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 450,
+      "llm_tokens_out": 6,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 449
+     },
+     "stage_d": {
+      "incremental_ops": 0,
+      "llm_calls": 0,
+      "llm_tokens_in": 0,
+      "llm_tokens_out": 0,
+      "model_forwards": 55,
+      "terminal_checks": 0,
+      "wall_clock_ms": 13
+     },
+     "stage_e": {
+      "incremental_ops": 0,
+      "llm_calls": 1,
+      "llm_tokens_in": 362,
+      "llm_tokens_out": 6,
+      "model_forwards": 1,
+      "terminal_checks": 0,
+      "wall_clock_ms": 369
+     }
+    },
+    "totals": {
+     "incremental_ops": 0,
+     "llm_calls": 2,
+     "llm_tokens_in": 812,
+     "llm_tokens_out": 12,
+     "model_forwards": 57,
+     "terminal_checks": 0,
+     "wall_clock_ms": 831
+    }
+   },
+   "outcome": "answer",
+   "packed": {
+    "approximate_tokens": false,
+    "budget": 512,
+    "complete": true,
+    "dropped": 0,
+    "included": 2,
+    "ordering": "u_shaped_inference_computable",
+    "token_counter": "reader_tokenizer",
+    "tokens": 36
+   },
+   "portfolio": {
+    "abstain_fallback": 0,
+    "attempted": 8,
+    "best_score": 0.12011180818080902,
+    "best_size": 2,
+    "budget_exhausted": false,
+    "distinct_valid": 8,
+    "fail_rollouts": 0,
+    "fallback": false,
+    "terminal_checks": 0
+   },
+   "question_id": "q9",
+   "stages": {
+    "gate": {
+     "answerable": true,
+     "p": 0.9
+    },
+    "stage_d": {
+     "abstain_fallback": 0,
+     "attempted": 8,
+     "best_score": 0.12011180818080902,
+     "best_size": 2,
+     "budget_exhausted": false,
+     "distinct_valid": 8,
+     "fail_rollouts": 0,
+     "fallback": false,
+     "terminal_checks": 0
+    },
+    "stage_e": {
+     "approximate_tokens": false,
+     "budget": 512,
+     "complete": true,
+     "dropped": 0,
+     "included": 2,
+     "ordering": "u_shaped_inference_computable",
+     "token_counter": "reader_tokenizer",
+     "tokens": 36
+    }
+   },
+   "stamp": {
+    "gate_source": "musique_placeholder",
+    "head_trained": false,
+    "is_wiring_test": true,
+    "notes": [
+     "Stage-D policy untrained: Phase-9 step 6 has not run",
+     "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+    ],
+    "ordering": "u_shaped_inference_computable",
+    "policy_trained": false,
+    "scorer_source": "distilled_head",
+    "selection": "learned_portfolio",
+    "token_counter": "reader_tokenizer",
+    "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+   }
+  }
+ ],
+ "phase": 10,
+ "post_hoc_verification": {
+  "adopted": false,
+  "candidate": "SynCheck / FOD (EMNLP 2024)",
+  "grounds": [
+   "needs a trained monitor (frozen-SLM constraint)",
+   "FOD alters decoding (breaks the decoding-config hash)",
+   "would have to be matched across every Phase-11 baseline"
+  ],
+  "reversible": "yes, but reversing re-opens the frozen-decoding hash and the matched budget"
+ },
+ "prompt_sha": "2dfef30b629cc1704722185612f063358bd8633aaa4375b68c518553c5a5cc95",
+ "read_path_stamp": {
+  "gate_source": "musique_placeholder",
+  "head_trained": false,
+  "is_wiring_test": true,
+  "notes": [
+   "Stage-D policy untrained: Phase-9 step 6 has not run",
+   "gate threshold from Phase-8 MuSiQue Stage A, not conversational"
+  ],
+  "ordering": "u_shaped_inference_computable",
+  "policy_trained": false,
+  "scorer_source": "distilled_head",
+  "selection": "learned_portfolio",
+  "token_counter": "reader_tokenizer",
+  "warning": "WIRING TEST \u2014 at least one consumed artefact is untrained or a placeholder. No number from this run is a result."
+ },
+ "reader": {
+  "abstain_string": "INSUFFICIENT EVIDENCE",
+  "decoding": {
+   "do_sample": false,
+   "max_new_tokens": 128,
+   "num_beams": 1,
+   "temperature": null,
+   "top_p": null
+  },
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "model_id": "Qwen/Qwen2.5-3B-Instruct",
+  "peak_vram_gb": 6.286,
+  "prompt_sha": "2dfef30b629cc1704722185612f063358bd8633aaa4375b68c518553c5a5cc95",
+  "slot": "reader:Qwen/Qwen2.5-3B-Instruct"
+ },
+ "serialization_budget_tokens": 512,
+ "smoke": false,
+ "stage": "C (orchestrator) + the five ceilings",
+ "stage_e_fingerprint": "63c5a1ba322e1035801befe6ace1c0af373f067ca9554bf55bd556c5600d8aa3",
+ "summary": {
+  "abstain_by_cause": {
+   "fallback": 3,
+   "gate": 2
+  },
+  "abstained": 5,
+  "abstention_rate": 0.5,
+  "aggregation_rule": "abstentions excluded from means and counted separately; causes never summed (Phase-10 decision 7)",
+  "answered": 5,
+  "contested": 0,
+  "contested_extra_reader_calls": 8,
+  "cost": {
+   "llm_calls_per_query": {
+    "max": 2.0,
+    "mean": 2.0,
+    "median": 2.0
+   },
+   "llm_tokens_in_per_query": {
+    "max": 1163.0,
+    "mean": 938.75,
+    "median": 939.5
+   },
+   "llm_tokens_out_per_query": {
+    "max": 26.0,
+    "mean": 19.625,
+    "median": 21.0
+   },
+   "llm_tokens_total_per_query": {
+    "max": 1188.0,
+    "mean": 958.375,
+    "median": 959.0
+   },
+   "model_forwards_per_query": {
+    "max": 77.0,
+    "mean": 55.625,
+    "median": 57.0
+   },
+   "queries_free_by_gate": 2,
+   "queries_metered": 8,
+   "queries_unledgered": 0,
+   "unit": "per query, read path only; total = tokens_in + tokens_out summed over all LLM calls. Ingestion is a separate offline axis and is not here (GRAFT_PHASE11_BUILD.md G7).",
+   "wall_clock_ms_per_query": {
+    "max": 1626.0,
+    "mean": 1282.25,
+    "median": 1336.0
+   }
+  },
+  "is_wiring_test": true,
+  "mean_citations": 2.4,
+  "mean_proof_size": 9.0,
+  "queries": 10,
+  "unresolved_citations": 0,
+  "warning": "WIRING TEST \u2014 at least one query consumed an untrained or placeholder artefact. No number here is a result."
+ },
+ "wall_clock_s": 31.73
+}

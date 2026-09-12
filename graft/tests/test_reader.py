@@ -359,6 +359,16 @@ def test_the_prompt_asks_for_a_phrase_not_a_sentence():
     assert "Never a full sentence" in pins.PROMPT_TEMPLATE
     assert pins.INSUFFICIENT in pins.PROMPT_TEMPLATE
 
+    # **Run-5 rule 4** (A2, 21 Aug 2026). Run 4 scored open-domain at 9.89 F1
+    # against 46.63 single-hop, and that category is largely hypothetical or
+    # preference questions. The rule licenses a short inference while restating
+    # the phrase contract -- an inference rule that permitted prose would undo
+    # rule 2 for exactly the category it was written to help, which is why the
+    # restatement is asserted rather than assumed.
+    assert "hypothetical" in pins.PROMPT_TEMPLATE, "run-5 inference rule missing"
+    assert "most likely short inference" in pins.PROMPT_TEMPLATE
+    assert "still a phrase, never a sentence" in pins.PROMPT_TEMPLATE
+
 
 def test_the_prompt_carries_the_three_format_alignments():
     """Amended 19 Aug 2026, before any decisive run existed -- the last §6b-clean

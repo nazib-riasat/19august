@@ -58,6 +58,15 @@ GRID: tuple[tuple[int, int, int], ...] = (
     (6, 1, 12),   # the same, with the cap actually binding
     (8, 1, 15),   # is k=6 already saturating?
     (6, 2, 15),   # a wider window, which the cap starts to fight
+    # -- run-5 candidates, added 21 Aug 2026 -------------------------------
+    # Run 4's grid found radius 2 WORSE than radius 1 (0.7100 vs 0.7276) -- but
+    # at cap 15, which drops a wider window whole to fit, so the row measured
+    # the cap and not the radius. These raise the cap so the radius is the only
+    # thing varying, and trade seeds for depth at a comparable text count.
+    (5, 2, 25),   # run 5's proposal: fewer seeds, deeper windows
+    (6, 2, 25),   # the same depth at run-4's k, to isolate the k reduction
+    (6, 1, 25),   # run-4's shape with the cap unbound, as the control
+    (4, 2, 25),   # is k=5 already saturating on the deeper window?
 )
 
 

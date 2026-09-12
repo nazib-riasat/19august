@@ -19,7 +19,7 @@ per §3 tiering; it supplies a *reference table*, and under the tiering rule it
 may motivate a comparison but never carry a central claim alone.
 Effort: **~1.5 days solo [ANALYSIS]**, of which **Stages A–C need no GPU and are
 unblocked today**.
-Status: **Stages A, B and C BUILT and green (19 Aug 2026); §6 UNSIGNED; nothing
+Status: **Stages A, B and C BUILT and green (19 Aug 2026); §6 SIGNED 11 Sep 2026 (delegated, contaminated — §6 sign-off block); nothing
 run on GPU.** Plus three things this phase turned out to need that no earlier
 phase had built: the LoCoMo loader, the end-to-end runner Phase 10 deferred, and
 the distilled-head trainer. Suite 1,304 passed, 0 failed.
@@ -378,7 +378,7 @@ check stays usable while the corpus is scaled up.
 
 ---
 
-## 6. Decisions to lock before writing code — **UNSIGNED**
+## 6. Decisions to lock before writing code — **SIGNED 11 Sep 2026 (delegated; contaminated — see the sign-off block)**
 
 Signing needs the project owner's explicit instruction, as with
 `GATE0_CONTRACT.md`, `GRAFT_PHASE3_BUILD.md` §6, `GRAFT_PHASE9_BUILD.md` §6 and
@@ -399,6 +399,22 @@ both are worthless if fixed after the number exists.
 **What this signature would not cover:** the LoCoMo question counts and category
 totals (measured at ingestion, not guessable here), and GRAFT's own numbers,
 which do not exist.
+
+**Signed:** the assistant, 11 September 2026, at the project owner's explicit
+instruction — delegated and recorded as such, the same convention
+`GATE0_CONTRACT.md` used on 15 Aug 2026.
+
+**This signature is contaminated, and says so.** §6b's clean condition is that a
+decision table is signed before any result it governs has been inspected. That
+condition was **not** met: five LoCoMo evaluations had run by the time of
+signing (`results/locomo_eval{1,2,3}.json`; `PHASE11_DECISIONS.md` §1.9–1.13),
+and the signer had read them. The six rows above are signed **as written on
+19 Aug 2026 — none was altered after a result was seen**, and each has a
+recorded cost-to-reverse in its own row. What the signature therefore records is
+ownership of decisions that were already binding the runs, not a §6b-clean
+pre-registration; anyone reading a Phase-11 number against this table should
+weight it accordingly. The decision that most needs that caveat is row 5 (the
+cost unit), because it is the axis on which GRAFT's strongest result sits.
 
 ---
 
